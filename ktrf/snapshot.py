@@ -56,6 +56,7 @@ class Snapshot:
     policy: RuntimePolicy
     manifest: dict
     diagnostics: list = field(default_factory=list)
+    calibrator: object | None = None  # TunedCalibrator once finetuned (§48.3)
 
     @property
     def glossary_version(self) -> str:
@@ -124,6 +125,7 @@ def compile_snapshot(
         "normalizer_hash": _hash(NORMALIZER_VERSION),
         "morphology_rules_hash": _morphology_hash(),
         "entities_hash": glossary_hash,
+        "calibrator_hash": None,
         "conformance_fixtures_hash": None,
         "conformance": None,
     }

@@ -80,11 +80,29 @@ implemented:
     tests: [tests/test_resolver_api.py::test_fast_mode_no_pass2]
   - req: REQ-CAND-005
     tests: [tests/test_resolver_api.py::test_fast_mode_no_pass2]
-  # --- termness / calibration semantics ---
+  # --- termness / calibration ---
   - req: REQ-TRM-001
     tests: [tests/test_resolver_api.py::test_uncertain_mention_never_resolved]
   - req: REQ-CAL-001
     tests: [tests/test_resolver_api.py::test_marginal_probabilities_not_normalized]
+  - req: REQ-CAL-002
+    tests: [tests/test_artifacts_finetune.py::test_conformal_group_fallback_flagged,
+            tests/test_artifacts_finetune.py::test_conformal_coverage_on_holdout]
+  - req: REQ-CAL-003
+    tests: [tests/test_resolver_api.py::test_marginal_probabilities_not_normalized,
+            tests/test_artifacts_finetune.py::test_finetuned_resolver_uses_calibrator]
+  - req: REQ-CAL-004
+    tests: [tests/test_artifacts_finetune.py::test_empirical_coverage]
+  # --- corrections / finetuning ---
+  - req: REQ-COR-001
+    tests: [tests/test_artifacts_finetune.py::test_accepted_only_export,
+            tests/test_artifacts_finetune.py::test_correction_workflow_states]
+  - req: REQ-COR-002
+    tests: [tests/test_artifacts_finetune.py::test_finetune_produces_new_snapshot]
+  - req: REQ-COR-003
+    tests: [tests/test_artifacts_finetune.py::test_per_principal_export_cap]
+  - req: REQ-COR-004
+    tests: [tests/test_artifacts_finetune.py::test_correction_tenant_isolation]
   # --- graph ---
   - req: REQ-GRPH-001
     tests: [tests/test_resolver_api.py::test_determinism,
@@ -131,22 +149,8 @@ deferred:
     reason: "EntityRelation/COMPOSES_TO expansion channel — M2 scope (relations are parsed/validated only)"
   - req: REQ-TRM-002
     reason: "termness classifier — V3/M4 scope (V1 keeps UNCERTAIN, never forces RESOLVED)"
-  - req: REQ-CAL-002
-    reason: "group-conditional split conformal — M4 scope (V1 ships heuristic conservative calibrator)"
-  - req: REQ-CAL-003
-    reason: "tenant calibration groups — M4 scope"
-  - req: REQ-CAL-004
-    reason: "online empirical coverage via Correction API — M3/M4 scope"
   - req: REQ-API-006
     reason: "async document resolve API — M3 scope"
-  - req: REQ-COR-001
-    reason: "Correction API — M3 scope"
-  - req: REQ-COR-002
-    reason: "Correction API — M3 scope"
-  - req: REQ-COR-003
-    reason: "Correction API — M3 scope"
-  - req: REQ-COR-004
-    reason: "Correction API — M3 scope"
   - req: REQ-BUD-002
     reason: "non-exact stage skip ordering needs cross-encoder/dense stages — M4 scope"
   - req: REQ-MEM-001

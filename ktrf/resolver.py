@@ -22,6 +22,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from .calibration import calibration_group
 from .candidates import Candidate, CandidatePool
 from .errors import KtrfApiError
 from .offsets import OffsetMap, check_span_invariant
@@ -323,7 +324,12 @@ def _fuse(node: MentionNode, snapshot: Snapshot, text: str,
             score += 0.20  # document-local definitional boost (§18.3)
         score += _scope_adjust(cand, snapshot, context, node)
         cand.ranking_score = round(score, 4)
-        if mode != "fast" and cand.drop_reason is None:
+        if mode != "fast" and cand.drop_reason is None \
+                and snapshot.calibrator is not None:
+            # finetuned tenant calibrator (§48.3): Platt-scaled marginal
+            cand.calibrated_probability = \
+                snapshot.calibrator.calibrate_marginal(cand.ranking_score)
+        elif mode != "fast" and cand.drop_reason is None:
             # global conservative calibrator (heuristic placeholder, §48.1):
             # a sense-count prior scaled by surface-path quality, shifted by
             # context/scope evidence. Marginal per candidate, never
@@ -461,8 +467,23 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
                      for c in cands)
     mention_decision = "TERM" if (has_strong or (top_p or 0) >= 0.6) else "UNCERTAIN"
 
-    members = [c for c in ranked
-               if (c.calibrated_probability or 0) >= snapshot.policy.prediction_set_min_p]
+    calibrator = snapshot.calibrator
+    calibration_fallback = False
+    if calibrator is not None:
+        # conformal membership: s = 1 − marginal ≤ q̂(group) (§25.2 step 4)
+        n_senses = len({c.entity_id for c in cands})
+        members = []
+        for c in ranked:
+            group = calibration_group(c.generation_channels, n_senses)
+            included, fb = calibrator.in_prediction_set(
+                c.calibrated_probability or 0.0, group)
+            calibration_fallback |= fb
+            if included:
+                members.append(c)
+    else:
+        members = [c for c in ranked
+                   if (c.calibrated_probability or 0)
+                   >= snapshot.policy.prediction_set_min_p]
     if top is not None and top not in members:
         members = [top] + members
     members = members[:max_set]
@@ -523,9 +544,13 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
             "calibrated_probability": top_p,
         }
     m["prediction_set"] = {
-        "set_confidence": policy.set_confidence,
+        "set_confidence": (calibrator.set_confidence if calibrator is not None
+                           else policy.set_confidence),
         "members": set_members,
     }
+    if calibration_fallback:
+        # REQ-CAL-002: group sample below n_min → pooled-quantile fallback
+        m["prediction_set"]["calibration_fallback"] = True
     if node_degraded:
         m["degraded"] = True
     return m

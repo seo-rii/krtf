@@ -414,3 +414,79 @@ def _check_relation_cycles(g: Glossary, diags: list[Diagnostic]) -> None:
 
 def has_errors(diags: list[Diagnostic]) -> bool:
     return any(d.severity == "error" for d in diags)
+
+
+# ---------------------------------------------------------------------------
+# Serialization (artifact save path, §11)
+# ---------------------------------------------------------------------------
+
+
+def glossary_to_dict(g: Glossary) -> dict:
+    """Serialize back to the schema-3 document form (load_glossary inverse)."""
+    return {
+        "glossary_id": g.glossary_id,
+        "version": g.version,
+        "schema_version": g.schema_version,
+        "normalization_profiles": [
+            {
+                "id": p.id, "nfc": p.nfc, "width_fold": p.width_fold,
+                "case_fold": p.case_fold,
+                "ignore_punctuation": list(p.ignore_punctuation),
+                "spacing_mode": p.spacing_mode, "latin_morph": p.latin_morph,
+            }
+            for pid, p in g.normalization_profiles.items()
+            if pid not in DEFAULT_PROFILES
+        ],
+        "entities": [
+            {
+                "entity_id": e.entity_id, "canonical": e.canonical,
+                "language": e.language, "type_ids": e.type_ids,
+                "domain_ids": e.domain_ids, "description": e.description,
+                "examples": e.examples, "valid_from": e.valid_from,
+                "valid_to": e.valid_to, "metadata": e.metadata,
+                "provenance": e.provenance,
+            }
+            for e in g.entities
+        ],
+        "alias_families": [
+            {
+                "family_id": f.family_id, "representative": f.representative,
+                "normalization_profile": f.normalization_profile,
+            }
+            for f in g.alias_families
+        ],
+        "alias_bindings": [
+            {
+                "alias_id": b.alias_id, "family_id": b.family_id,
+                "entity_id": b.entity_id, "surface": b.surface,
+                "kind": b.kind,
+                "boundary_policy": {
+                    "left": b.boundary_policy.left,
+                    "right": b.boundary_policy.right,
+                    "allow_inside_latin_run":
+                        b.boundary_policy.allow_inside_latin_run,
+                },
+                "normalization_policy": b.normalization_policy,
+                "fuzzy_policy": {
+                    "enabled": b.fuzzy_policy.enabled,
+                    "keyboard_recovery": b.fuzzy_policy.keyboard_recovery,
+                    "max_edit_cost": b.fuzzy_policy.max_edit_cost,
+                },
+                "scope": {"allow": b.scope.allow, "deny": b.scope.deny},
+                "valid_from": b.valid_from, "valid_to": b.valid_to,
+                "provenance": b.provenance,
+            }
+            for b in g.alias_bindings
+        ],
+        "entity_relations": [
+            {
+                "relation_id": r.relation_id,
+                "source_entity_id": r.source_entity_id,
+                "relation_type": r.relation_type,
+                "target_entity_id": r.target_entity_id,
+                "surface_suffix": r.surface_suffix,
+            }
+            for r in g.entity_relations
+        ],
+        "policies": g.policies,
+    }

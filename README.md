@@ -26,6 +26,9 @@ channels, with heuristic fusion and fast/aggressive/commit execution modes.
 | Conformance fixture generation + suite | §14.8 | `ktrf/conformance.py` |
 | Error schema | §27.6 | `ktrf/errors.py` |
 | REQ traceability matrix + CI check | §1.2, 부록 D | `docs/traceability.yaml`, `tests/test_traceability.py` |
+| Snapshot save/load (artifact bundle + hash verification) | §11, §47.3 | `ktrf/artifacts.py` |
+| Correction workflow (approval, tenant isolation, caps) | §30 | `ktrf/corrections.py` |
+| Tenant calibrator: Platt + group-conditional conformal | §25, §48.3 | `ktrf/calibration.py` |
 | Evaluation harness (deterministic datagen + metrics) | §37, §43–44 | `eval/` |
 
 ## Deliberate deviations from the production spec
@@ -34,12 +37,15 @@ channels, with heuristic fusion and fast/aggressive/commit execution modes.
   implementation; the module boundaries mirror the recommended monorepo layout.
 - **Artifacts:** snapshots are immutable in-memory objects with a hashed
   manifest, not mmap `.bin` bundles (§11.1/REQ-MEM-001 deferred to Rust core).
-- **No HTTP layer:** the sync Resolve API is exposed as a library call with the
-  spec's request/response/error schema; async job API (§28), correction API
-  (§30) and memory tiers (§32) are M3+ scope and not implemented.
-- **Calibration:** V1 ships the "global conservative calibrator" placeholder
-  (§48.1): heuristic probabilities capped conservatively; group-conditional
-  conformal calibration is M4 (V2) scope.
+- **No HTTP layer:** the sync Resolve API, glossary compile/activation,
+  correction workflow and finetuning are exposed as library calls with the
+  spec's request/response/error schemas; the async job API (§28) and memory
+  tiers (§32) are M3+ scope and not implemented.
+- **Calibration:** zero-training tenants start on the heuristic "global
+  conservative calibrator" (§48.1). `finetune()` upgrades a tenant to a fitted
+  calibrator — Platt-scaled marginals plus group-conditional split conformal
+  prediction sets with n_min fallback (§25.2) — from ACCEPTED corrections.
+  Neural stages (bi-/cross-encoder, §33 V2+) remain out of scope.
 
 ## Usage
 
@@ -52,6 +58,50 @@ resp = resolve(snapshot, "한전KDN은 AP 장애 내용을 QMS에 등록했다."
 for m in resp["mentions"]:
     print(m["surface"], m["link_decision"])
 ```
+
+### Save / load snapshots (§11 artifact bundle)
+
+```python
+from ktrf import save_snapshot, load_snapshot
+
+save_snapshot(snapshot, "artifacts/demo-org")   # manifest + glossary + policy (+ calibrator)
+snapshot = load_snapshot("artifacts/demo-org")  # deterministic recompile + hash verification
+```
+
+Loading recompiles indexes from `glossary.yaml` and verifies the recomputed
+content hashes against the stored manifest — tampered or incompatible bundles
+refuse to load (§47.3, INV-015).
+
+### Finetuning (§48.3 adaptation loop)
+
+V1 finetuning fits a **tenant calibrator** (Platt-scaled marginals +
+group-conditional split conformal prediction sets, §25.2) from approved
+corrections. The glossary and indexes are never modified; only the calibrator
+artifact changes, and the result is a *new* snapshot to activate explicitly.
+
+```python
+from ktrf import CorrectionStore, finetune
+
+store = CorrectionStore()
+c = store.submit(
+    tenant_id="default",
+    request_ref={"snapshot_id": resp["snapshot"]["snapshot_id"],
+                 "request_id": "req-1", "mention_id": "m2"},
+    correction_type="WRONG_ENTITY",
+    corrected={"entity_id": "WORKFLOW_APPROVAL_PROCESS"},
+    verifier={"kind": "REVIEWER", "principal_ref": "rev-1"},
+    mention_state=resp["mentions"][1],   # spans/scores — no raw text (§30.2)
+)
+store.review("default", c.correction_id, "ACCEPTED", reviewer="admin")
+
+tuned = finetune(snapshot, store, alpha=0.05,
+                 golden_check=lambda s: my_golden_regression(s))  # §48.3 gate
+```
+
+Only `ACCEPTED` corrections feed fitting (INV-018), verifier kinds are
+weighted and per-principal capped against poisoning (REQ-COR-003), and a
+failing golden regression refuses the finetune. The tuned snapshot round-trips
+through `save_snapshot`/`load_snapshot` with its own `calibrator_hash`.
 
 ## Tests & evaluation
 
@@ -69,6 +119,6 @@ RESOLVED precision (|commit) 1.0, release gate **PASS**. fast mode resolves in
 production Rust core in §34 is the optimization target).
 
 The traceability matrix (`docs/traceability.yaml`, enforced by
-`tests/test_traceability.py`) maps all 61 spec REQ IDs: 47 implemented+tested,
-14 explicitly deferred with milestone reasons (Correction/async APIs → M3,
-conformal calibration and neural stages → M4, mmap artifacts → Rust core).
+`tests/test_traceability.py`) maps all 61 spec REQ IDs: 54 implemented+tested,
+7 explicitly deferred with milestone reasons (async API → M3, neural
+stages/termness → M4, mmap artifacts and memory tiers → Rust core).

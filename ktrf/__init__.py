@@ -17,4 +17,13 @@ def __getattr__(name):
     if name == "KtrfApiError":
         from .errors import KtrfApiError
         return KtrfApiError
+    if name in ("save_snapshot", "load_snapshot", "finetune"):
+        from . import artifacts as m
+        return getattr(m, name)
+    if name == "CorrectionStore":
+        from .corrections import CorrectionStore
+        return CorrectionStore
+    if name in ("TunedCalibrator", "fit_calibrator", "empirical_coverage"):
+        from . import calibration as m
+        return getattr(m, name)
     raise AttributeError(name)
