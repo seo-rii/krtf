@@ -1,6 +1,7 @@
 # KTRF GPU 실행 계획 (GPU Execution Plan)
 
-**상태:** Planning — M4 완료 시점(2026-08-24) 기준
+**상태:** In progress — G1 구현·실측, G2 파이프라인 스캐폴드+스모크 검증,
+G3 residency manager 구현 (2026-08-24; 현황은 docs/ROADMAP.md 참조)
 **대상 하드웨어:** NVIDIA RTX 3080 10GB (개발기), 프로덕션은 §5.3의 "8GB GPU" 제약 유지
 **관계 문서:** PLAN.md §5.3, §32.3, §33–§36, §41, §48; MODEL_RECOMMEND.md
 

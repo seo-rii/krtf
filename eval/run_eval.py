@@ -353,7 +353,7 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
     with open(out_dir / "report.json", "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
-    write_markdown(result, ROOT / "EVALUATION.md")
+    write_markdown(result, ROOT / "reports" / "EVALUATION.md")
     print(json.dumps(result["release_gate"], indent=2))
     print(f"\nfull report: {out_dir / 'report.json'}")
     print(f"markdown: {ROOT / 'EVALUATION.md'}")

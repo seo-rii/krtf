@@ -305,7 +305,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     (out / "benchmarks.json").write_text(
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    write_markdown(payload, ROOT / "BENCHMARKS.md")
+    write_markdown(payload, ROOT / "reports" / "BENCHMARKS.md")
     agg = payload["aggregate"]
     print(json.dumps({"hard_pass_all": agg["hard_pass_all"],
                       "hard_violations": agg["hard_violations_total"],

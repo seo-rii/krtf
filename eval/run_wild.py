@@ -325,7 +325,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     (out / "wild.json").write_text(
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    write_markdown(payload, ROOT / "WILD_CORPUS.md")
+    write_markdown(payload, ROOT / "reports" / "WILD_CORPUS.md")
     print(json.dumps({
         "silver_gold_in_set": silver["gold_in_set_e2e"],
         "resolved_precision": silver["resolved"]["precision_given_commit"],

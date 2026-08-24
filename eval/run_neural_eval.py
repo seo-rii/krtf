@@ -192,7 +192,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     (out / "neural.json").write_text(
         json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
-    _write_md(results, ROOT / "NEURAL_EVAL.md")
+    _write_md(results, ROOT / "reports" / "NEURAL_EVAL.md")
     for p in results["pipeline"]:
         print(f'  {p["config"]:9} gold-in-set={p["gold_in_set_e2e"]["rate"]}'
               f' p95={p["latency_p95_ms"]}ms')

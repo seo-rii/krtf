@@ -44,21 +44,26 @@ bge-reranker export (in-house Stage-B training is tenant-data-dependent).
 | Learned fusion over the feature vector | §23 | `ktrf/fusion.py` |
 | Evaluation harness (deterministic datagen + metrics) | §37, §43–44 | `eval/` |
 
+Status, milestone tracking, and the document map live in
+[docs/ROADMAP.md](docs/ROADMAP.md); generated evaluation reports live under
+[reports/](reports/).
+
 ## Deliberate deviations from the production spec
 
 - **Language:** Python instead of Rust runtime core (§34). This is a reference
   implementation; the module boundaries mirror the recommended monorepo layout.
 - **Artifacts:** snapshots are immutable in-memory objects with a hashed
   manifest, not mmap `.bin` bundles (§11.1/REQ-MEM-001 deferred to Rust core).
-- **No HTTP layer:** the sync Resolve API, glossary compile/activation,
-  correction workflow and finetuning are exposed as library calls with the
-  spec's request/response/error schemas; the async job API (§28) and memory
-  tiers (§32) are M3+ scope and not implemented.
+- **No HTTP layer:** every API (sync resolve, async jobs, corrections,
+  glossary lifecycle, finetuning) is exposed as library calls carrying the
+  spec's request/response/error schemas.
 - **Calibration:** zero-training tenants start on the heuristic "global
-  conservative calibrator" (§48.1). `finetune()` upgrades a tenant to a fitted
-  calibrator — Platt-scaled marginals plus group-conditional split conformal
-  prediction sets with n_min fallback (§25.2) — from ACCEPTED corrections.
-  Neural stages (bi-/cross-encoder, §33 V2+) remain out of scope.
+  conservative calibrator" (§48.1); `finetune()` upgrades a tenant to Platt
+  marginals + group-conditional split conformal sets (§25.2) and optionally a
+  learned fusion model, all from ACCEPTED corrections.
+- **Cross-encoder training:** the Stage-B fine-tune (§35.2) is gated on
+  labeled-data volume (docs/GPU_PLAN.md G2); until then the reranker is the
+  lexical baseline, swappable for any ONNX pair-scorer.
 
 ## Usage
 
@@ -119,7 +124,7 @@ through `save_snapshot`/`load_snapshot` with its own `calibrator_hash`.
 ## Tests & evaluation
 
 ```bash
-python -m pytest                 # 144 unit/property/conformance/traceability tests
+python -m pytest                 # unit/property/conformance/traceability tests
 python -m eval.run_eval          # eval corpus + golden set + release gate -> EVALUATION.md
 python -m eval.run_benchmarks    # adversarial anti-overfitting suite -> BENCHMARKS.md
 python -m eval.run_wild          # real Korean text (HuggingFace KLUE) -> WILD_CORPUS.md
@@ -127,7 +132,7 @@ python -m eval.run_neural_eval   # Level B gate: UE splits, hash vs e5 -> NEURAL
 python -m eval.benchmark         # latency-only scale benchmark
 ```
 
-[NEURAL_EVAL.md](NEURAL_EVAL.md) is the M4 Level B gate: 21 real-org
+[NEURAL_EVAL.md](reports/NEURAL_EVAL.md) is the M4 Level B gate: 21 real-org
 abbreviations held out of the glossary, queried through real KLUE sentences
 (§42 UE-derived-abbreviation). Gold-in-prediction-set (E2E): symbolic-only
 **81.0%** → +hash dense **96.8%** → +e5 dense **98.4%** — both dense configs
@@ -142,7 +147,7 @@ already wired — `load_encoder(spec, device="cuda")` selects the CUDA provider
 when `onnxruntime-gpu` is installed and falls back to CPU otherwise, with the
 deterministic mode pinned to CPU per §34.
 
-Current results ([EVALUATION.md](EVALUATION.md)): conformance **0 failures /
+Current results ([EVALUATION.md](reports/EVALUATION.md)): conformance **0 failures /
 544 fixtures** (and 0/74,450 on a 500-entity synthetic glossary), Level A
 core-span recall (E2E) 213/213, golden-set recall 19/19 with 0 violations,
 RESOLVED precision (|commit) 1.0, release gate **PASS**. fast mode resolves in
@@ -150,7 +155,7 @@ RESOLVED precision (|commit) 1.0, release gate **PASS**. fast mode resolves in
 production Rust core in §34 is the optimization target).
 
 Because the catalog-derived eval cannot detect overfitting (it shares the
-§14.7/§16 catalogs with the implementation), [BENCHMARKS.md](BENCHMARKS.md)
+§14.7/§16 catalogs with the implementation), [BENCHMARKS.md](reports/BENCHMARKS.md)
 runs independently generated adversarial suites at 200/1000/3000 entities ×
 3 seeds: synthetic glossaries with natural abbreviation collisions and
 near-miss siblings, boundary-trap corpora (대한전선-style embeddings), stacked
@@ -163,7 +168,7 @@ suite caught two real bugs on first run — unknown-tail overcommit and
 non-conservative calibration fallback — both now fixed and pinned by
 regression tests.
 
-[WILD_CORPUS.md](WILD_CORPUS.md) evaluates against **real Korean text**:
+[WILD_CORPUS.md](reports/WILD_CORPUS.md) evaluates against **real Korean text**:
 ~5,200 news sentences from HuggingFace KLUE (CC BY-SA 4.0, fetched by
 `eval/wild_data.py` — the repo ships the downloader, not the data) with a
 46-entity real-organization glossary (`examples/realorg_glossary.yaml`).
