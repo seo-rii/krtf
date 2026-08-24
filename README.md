@@ -106,9 +106,10 @@ through `save_snapshot`/`load_snapshot` with its own `calibrator_hash`.
 ## Tests & evaluation
 
 ```bash
-python -m pytest                 # 120 unit/property/conformance/traceability tests
+python -m pytest                 # 144 unit/property/conformance/traceability tests
 python -m eval.run_eval          # eval corpus + golden set + release gate -> EVALUATION.md
-python -m eval.benchmark         # synthetic-glossary scale benchmark (100/500/2000 entities)
+python -m eval.run_benchmarks    # adversarial anti-overfitting suite -> BENCHMARKS.md
+python -m eval.benchmark         # latency-only scale benchmark
 ```
 
 Current results ([EVALUATION.md](EVALUATION.md)): conformance **0 failures /
@@ -117,6 +118,20 @@ core-span recall (E2E) 213/213, golden-set recall 19/19 with 0 violations,
 RESOLVED precision (|commit) 1.0, release gate **PASS**. fast mode resolves in
 &lt;1ms; commit mode p95 ≈ 54ms at 2,000 entities (Python reference — the
 production Rust core in §34 is the optimization target).
+
+Because the catalog-derived eval cannot detect overfitting (it shares the
+§14.7/§16 catalogs with the implementation), [BENCHMARKS.md](BENCHMARKS.md)
+runs independently generated adversarial suites at 200/1000/3000 entities ×
+3 seeds: synthetic glossaries with natural abbreviation collisions and
+near-miss siblings, boundary-trap corpora (대한전선-style embeddings), stacked
+transform compositions, out-of-catalog tails, term-free negative corpora,
+1-jamo distractor typos, unicode fuzzing and pathological inputs, plus
+fit/holdout calibration coverage. Hard gates (boundary violations, sense
+loss, arbitrary commits, crashes, offset failures) must be 0 at every scale;
+a fast subset runs in CI (`tests/test_adversarial_regressions.py`). This
+suite caught two real bugs on first run — unknown-tail overcommit and
+non-conservative calibration fallback — both now fixed and pinned by
+regression tests.
 
 The traceability matrix (`docs/traceability.yaml`, enforced by
 `tests/test_traceability.py`) maps all 61 spec REQ IDs: 54 implemented+tested,

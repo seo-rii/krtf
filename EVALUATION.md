@@ -17,7 +17,7 @@
 | level_a_gold_in_prediction_set | \|mention | 1.0000 | 213/213 | [0.9823, 1.0000] |
 | level_a_gold_in_prediction_set_e2e | E2E | 1.0000 | 213/213 | [0.9823, 1.0000] |
 | level_b_gold_in_prediction_set | E2E | 1.0000 | 11/11 | [0.7412, 1.0000] |
-| resolved_precision | \|commit | 1.0000 | 160/160 | [0.9766, 1.0000] |
+| resolved_precision | \|commit | 1.0000 | 151/151 | [0.9752, 1.0000] |
 | fast_mode_core_span_recall | E2E | 1.0000 | 213/213 | [0.9823, 1.0000] |
 
 ### Slice별 (E2E core-span recall / gold-in-set)
@@ -48,7 +48,7 @@
 - golden_core_span_recall (E2E): **1.000** (19/19)
 - golden_gold_in_prediction_set (E2E): **1.000** (19/19)
 - golden_top1_accuracy (|mention): **1.000** (18/18)
-- golden_resolved_precision (|commit): **1.000** (13/13)
+- golden_resolved_precision (|commit): **1.000** (12/12)
 
 ## 4. Release Gate (§44)
 
@@ -67,7 +67,7 @@
 ## 5. 성능 (참고치, Python 구현)
 
 - 평가 예제: 229건, compile 0.001s
-- resolve(commit) p50 0.67ms / p95 1.35ms
+- resolve(commit) p50 0.67ms / p95 1.2ms
 
 ### 규모 벤치마크 (synthetic glossary, §53 축소판)
 

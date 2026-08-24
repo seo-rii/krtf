@@ -80,6 +80,10 @@ class TunedCalibrator:
     alpha: float
     group_quantiles: dict[str, float]
     global_quantile: float
+    # REQ-CAL-003 spirit: the fallback is *conservative* (α 하향 조정) — a
+    # pooled quantile at α/2, so under-sampled groups over-cover rather than
+    # inherit the majority group's distribution
+    fallback_quantile: float
     group_counts: dict[str, int]
     n_min: int
     version: str = "cal-1"
@@ -93,11 +97,15 @@ class TunedCalibrator:
         return round(min(0.99, max(0.01, p)), 3)
 
     def quantile_for(self, group: str) -> tuple[float, bool]:
-        """(q̂, used_fallback). Fallback to the pooled quantile below n_min
-        (REQ-CAL-002)."""
+        """(q̂, used_fallback). Below n_min, fall back conservatively
+        (REQ-CAL-002): the max of the group's own small-sample quantile
+        (finite-sample valid, just wide) and the pooled α/2 quantile — an
+        under-sampled group widens its sets, never inherits the majority
+        group's tighter distribution."""
         if self.group_counts.get(group, 0) >= self.n_min:
             return self.group_quantiles[group], False
-        return self.global_quantile, True
+        own = self.group_quantiles.get(group, 0.0)
+        return max(own, self.fallback_quantile), True
 
     def in_prediction_set(self, marginal: float, group: str) -> tuple[bool, bool]:
         """(included, used_fallback): s = 1 − marginal ≤ q̂ (§25.2 step 4)."""
@@ -110,6 +118,7 @@ class TunedCalibrator:
             "platt_b": self.platt_b, "alpha": self.alpha,
             "group_quantiles": self.group_quantiles,
             "global_quantile": self.global_quantile,
+            "fallback_quantile": self.fallback_quantile,
             "group_counts": self.group_counts, "n_min": self.n_min,
         }
 
@@ -119,6 +128,7 @@ class TunedCalibrator:
             platt_a=d["platt_a"], platt_b=d["platt_b"], alpha=d["alpha"],
             group_quantiles=dict(d["group_quantiles"]),
             global_quantile=d["global_quantile"],
+            fallback_quantile=d.get("fallback_quantile", d["global_quantile"]),
             group_counts=dict(d["group_counts"]), n_min=d["n_min"],
             version=d.get("version", "cal-1"),
         )
@@ -152,6 +162,7 @@ def fit_calibrator(examples: list[TrainingExample], alpha: float = 0.05,
         group_quantiles={g: _conformal_quantile(lst, alpha)
                          for g, lst in by_group.items()},
         global_quantile=_conformal_quantile(all_scores, alpha),
+        fallback_quantile=_conformal_quantile(all_scores, alpha / 2),
         group_counts={g: len(lst) for g, lst in by_group.items()},
         n_min=n_min,
     )

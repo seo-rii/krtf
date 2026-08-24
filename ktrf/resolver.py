@@ -337,8 +337,16 @@ def _fuse(node: MentionNode, snapshot: Snapshot, text: str,
             if cand.is_exact:
                 prior = 0.92 if n_exact <= 1 else max(0.15, 0.80 / n_exact)
                 prior -= min(0.2, cand.surface_transform_cost)
-                quality = min(1.0, base / _CHANNEL_BASE["exact"])
-                prior *= 0.7 + 0.3 * quality  # SOFT boundary / weak tails
+                # surface-path quality gates the prior hard: SOFT boundaries
+                # and UNKNOWN residuals must not reach commit thresholds on
+                # the prior alone (§4.6 확정은 보수적으로, §16.5). Quality comes
+                # from the exact/normalized channels only — merged fuzzy or
+                # Pass-2 evidence must not restore a weak surface path.
+                exact_base = max(
+                    (v for ch, v in cand.channel_scores.items()
+                     if ch in ("exact", "normalized")), default=0.0)
+                quality = min(1.0, exact_base / _CHANNEL_BASE["exact"])
+                prior *= 0.35 + 0.65 * quality
             elif "doc_local" in cand.generation_channels:
                 prior = 0.60
             elif cand.generation_channels & {"jamo", "keyboard"}:
