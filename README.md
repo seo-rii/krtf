@@ -56,6 +56,19 @@ for m in resp["mentions"]:
 ## Tests & evaluation
 
 ```bash
-python -m pytest                 # unit/property/conformance/traceability tests
-python -m eval.run_eval          # generates eval data, runs metrics, writes eval/out/
+python -m pytest                 # 120 unit/property/conformance/traceability tests
+python -m eval.run_eval          # eval corpus + golden set + release gate -> EVALUATION.md
+python -m eval.benchmark         # synthetic-glossary scale benchmark (100/500/2000 entities)
 ```
+
+Current results ([EVALUATION.md](EVALUATION.md)): conformance **0 failures /
+544 fixtures** (and 0/74,450 on a 500-entity synthetic glossary), Level A
+core-span recall (E2E) 213/213, golden-set recall 19/19 with 0 violations,
+RESOLVED precision (|commit) 1.0, release gate **PASS**. fast mode resolves in
+&lt;1ms; commit mode p95 ≈ 54ms at 2,000 entities (Python reference — the
+production Rust core in §34 is the optimization target).
+
+The traceability matrix (`docs/traceability.yaml`, enforced by
+`tests/test_traceability.py`) maps all 61 spec REQ IDs: 47 implemented+tested,
+14 explicitly deferred with milestone reasons (Correction/async APIs → M3,
+conformal calibration and neural stages → M4, mmap artifacts → Rust core).
