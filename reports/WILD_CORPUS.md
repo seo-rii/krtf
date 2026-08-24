@@ -11,7 +11,7 @@
 - gold-in-prediction-set (E2E): **1.0** (168/168, CI95 [0.9776, 1.0])
 - RESOLVED precision (|commit): **1.0** (147 commits, silver 대비 coverage 0.875)
 - 짧은/다의 표면형(한전·한은·KT 등) 탐지 mention: 174건 (recall 분모 제외)
-- latency p50/p95: 10.47 / 15.61 ms
+- latency p50/p95: 11.42 / 26.13 ms
 
 ## 2. 조사·어미 실분포 커버리지 (§5.2)
 
@@ -32,6 +32,16 @@ corpus에 존재하지 않는 표면형만 남긴 합성 glossary(639 bindings)�
 
 - candidate mentions /1k chars: 4.793 (fuzzy/keyboard 채널의 실 텍스트 자극 밀도)
 - **RESOLVED FP: 0건** (0.0 /1k chars, 141045 chars)
+
+## 3.5 V2 dense 구성 비교 (실 텍스트)
+
+| 구성 | silver gold-in-set | RESOLVED precision | fake-glossary RESOLVED FP |
+|---|---:|---:|---:|
+| symbolic (기본) | 1.0 | 1.0 | 0 |
+| hash_dense | 1.0 | 1.0 | 0 |
+| e5_dense | 1.0 | 1.0 | 0 |
+
+dense 채널은 recall 신호만 추가해야 하며(silver 비열화), 가짜 glossary에서 RESOLVED commit을 만들면 안 된다(0 유지).
 
 ## 4. 해석과 한계
 
