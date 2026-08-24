@@ -126,6 +126,7 @@ def main():
         bench_size(100, run_conf=True),
         bench_size(500, run_conf=True),
         bench_size(2000, run_conf=False),
+        bench_size(10000, run_conf=False),
     ]
     out = ROOT / "eval" / "out"
     out.mkdir(parents=True, exist_ok=True)

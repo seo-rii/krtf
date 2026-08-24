@@ -14,6 +14,7 @@
 | [reports/BENCHMARKS.md](../reports/BENCHMARKS.md) | 적대적 anti-overfitting 매트릭스 | 생성 리포트 |
 | [reports/WILD_CORPUS.md](../reports/WILD_CORPUS.md) | 실 한국어 텍스트(KLUE) 평가 | 생성 리포트 |
 | [reports/NEURAL_EVAL.md](../reports/NEURAL_EVAL.md) | Level B gate (UE splits, dense) | 생성 리포트 |
+| [reports/GPU_BENCH.md](../reports/GPU_BENCH.md) | GPU vs CPU 인코더 벤치마크 (G1) | 생성 리포트 |
 
 리포트 재생성: `python -m eval.run_eval` / `run_benchmarks` / `run_wild` / `run_neural_eval`.
 
@@ -33,9 +34,9 @@
 
 | Phase | 내용 | 상태 |
 |---|---|---|
-| G1 | GPU 추론 (onnxruntime CUDA EP, device 훅) | 진행 — 훅 구현 완료, 런타임 검증/벤치는 본 회차 |
-| G2 | Stage B/C 학습 파이프라인 (torch, KLUE-RoBERTa/e5) | 진행 — 스캐폴드 + GPU 스모크 검증; 본 학습은 라벨 ≥5k 게이트 대기 |
-| G3 | 멀티테넌트 adapter GPU 상주 (§32.3) | 진행 — residency manager 구현 |
+| G1 | GPU 추론 (onnxruntime CUDA EP) | ✅ 실측 완료 — 배치 인코딩 10.7× (RTX 3080, reports/GPU_BENCH.md) |
+| G2 | Stage B/C 학습 파이프라인 (torch, KLUE-RoBERTa) | ✅ GPU 전 루프 검증 (train→ONNX→runtime); **본 학습은 라벨 ≥5k 게이트 대기** |
+| G3 | 멀티테넌트 adapter GPU 상주 (§32.3) | ✅ residency manager 구현 (`ktrf/adapters.py`) |
 
 ## 핵심 실측 (요약)
 

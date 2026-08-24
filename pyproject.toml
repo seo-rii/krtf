@@ -7,6 +7,12 @@ dependencies = ["PyYAML>=6.0"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+# M4 neural runtime (bi-encoder/cross-encoder ONNX backends)
+neural = ["numpy", "onnxruntime>=1.24", "tokenizers", "huggingface_hub"]
+# GPU inference (docs/GPU_PLAN.md G1): CUDA-12-era ORT + torch-bundled DLLs
+gpu = ["numpy", "onnxruntime-gpu==1.25.*", "tokenizers", "torch"]
+# Stage B/C training (docs/GPU_PLAN.md G2); never required at runtime
+training = ["torch", "transformers", "onnx"]
 
 [build-system]
 requires = ["setuptools>=68"]

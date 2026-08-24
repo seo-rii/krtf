@@ -1,7 +1,19 @@
 # KTRF GPU 실행 계획 (GPU Execution Plan)
 
-**상태:** In progress — G1 구현·실측, G2 파이프라인 스캐폴드+스모크 검증,
-G3 residency manager 구현 (2026-08-24; 현황은 docs/ROADMAP.md 참조)
+**상태:** 구현 완료 (2026-08-24) — G1 실측 완료, G2 파이프라인 GPU 검증 완료
+(본 학습은 라벨 게이트 대기), G3 residency manager 구현·테스트 완료.
+
+**실측 결과 요약 (RTX 3080, reports/GPU_BENCH.md):**
+
+- G1: fp32 e5-small CUDA EP 배치 인코딩 **6,026 passages/s** vs CPU int8
+  562/s → **10.7×**. 단건 질의는 동급(4.1 vs 3.4ms) — 온라인 CPU 유지 원칙
+  실측 확인. int8↔fp32 코사인 드리프트 0.007 (§46.2 지표).
+  Windows DLL: torch 번들 CUDA 12.8 런타임을 ctypes 프리로드
+  (`ktrf.encoders._register_cuda_dlls`) + `onnxruntime-gpu==1.25.*` 고정.
+- G2: KLUE-RoBERTa-base 스모크 학습 30 steps/2.2s on CUDA → ONNX export →
+  `OnnxCrossEncoder` 로드까지 전 루프 검증 (`training/` 참조).
+  체크포인트는 게이트 미달로 pipeline-validation-only 스탬프.
+- G3: `ktrf/adapters.py` — GPU slot cap + LRU + refcount 보호, 테스트 7종.
 **대상 하드웨어:** NVIDIA RTX 3080 10GB (개발기), 프로덕션은 §5.3의 "8GB GPU" 제약 유지
 **관계 문서:** PLAN.md §5.3, §32.3, §33–§36, §41, §48; MODEL_RECOMMEND.md
 

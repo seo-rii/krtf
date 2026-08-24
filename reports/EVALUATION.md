@@ -67,15 +67,16 @@
 ## 5. 성능 (참고치, Python 구현)
 
 - 평가 예제: 229건, compile 0.001s
-- resolve(commit) p50 0.67ms / p95 1.22ms
+- resolve(commit) p50 0.81ms / p95 1.62ms
 
 ### 규모 벤치마크 (synthetic glossary, §53 축소판)
 
 | entities | bindings | compile | conformance | commit p50/p95 | fast p50/p95 |
 |---:|---:|---:|---|---|---|
-| 100 | 234 | 0.01s | 15040 fixtures, 0 failed, 39105/s | 13.43 / 16.69ms | 0.17 / 0.23ms |
-| 500 | 1156 | 0.04s | 74450 fixtures, 0 failed, 29983/s | 23.33 / 29.73ms | 0.23 / 0.52ms |
-| 2000 | 4611 | 0.16s | (skipped) | 39.24 / 54.37ms | 0.46 / 2.84ms |
+| 100 | 234 | 0.01s | 15742 fixtures, 0 failed, 39891/s | 13.33 / 26.86ms | 0.28 / 0.4ms |
+| 500 | 1156 | 0.07s | 77918 fixtures, 0 failed, 23000/s | 23.96 / 47.66ms | 0.39 / 0.93ms |
+| 2000 | 4611 | 0.24s | (skipped) | 50.49 / 91.95ms | 0.79 / 5.21ms |
+| 10000 | 22958 | 1.38s | (skipped) | 168.49 / 276.6ms | 1.55 / 50.52ms |
 
 fast 모드는 결정적 경로만 실행하므로(§26.1) sub-millisecond로 동작한다. commit 모드의 지연은 fuzzy window/Pass 2의 Python 선형 탐색이 지배하며, 프로덕션 Rust core(§34) 대상 최적화 항목이다.
 

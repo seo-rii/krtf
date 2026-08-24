@@ -84,9 +84,10 @@ def _mention_entities(m: dict) -> set[str]:
     return ids - {None}
 
 
-def run_silver_and_tails(corpus: list[dict]) -> dict:
+def run_silver_and_tails(corpus: list[dict], encoder=None) -> dict:
     glossary = load_glossary(str(ROOT / "examples" / "realorg_glossary.yaml"))
-    snap = compile_snapshot(glossary)
+    snap = compile_snapshot(glossary, encoder=encoder,
+                            run_conformance=encoder is None)
     alias_to_entity = {b.surface: b.entity_id for b in glossary.alias_bindings}
     silver_aliases = [s for s in alias_to_entity
                       if len(s) >= SILVER_MIN_LEN and s not in DETECTION_ONLY]
@@ -196,7 +197,7 @@ def run_silver_and_tails(corpus: list[dict]) -> dict:
     }
 
 
-def run_fake_glossary_fp(corpus: list[dict]) -> dict:
+def run_fake_glossary_fp(corpus: list[dict], encoder=None) -> dict:
     g_dict, meta = build_synthetic_glossary(400, seed=5)
     all_text = "\n".join(r["text"] for r in corpus)
     # keep only bindings whose surface never occurs in the corpus:
@@ -209,7 +210,7 @@ def run_fake_glossary_fp(corpus: list[dict]) -> dict:
     g_dict["alias_families"] = [f for f in g_dict["alias_families"]
                                 if f["family_id"] in kept_fids]
     snap = compile_snapshot(load_glossary(g_dict), strict=False,
-                            run_conformance=False)
+                            run_conformance=False, encoder=encoder)
 
     chars = 0
     candidate_mentions = resolved_fp = 0
@@ -293,6 +294,30 @@ def write_markdown(payload: dict, out_path: Path) -> None:
         " (fuzzy/keyboard 채널의 실 텍스트 자극 밀도)",
         f"- **RESOLVED FP: {fp['resolved_fp_count']}건**"
         f" ({fp['resolved_fp_per_1k_chars']} /1k chars, {fp['chars']} chars)",
+    ]
+    if payload.get("dense_variants"):
+        lines += [
+            "",
+            "## 3.5 V2 dense 구성 비교 (실 텍스트)",
+            "",
+            "| 구성 | silver gold-in-set | RESOLVED precision | fake-glossary RESOLVED FP |",
+            "|---|---:|---:|---:|",
+            f"| symbolic (기본) | {s['gold_in_set_e2e']['rate']} "
+            f"| {s['resolved']['precision_given_commit']} "
+            f"| {fp['resolved_fp_count']} |",
+        ]
+        for name, v in payload["dense_variants"].items():
+            vs, vf = v["silver"], v["fake_fp"]
+            lines.append(
+                f"| {name} | {vs['gold_in_set_e2e']['rate']} "
+                f"| {vs['resolved']['precision_given_commit']} "
+                f"| {vf['resolved_fp_count']} |")
+        lines += [
+            "",
+            "dense 채널은 recall 신호만 추가해야 하며(silver 비열화), 가짜"
+            " glossary에서 RESOLVED commit을 만들면 안 된다(0 유지).",
+        ]
+    lines += [
         "",
         "## 4. 해석과 한계",
         "",
@@ -315,10 +340,26 @@ def main():
     silver = run_silver_and_tails(corpus)
     print("silver suite done")
     fake_fp = run_fake_glossary_fp(corpus)
+    # V2: same real-text suites with the dense channel enabled — dense must
+    # not erode silver recall nor create fake-glossary commits
+    dense_variants = {}
+    from ktrf.encoders import HashEncoder, OnnxE5Encoder
+
+    encoders = {"hash_dense": HashEncoder()}
+    e5_dir = ROOT / "models" / "multilingual-e5-small"
+    if e5_dir.exists():
+        encoders["e5_dense"] = OnnxE5Encoder(e5_dir)
+    for name, enc in encoders.items():
+        print(f"dense variant: {name}")
+        dense_variants[name] = {
+            "silver": run_silver_and_tails(corpus, encoder=enc),
+            "fake_fp": run_fake_glossary_fp(corpus, encoder=enc),
+        }
     payload = {
         "corpus_sentences": len(corpus),
         "silver": silver,
         "fake_fp": fake_fp,
+        "dense_variants": dense_variants,
         "elapsed_seconds": round(time.perf_counter() - t0, 1),
     }
     out = ROOT / "eval" / "out"

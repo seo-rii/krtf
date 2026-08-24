@@ -89,12 +89,18 @@ def run_calibration_holdout(rng: random.Random) -> dict:
                               "fit and holdout are disjoint"}
 
 
-def run_one(n_entities: int, seed: int, quick: bool) -> dict:
+def run_one(n_entities: int, seed: int, quick: bool, dense: bool = False) -> dict:
     scale = 0.4 if quick else 1.0
     g_dict, meta = build_synthetic_glossary(n_entities, seed=seed)
     glossary = load_glossary(g_dict)
+    encoder = None
+    if dense:
+        from ktrf.encoders import HashEncoder
+
+        encoder = HashEncoder()
     t0 = time.perf_counter()
-    snap = compile_snapshot(glossary, strict=False, run_conformance=False)
+    snap = compile_snapshot(glossary, strict=False, run_conformance=False,
+                            encoder=encoder)
     compile_s = time.perf_counter() - t0
     rng = random.Random(seed * 1000 + n_entities)
 
@@ -135,6 +141,7 @@ def run_one(n_entities: int, seed: int, quick: bool) -> dict:
     return {
         "entities": n_entities,
         "seed": seed,
+        "dense": dense,
         "bindings": len(g_dict["alias_bindings"]),
         "collision_stats": collision_stats(meta),
         "compile_seconds": round(compile_s, 2),
@@ -260,6 +267,28 @@ def write_markdown(payload: dict, out_path: Path) -> None:
             f"| {uf['catalog_variant_recall']} "
             f"| {bomb.get('ms', '—')}ms | {doc.get('ms', '—')}ms "
             f"| {doc.get('degraded', '—')} |")
+    if payload.get("dense_runs"):
+        da = payload["dense_aggregate"]
+        dhv = da["hard_violations_total"]
+        lines += [
+            "",
+            "## V2 dense 구성 hard gates (bi-encoder Pass 2 활성, hash encoder)",
+            "",
+            f"{len(payload['dense_runs'])}개 run — dense 채널이 boundary/commit"
+            " 계약을 침식하지 않는지 검증한다.",
+            "",
+            "| 항목 | 합산 위반 | 판정 |",
+            "|---|---:|---|",
+        ]
+        for k, v in dhv.items():
+            lines.append(f"| {k} | {v} | {'✅' if v == 0 else '❌'} |")
+        oc = da["ooc_tail_overcommit"]
+        lines.append("")
+        lines.append(f"**dense hard gate: "
+                     f"{'PASS' if da['hard_pass_all'] else 'FAIL'}** — "
+                     f"OOC overcommit {oc['hits']}/{oc['total']}, "
+                     f"negative FP mean {da['negative_fp_per_1k_chars']['mean']}"
+                     f"/1k chars")
     cal = payload["calibration_holdout"]["results"]
     lines += ["", "## Calibration holdout coverage (fit/holdout 분리)", "",
               "| α | 목표 | holdout coverage | n | 그룹별 |", "|---|---|---|---:|---|"]
@@ -295,9 +324,18 @@ def main():
         for seed in seeds:
             print(f"running entities={n} seed={seed} ...", flush=True)
             runs.append(run_one(n, seed, quick))
+    # V2 configuration: same hard gates with the dense channel enabled —
+    # Pass-2 retrieval must not break boundary/commit discipline
+    dense_runs = []
+    for n in (sizes if quick else [200, 1000]):
+        for seed in (seeds if quick else [1, 2]):
+            print(f"running entities={n} seed={seed} [dense] ...", flush=True)
+            dense_runs.append(run_one(n, seed, quick, dense=True))
     payload = {
         "runs": runs,
         "aggregate": aggregate(runs),
+        "dense_runs": dense_runs,
+        "dense_aggregate": aggregate(dense_runs),
         "calibration_holdout": run_calibration_holdout(random.Random(42)),
         "elapsed_seconds": round(time.perf_counter() - t0, 1),
     }

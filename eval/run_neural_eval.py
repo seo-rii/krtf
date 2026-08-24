@@ -199,7 +199,7 @@ def main():
     for r in results["retrieval_only"]:
         print(f'  retrieval {r["encoder"]:5} R@1={r["recall_at"]["1"]}'
               f' R@5={r["recall_at"]["5"]} R@10={r["recall_at"]["10"]}')
-    print(f"wrote {out / 'neural.json'} and {ROOT / 'NEURAL_EVAL.md'}")
+    print(f"wrote {out / 'neural.json'} and {ROOT / 'reports' / 'NEURAL_EVAL.md'}")
 
 
 def _write_md(r: dict, path: Path) -> None:
