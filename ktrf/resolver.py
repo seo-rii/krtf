@@ -61,7 +61,11 @@ def resolve(
     mode: str = "commit",
     context: dict | None = None,
     options: dict | None = None,
+    metrics=None,
 ) -> dict:
+    import time as _time
+
+    _t0 = _time.perf_counter()
     options = options or {}
     context = context or {}
     policy = snapshot.policy
@@ -269,6 +273,9 @@ def resolve(
     }
     if options.get("return_trace"):
         resp["trace"] = trace
+    if metrics is not None:
+        metrics.record_resolve(mode, 1000 * (_time.perf_counter() - _t0),
+                               resp, trace)
     return resp
 
 
