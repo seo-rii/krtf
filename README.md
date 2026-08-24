@@ -136,6 +136,11 @@ clear the spec's §5.2 UE target (95%). To enable the e5 backend:
 `Xenova/multilingual-e5-small` (ONNX + tokenizer) into
 `models/multilingual-e5-small/`, then
 `compile_snapshot(g, encoder=load_encoder("onnx:models/multilingual-e5-small"))`.
+GPU execution (inference throughput, Stage-B/C training, multi-tenant adapter
+residency) is planned in [docs/GPU_PLAN.md](docs/GPU_PLAN.md); Phase G1 is
+already wired — `load_encoder(spec, device="cuda")` selects the CUDA provider
+when `onnxruntime-gpu` is installed and falls back to CPU otherwise, with the
+deterministic mode pinned to CPU per §34.
 
 Current results ([EVALUATION.md](EVALUATION.md)): conformance **0 failures /
 544 fixtures** (and 0/74,450 on a 500-entity synthetic glossary), Level A

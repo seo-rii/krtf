@@ -58,10 +58,13 @@ class LexicalCrossEncoder:
 class OnnxCrossEncoder:
     """Fine-tuned pair scorer via ONNX Runtime (sequence-pair, 1 logit)."""
 
-    def __init__(self, model_dir: str | Path, max_length: int = 192):
+    def __init__(self, model_dir: str | Path, max_length: int = 192,
+                 device: str = "cpu"):
         import numpy as np
         import onnxruntime as ort
         from tokenizers import Tokenizer
+
+        from .encoders import _providers
 
         self._np = np
         d = Path(model_dir)
@@ -71,7 +74,7 @@ class OnnxCrossEncoder:
         if onnx_file is None or not (d / "tokenizer.json").exists():
             raise OSError(f"no ONNX cross-encoder under {d}")
         self._session = ort.InferenceSession(
-            str(onnx_file), providers=["CPUExecutionProvider"])
+            str(onnx_file), providers=_providers(ort, device))
         self._tokenizer = Tokenizer.from_file(str(d / "tokenizer.json"))
         self._tokenizer.enable_truncation(max_length=max_length)
         self.reranker_id = f"onnx-xenc:{d.name}"

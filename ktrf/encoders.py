@@ -24,6 +24,18 @@ from pathlib import Path
 from .hangul import to_jamo_seq
 
 
+def _providers(ort, device: str) -> list[str]:
+    """GPU throughput path with CPU fallback (docs/GPU_PLAN.md Phase G1).
+
+    Deterministic mode stays on CPU (§34 고정 커널); "cuda" requests the
+    CUDA EP when the installed onnxruntime build offers it and silently
+    falls back otherwise, so bundles stay loadable on any machine.
+    """
+    if device == "cuda" and "CUDAExecutionProvider" in ort.get_available_providers():
+        return ["CUDAExecutionProvider", "CPUExecutionProvider"]
+    return ["CPUExecutionProvider"]
+
+
 class HashEncoder:
     """Jamo n-gram feature hashing with L2 normalization (lexical baseline)."""
 
@@ -64,7 +76,8 @@ class OnnxE5Encoder:
 
     sim_range = (0.72, 0.92)  # e5 cosine band on this task family
 
-    def __init__(self, model_dir: str | Path, max_length: int = 128):
+    def __init__(self, model_dir: str | Path, max_length: int = 128,
+                 device: str = "cpu"):
         import numpy as np  # noqa: F401 (hard dependency of this backend)
         import onnxruntime as ort
         from tokenizers import Tokenizer
@@ -77,7 +90,9 @@ class OnnxE5Encoder:
         if onnx_file is None or not (d / "tokenizer.json").exists():
             raise OSError(f"no ONNX model/tokenizer under {d}")
         self._session = ort.InferenceSession(
-            str(onnx_file), providers=["CPUExecutionProvider"])
+            str(onnx_file), providers=_providers(ort, device))
+        self.device = ("cuda" if "CUDAExecutionProvider"
+                       in self._session.get_providers() else "cpu")
         self._tokenizer = Tokenizer.from_file(str(d / "tokenizer.json"))
         self._tokenizer.enable_truncation(max_length=max_length)
         self.max_length = max_length
@@ -118,9 +133,12 @@ class OnnxE5Encoder:
         return self._embed(["query: " + text])[0].tolist()
 
 
-def load_encoder(spec: str | None):
+def load_encoder(spec: str | None, device: str = "cpu"):
     """Resolve an encoder spec: None -> None (Level A-only), "hash" ->
-    HashEncoder, "hash:<dim>" -> sized HashEncoder, "onnx:<dir>" -> e5."""
+    HashEncoder, "hash:<dim>" -> sized HashEncoder, "onnx:<dir>" -> e5.
+    ``device="cuda"`` selects the GPU execution provider when available
+    (docs/GPU_PLAN.md Phase G1); the encoder_id — and therefore vector
+    compatibility (§11.3) — is device-independent."""
     if spec is None:
         return None
     if spec == "hash":
@@ -128,5 +146,5 @@ def load_encoder(spec: str | None):
     if spec.startswith("hash:"):
         return HashEncoder(dim=int(spec.split(":", 1)[1]))
     if spec.startswith("onnx:"):
-        return OnnxE5Encoder(spec.split(":", 1)[1])
+        return OnnxE5Encoder(spec.split(":", 1)[1], device=device)
     raise ValueError(f"unknown encoder spec {spec!r}")
