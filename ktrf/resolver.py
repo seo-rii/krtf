@@ -40,7 +40,7 @@ _HARD_DENY_TRUST = {"SERVER_VERIFIED", "AUTH_CLAIM"}  # §12.4 [normative]
 
 _CHANNEL_BASE = {
     "exact": 1.0, "normalized": 0.97, "doc_local": 0.85,
-    "jamo": 0.85, "keyboard": 0.80, "abbrev": 0.55,
+    "jamo": 0.85, "keyboard": 0.80, "abbrev": 0.55, "dense": 0.55,
 }
 
 
@@ -190,8 +190,40 @@ def resolve(
 
     if mode != "fast":
         pass2 = False
-        # (b) low-confidence mentions: enrich with abbreviation alignment
-        for n in nodes.values():
+        dense_queries = 0
+
+        def dense_enrich(span: tuple[int, int], query_text: str) -> None:
+            """Pass-2 dense retrieval (§21.6, V2 bi-encoder §22.3)."""
+            nonlocal pass2, dense_queries, degraded
+            if snapshot.dense is None:
+                return
+            if dense_queries >= policy.max_dense_queries_per_request:
+                if "dense_query_budget" not in trace["drops"]:
+                    trace["drops"].append("dense_query_budget")
+                    degraded = True  # INV-013
+                return
+            dense_queries += 1
+            qv = snapshot.dense.encoder.encode_query(query_text)
+            lo, hi = getattr(snapshot.dense.encoder, "sim_range", (0.0, 1.0))
+            for eid, sim in snapshot.dense.index.search(qv, policy.dense_top_k):
+                strength = max(0.0, min(1.0, (sim - lo) / max(1e-6, hi - lo)))
+                if strength < 0.2:
+                    continue
+                n = node_for(span)
+                n.sources.add("dense")
+                n.pool.add(Candidate(
+                    entity_id=eid, alias_id=None, family_id=None,
+                    generation_channels={"dense"},
+                    channel_scores={"dense": _CHANNEL_BASE["dense"]
+                                    + 0.3 * strength},
+                    is_exact=False, retrieval_pass=2,
+                    provenance={"dense_sim": round(sim, 4)},
+                ))
+                pass2 = True
+                n.pass2_applied = True
+
+        # (b) low-confidence mentions: abbreviation alignment ∪ dense
+        for n in list(nodes.values()):
             top = _top_probability(n)
             if top is not None and top < policy.tau_dense:
                 for ac in snapshot.abbrev.align_token(n.surface, n.core_span):
@@ -204,6 +236,8 @@ def resolve(
                     ))
                     pass2 = True
                     n.pass2_applied = True
+                dense_enrich(n.core_span,
+                             _context_window(text, n.core_span, 30))
         # (a) uncovered tokens with no candidates at all
         # (defining occurrences inside doc-local definitions are not scanned)
         covered = [n.core_span for n in nodes.values()]
@@ -220,6 +254,7 @@ def resolve(
             for cut in range(len(token) - 1, 1, -1):
                 if snapshot.fst.parse_full(token[cut:], token[cut - 1]):
                     cores.append((token[:cut], (span[0], span[0] + cut)))
+            hit_span = None
             for core, core_span in cores:
                 cands = snapshot.abbrev.align_token(core, core_span)
                 if not cands:
@@ -236,12 +271,29 @@ def resolve(
                     ))
                 pass2 = True
                 n.pass2_applied = True
+                hit_span = core_span
                 break
+            if hit_span is not None:
+                # union of Pass-2 channels on the same proposal (§21.6)
+                dense_enrich(hit_span, _context_window(text, hit_span, 30))
+            elif options.get("detect_unregistered_mentions") \
+                    and any("가" <= c <= "힣" for c in token):
+                # open-world span proposals are Level C and stay behind the
+                # feature flag (§19.1 default off; §6: 범용 명사 인식은 비목표)
+                core_span = cores[-1][1]
+                dense_enrich(core_span,
+                             _context_window(text, core_span, 30))
         if pass2:
             trace["pass2_executed"] = True  # at most once per request
+            trace["dense_queries"] = dense_queries
             for n in nodes.values():
                 if n.pass2_applied:
                     _fuse(n, snapshot, text, context, mode)
+
+        # ---- conditional cross-encoder rerank (§22.3-22.4, V3 stage) ----
+        if snapshot.reranker is not None:
+            degraded |= _rerank(nodes, snapshot, text, context, mode,
+                                policy, trace)
 
     # ---- decisions + response assembly ----
     ordered = sorted(nodes.values(), key=lambda n: (n.core_span[0],
@@ -250,11 +302,13 @@ def resolve(
 
     mentions = []
     return_all = options.get("return_all_mentions", False)
+    return_features = options.get("return_features", False)
     max_set = options.get("max_prediction_set", policy.candidate_budget.max_prediction_set)
     included = [n for n in ordered
                 if return_all or n.core_span in primary_spans]
     for i, n in enumerate(included):
-        m = _mention_response(n, i, snapshot, omap, text, mode, max_set)
+        m = _mention_response(n, i, snapshot, omap, text, mode, max_set,
+                              return_features)
         m["primary"] = n.core_span in primary_spans
         if n.pool.truncated or n.pool.exact_overflow:
             degraded = True
@@ -277,6 +331,48 @@ def resolve(
         metrics.record_resolve(mode, 1000 * (_time.perf_counter() - _t0),
                                resp, trace)
     return resp
+
+
+def _rerank(nodes, snapshot: Snapshot, text: str, context: dict, mode: str,
+            policy, trace: dict) -> bool:
+    """Conditional cross-encoder pass (§22.4): only multi-sense mentions with
+    a thin margin, under the pair budget (§31.1). Scores merge into fusion
+    as evidence — candidates are never removed (INV-010)."""
+    from .dense import entity_profile_text
+
+    pairs_used = 0
+    degraded = False
+    for n in nodes.values():
+        cands = [c for c in n.pool.all_candidates()
+                 if c.calibrated_probability is not None]
+        if len({c.entity_id for c in cands}) < 2:
+            continue
+        ranked = sorted(cands, key=lambda c: -(c.calibrated_probability or 0))
+        top_p = ranked[0].calibrated_probability or 0
+        second_p = ranked[1].calibrated_probability or 0
+        if top_p >= policy.resolve_threshold \
+                and top_p - second_p >= policy.margin_threshold:
+            continue  # already decisive; no rerank needed
+        budget_left = policy.max_cross_encoder_pairs - pairs_used
+        if budget_left <= 0:
+            trace["drops"].append("cross_encoder_budget")
+            degraded = True  # INV-013
+            break
+        batch = ranked[: min(policy.max_rerank_candidates, budget_left)]
+        window = _context_window(text, n.core_span, 60)
+        pairs = []
+        for c in batch:
+            ent = snapshot.glossary.entity(c.entity_id)
+            pairs.append((window, entity_profile_text(ent) if ent
+                          else c.entity_id))
+        scores = snapshot.reranker.score_pairs(pairs)
+        pairs_used += len(pairs)
+        for c, s in zip(batch, scores):
+            c.provenance["xenc"] = s
+        n.pass2_applied = True
+        _fuse(n, snapshot, text, context, mode)
+    trace["cross_encoder_pairs"] = pairs_used
+    return degraded
 
 
 def _add_fuzzy(node: MentionNode, fc) -> None:
@@ -314,8 +410,8 @@ def _fuse(node: MentionNode, snapshot: Snapshot, text: str,
     n_exact = len([c for c in node.pool.exact.values() if c.drop_reason is None])
     for cand in node.pool.all_candidates(include_dropped=True):
         base = max(cand.channel_scores.values(), default=0.0)
-        score = base
         entity = snapshot.glossary.entity(cand.entity_id)
+        context_bonus = 0.0
         if entity is not None and window_grams:
             # character-bigram context overlap: robust against Korean
             # particle variation (장애를/장애가 still share 장애)
@@ -326,17 +422,50 @@ def _fuse(node: MentionNode, snapshot: Snapshot, text: str,
                 signals |= _bigrams(d.lower())
             overlap = len(window_grams & signals)
             if overlap:
-                score += 0.15 * min(1.0, overlap / 4.0)
-        if cand.entity_id in node.doc_local_entities:
-            score += 0.20  # document-local definitional boost (§18.3)
-        score += _scope_adjust(cand, snapshot, context, node)
-        cand.ranking_score = round(score, 4)
-        if mode != "fast" and cand.drop_reason is None \
-                and snapshot.calibrator is not None:
+                context_bonus = 0.15 * min(1.0, overlap / 4.0)
+        doclocal_boost = (0.20 if cand.entity_id in node.doc_local_entities
+                          else 0.0)  # §18.3
+        scope_adj = _scope_adjust(cand, snapshot, context, node)
+        xenc = cand.provenance.get("xenc")
+        # feature vector (§23.2): always computed; heuristic or learned
+        # fusion consumes it, and it exports for fusion training (§48.3)
+        cand.features = {
+            "exact_score": max(
+                (v for ch, v in cand.channel_scores.items()
+                 if ch in ("exact", "normalized")), default=0.0),
+            "doc_local_score": cand.channel_scores.get("doc_local", 0.0),
+            "fuzzy_score": max(
+                (v for ch, v in cand.channel_scores.items()
+                 if ch in ("jamo", "keyboard")), default=0.0),
+            "abbrev_score": cand.channel_scores.get("abbrev", 0.0),
+            "dense_score": cand.channel_scores.get("dense", 0.0),
+            "context_overlap": round(context_bonus, 4),
+            "scope_adj": round(scope_adj, 4),
+            "doc_local_boost": doclocal_boost,
+            "xenc": xenc if xenc is not None else 0.5,
+            "transform_cost": cand.surface_transform_cost,
+            "is_exact": 1.0 if cand.is_exact else 0.0,
+            "single_sense": (1.0 / max(1, n_exact)) if cand.is_exact else 0.0,
+        }
+        score = base + context_bonus + doclocal_boost + scope_adj
+        if xenc is not None:
+            score += 0.25 * (xenc - 0.5)  # cross-encoder evidence (§22.3)
+        if snapshot.fusion is not None:
+            # learned fusion (V2, §23): logistic over the feature vector
+            cand.ranking_score = snapshot.fusion.predict(cand.features)
+        else:
+            cand.ranking_score = round(score, 4)
+        if mode == "fast" or cand.drop_reason is not None:
+            continue
+        if snapshot.calibrator is not None:
             # finetuned tenant calibrator (§48.3): Platt-scaled marginal
             cand.calibrated_probability = \
                 snapshot.calibrator.calibrate_marginal(cand.ranking_score)
-        elif mode != "fast" and cand.drop_reason is None:
+        elif snapshot.fusion is not None:
+            # fusion output is a logistic probability; conservative cap
+            cand.calibrated_probability = round(
+                min(0.95, max(0.02, cand.ranking_score)), 3)
+        else:
             # global conservative calibrator (heuristic placeholder, §48.1):
             # a sense-count prior scaled by surface-path quality, shifted by
             # context/scope evidence. Marginal per candidate, never
@@ -418,7 +547,7 @@ def _top_probability(node: MentionNode) -> float | None:
 
 def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
                       omap: OffsetMap, text: str, mode: str,
-                      max_set: int) -> dict:
+                      max_set: int, return_features: bool = False) -> dict:
     s, e = node.core_span
     check_span_invariant(text, s, e, node.surface)  # INV-002
     cands = node.pool.all_candidates()
@@ -513,14 +642,16 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
 
     node_degraded = node.pool.truncated or node.pool.exact_overflow
 
-    set_members = [
-        {"kind": "ENTITY", "entity_id": c.entity_id,
-         "calibrated_probability": c.calibrated_probability,
-         "ranking_score": c.ranking_score,
-         "generation_channels": sorted(c.generation_channels),
-         "retrieval_pass": c.retrieval_pass}
-        for c in members
-    ]
+    set_members = []
+    for c in members:
+        member = {"kind": "ENTITY", "entity_id": c.entity_id,
+                  "calibrated_probability": c.calibrated_probability,
+                  "ranking_score": c.ranking_score,
+                  "generation_channels": sorted(c.generation_channels),
+                  "retrieval_pass": c.retrieval_pass}
+        if return_features:
+            member["features"] = dict(c.features)  # fusion training export
+        set_members.append(member)
     if kb_member:
         set_members.append(kb_member)
 

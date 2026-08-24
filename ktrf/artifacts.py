@@ -69,6 +69,20 @@ def save_snapshot(snapshot: Snapshot, out_dir: str | Path) -> Path:
         (out / "calibrator.json").write_text(json.dumps(cal, indent=2),
                                              encoding="utf-8")
         manifest["calibrator_hash"] = _hash(cal)
+    if snapshot.dense is not None:
+        vec = snapshot.dense.index.to_dict()
+        (out / "entity-vectors.json").write_text(json.dumps(vec),
+                                                 encoding="utf-8")
+        manifest["entity_encoder_hash"] = snapshot.dense.encoder_id
+        manifest["vector_dimension"] = snapshot.dense.index.dim
+        manifest["index_type"] = "flat_ip"
+    if snapshot.fusion is not None:
+        fus = snapshot.fusion.to_dict()
+        (out / "fusion.json").write_text(json.dumps(fus, indent=2),
+                                         encoding="utf-8")
+        manifest["fusion_hash"] = _hash(fus)
+    if snapshot.reranker is not None:
+        manifest["reranker_id"] = snapshot.reranker.reranker_id
     manifest["snapshot_id"] = snapshot.snapshot_id
     manifest["tenant_id"] = snapshot.tenant_id
     (out / "manifest.json").write_text(
@@ -76,7 +90,8 @@ def save_snapshot(snapshot: Snapshot, out_dir: str | Path) -> Path:
     return out
 
 
-def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False) -> Snapshot:
+def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False,
+                  encoder=None, reranker=None) -> Snapshot:
     """Load a bundle: recompile deterministically, verify manifest hashes.
 
     Verification failures raise ``SNAPSHOT_UNAVAILABLE`` and nothing is
@@ -116,6 +131,44 @@ def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False) -> Snap
             raise KtrfApiError("SNAPSHOT_UNAVAILABLE",
                                "bundle verification failed: calibrator_hash mismatch")
         snap.calibrator = TunedCalibrator.from_dict(cal_dict)
+    vec_path = d / "entity-vectors.json"
+    if vec_path.exists():
+        # §11.3: vectors are only reusable under the exact same encoder
+        if encoder is None:
+            raise KtrfApiError(
+                "SNAPSHOT_UNAVAILABLE",
+                "bundle carries entity vectors; pass the matching encoder "
+                f"({manifest.get('entity_encoder_hash')})",
+            )
+        if encoder.encoder_id != manifest.get("entity_encoder_hash"):
+            raise KtrfApiError(
+                "SNAPSHOT_UNAVAILABLE",
+                f"encoder mismatch: bundle={manifest.get('entity_encoder_hash')} "
+                f"given={encoder.encoder_id} (INV-015)",
+            )
+        from .dense import DenseArtifacts, VectorIndex
+
+        snap.dense = DenseArtifacts(
+            encoder,
+            VectorIndex.from_dict(
+                json.loads(vec_path.read_text(encoding="utf-8"))),
+        )
+    fus_path = d / "fusion.json"
+    if fus_path.exists():
+        from .fusion import FusionModel
+
+        fus_dict = json.loads(fus_path.read_text(encoding="utf-8"))
+        if manifest.get("fusion_hash") != _hash(fus_dict):
+            raise KtrfApiError("SNAPSHOT_UNAVAILABLE",
+                               "bundle verification failed: fusion_hash mismatch")
+        snap.fusion = FusionModel.from_dict(fus_dict)
+    if manifest.get("reranker_id"):
+        if reranker is None or reranker.reranker_id != manifest["reranker_id"]:
+            raise KtrfApiError(
+                "SNAPSHOT_UNAVAILABLE",
+                f"bundle expects reranker {manifest['reranker_id']!r}",
+            )
+        snap.reranker = reranker
     # keep the persisted identity and conformance record
     snap.manifest = manifest
     snap.snapshot_id = manifest.get("snapshot_id", snap.snapshot_id)
@@ -127,6 +180,26 @@ def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False) -> Snap
 # ---------------------------------------------------------------------------
 
 
+def _fusion_rows(correction: dict) -> list[tuple[dict, int, str]]:
+    """(features, label, calibration_group) rows from one ACCEPTED
+    correction whose mention_state members carry feature vectors."""
+    from .calibration import calibration_group
+
+    state = correction.get("mention_state") or {}
+    members = [m for m in state.get("prediction_set", {}).get("members", [])
+               if m.get("kind", "ENTITY") == "ENTITY" and m.get("features")]
+    ctype = correction.get("correction_type")
+    if ctype not in ("WRONG_ENTITY", "SHOULD_BE_RESOLVED") or not members:
+        return []
+    gold = (correction.get("corrected") or {}).get("entity_id")
+    n = len(members)
+    return [
+        (m["features"], int(m.get("entity_id") == gold),
+         calibration_group(set(m.get("generation_channels", [])), n))
+        for m in members
+    ]
+
+
 def finetune(
     snapshot: Snapshot,
     store: CorrectionStore,
@@ -134,6 +207,7 @@ def finetune(
     n_min: int = 500,
     golden_check=None,
     extra_examples: list[TrainingExample] | None = None,
+    fit_fusion_model: bool = False,
 ) -> Snapshot:
     """Fit a tenant calibrator from approved corrections; return a NEW snapshot.
 
@@ -149,16 +223,35 @@ def finetune(
     """
     accepted = store.export_accepted(snapshot.tenant_id)
     examples: list[TrainingExample] = list(extra_examples or [])
+    fusion_rows: list[tuple[dict, int]] = []
     for c in accepted:
         pairs = derive_training_examples(c)
         examples.extend(pairs * c.get("weight", 1))
+        if fit_fusion_model:
+            fusion_rows.extend(_fusion_rows(c) * c.get("weight", 1))
+
+    fusion = snapshot.fusion
+    manifest = dict(snapshot.manifest)
+    if fit_fusion_model:
+        # learned fusion (§23, V2) — needs feature-bearing mention states
+        # (responses produced with options.return_features)
+        from .fusion import fit_fusion
+
+        fusion = fit_fusion([(f, y) for f, y, _ in fusion_rows])
+        manifest["fusion_hash"] = _hash(fusion.to_dict())
+        # the ranking_score scale changed: refit calibration on the fusion
+        # model's own outputs so Platt + conformal stay consistent
+        examples = [
+            TrainingExample(fusion.predict(f), group, y)
+            for f, y, group in fusion_rows
+        ]
     calibrator = fit_calibrator(examples, alpha=alpha, n_min=n_min)
 
-    manifest = dict(snapshot.manifest)
     manifest["calibrator_hash"] = _hash(calibrator.to_dict())
     candidate = dataclasses.replace(
         snapshot,
         calibrator=calibrator,
+        fusion=fusion,
         manifest=manifest,
         snapshot_id="snap-" + hashlib.sha256(
             json.dumps(manifest, sort_keys=True, default=str).encode()

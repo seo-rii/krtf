@@ -34,7 +34,8 @@ class Candidate:
     retrieval_pass: int = 1
     is_exact: bool = False
     provenance: dict = field(default_factory=dict)
-    # fusion outputs
+    # fusion inputs/outputs
+    features: dict = field(default_factory=dict)  # §23.2 feature vector
     ranking_score: float = 0.0
     calibrated_probability: float | None = None
     drop_reason: str | None = None  # set only for hard validity drops (§23.1)

@@ -36,6 +36,10 @@ class RuntimePolicy:
     max_total_mention_proposals: int = 512
     max_fuzzy_windows: int = 64
     tau_dense: float = 0.75  # Pass 2 trigger threshold (§21.6)
+    max_dense_queries_per_request: int = 16  # §31.1
+    dense_top_k: int = 8
+    max_cross_encoder_pairs: int = 256  # §31.1
+    max_rerank_candidates: int = 8  # per mention (§22.4 conditional exec)
     resolve_threshold: float = 0.70  # §25.6 commit rules
     margin_threshold: float = 0.25
     set_confidence: float = 0.95  # target 1-alpha exposed in responses
@@ -57,6 +61,9 @@ class Snapshot:
     manifest: dict
     diagnostics: list = field(default_factory=list)
     calibrator: object | None = None  # TunedCalibrator once finetuned (§48.3)
+    dense: object | None = None  # DenseArtifacts (V2 bi-encoder, §22.3)
+    reranker: object | None = None  # cross-encoder backend (§22.3)
+    fusion: object | None = None  # learned FusionModel (§23, V2)
 
     @property
     def glossary_version(self) -> str:
@@ -80,6 +87,8 @@ def compile_snapshot(
     policy: RuntimePolicy | None = None,
     strict: bool = True,
     run_conformance: bool = True,
+    encoder=None,
+    reranker=None,
 ) -> Snapshot:
     """Compile a glossary into an immutable snapshot (§11.4 steps 1-5).
 
@@ -126,9 +135,25 @@ def compile_snapshot(
         "morphology_rules_hash": _morphology_hash(),
         "entities_hash": glossary_hash,
         "calibrator_hash": None,
+        # V2 dense retrieval artifact identity (§11.2); null = Level A-only
+        "entity_encoder_hash": None,
+        "vector_dimension": None,
+        "index_type": None,
+        "reranker_id": None,
+        "fusion_hash": None,
         "conformance_fixtures_hash": None,
         "conformance": None,
     }
+    if encoder is not None:
+        from .dense import DenseArtifacts
+
+        snapshot.dense = DenseArtifacts.build(glossary, encoder)
+        manifest["entity_encoder_hash"] = encoder.encoder_id
+        manifest["vector_dimension"] = snapshot.dense.index.dim
+        manifest["index_type"] = "flat_ip"
+    if reranker is not None:
+        snapshot.reranker = reranker
+        manifest["reranker_id"] = reranker.reranker_id
     snapshot.manifest = manifest
     snapshot.snapshot_id = "snap-" + hashlib.sha256(
         json.dumps(manifest, sort_keys=True, default=str).encode()
