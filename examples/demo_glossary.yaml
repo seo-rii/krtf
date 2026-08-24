@@ -1,0 +1,105 @@
+# 부록 A 예제 glossary (schema_version 3) + 확장 항목
+glossary_id: demo-org
+version: 2026-08-23.1
+schema_version: "3"
+
+normalization_profiles: []        # 시스템 기본 5종 사용 (§14.6)
+
+entities:
+  - entity_id: ORG_KEPCO
+    canonical: 한국전력공사
+    description: 대한민국의 전력 공기업
+  - entity_id: ORG_KEPCO_KDN
+    canonical: 한전KDN
+    description: 전력 ICT 서비스 기업
+  - entity_id: NETWORK_ACCESS_POINT
+    canonical: Access Point
+    description: 무선 단말을 유선 네트워크에 연결하는 네트워크 장비
+    domain_ids: [NETWORK]
+    examples:
+      - 무선 AP 장애를 확인한다.
+  - entity_id: WORKFLOW_APPROVAL_PROCESS
+    canonical: Approval Process
+    description: 결재 승인 업무 절차
+    domain_ids: [WORKFLOW]
+    examples:
+      - AP 결재 부탁드립니다.
+  - entity_id: SYSTEM_QUALITY_MANAGEMENT
+    canonical: Quality Management System
+    description: 품질 관리 시스템
+    domain_ids: [QUALITY]
+  - entity_id: ORG_MSIT
+    canonical: 과학기술정보통신부
+    description: 과학기술과 정보통신 정책을 담당하는 중앙행정기관
+
+alias_families:
+  - family_id: FAMILY_KEPCO_KR
+    representative: 한전
+    normalization_profile: korean_org_name
+  - family_id: FAMILY_KDN
+    representative: 한전KDN
+    normalization_profile: mixed_alnum
+  - family_id: FAMILY_AP
+    representative: AP
+    normalization_profile: latin_acronym
+  - family_id: FAMILY_QMS
+    representative: QMS
+    normalization_profile: latin_acronym
+  - family_id: FAMILY_MSIT
+    representative: 과학기술정보통신부
+    normalization_profile: korean_org_name
+
+alias_bindings:
+  - alias_id: KEPCO_KR
+    family_id: FAMILY_KEPCO_KR
+    entity_id: ORG_KEPCO
+    surface: 한전
+    kind: abbreviation
+    boundary_policy: {left: hangul_token_boundary, right: particle_or_token_boundary}
+
+  - alias_id: KEPCO_FULL
+    family_id: FAMILY_KEPCO_KR
+    entity_id: ORG_KEPCO
+    surface: 한국전력공사
+    kind: name
+    boundary_policy: {left: hangul_token_boundary, right: particle_or_token_boundary}
+
+  - alias_id: KDN_FULL
+    family_id: FAMILY_KDN
+    entity_id: ORG_KEPCO_KDN
+    surface: 한전KDN
+    kind: name
+    boundary_policy: {left: hangul_token_boundary, right: particle_or_token_boundary}
+
+  - alias_id: AP_NETWORK
+    family_id: FAMILY_AP
+    entity_id: NETWORK_ACCESS_POINT
+    surface: AP
+    kind: abbreviation
+    boundary_policy: {left: latin_token_boundary, right: particle_or_token_boundary,
+                      allow_inside_latin_run: false}
+    scope:
+      allow: {departments: [network]}
+      deny: {}
+
+  - alias_id: AP_APPROVAL
+    family_id: FAMILY_AP
+    entity_id: WORKFLOW_APPROVAL_PROCESS
+    surface: AP
+    kind: abbreviation
+    boundary_policy: {left: latin_token_boundary, right: particle_or_token_boundary,
+                      allow_inside_latin_run: false}
+
+  - alias_id: QMS_SYSTEM
+    family_id: FAMILY_QMS
+    entity_id: SYSTEM_QUALITY_MANAGEMENT
+    surface: QMS
+    kind: abbreviation
+    boundary_policy: {left: latin_token_boundary, right: particle_or_token_boundary}
+
+  - alias_id: MSIT_FULL
+    family_id: FAMILY_MSIT
+    entity_id: ORG_MSIT
+    surface: 과학기술정보통신부
+    kind: name
+    boundary_policy: {left: hangul_token_boundary, right: particle_or_token_boundary}
