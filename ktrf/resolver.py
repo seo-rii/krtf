@@ -319,7 +319,8 @@ def resolve(
             "glossary_id": snapshot.glossary.glossary_id,
             "glossary_version": snapshot.glossary_version,
             "snapshot_id": snapshot.snapshot_id,
-            "model_bundle_version": None,  # V1: symbolic only
+            # §27.5: null on symbolic-only (V1) snapshots
+            "model_bundle_version": snapshot.manifest.get("entity_encoder_hash"),
         },
         "mode": mode,
         "degraded": degraded,

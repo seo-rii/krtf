@@ -118,6 +118,12 @@ implemented:
     tests: [tests/test_resolver_api.py::test_error_schema_shape]
   - req: REQ-API-005
     tests: [tests/test_resolver_api.py::test_exact_overflow_degrades_to_ambiguous]
+  - req: REQ-API-006
+    tests: [tests/test_jobs_tiers_metrics.py::test_job_pins_snapshot_across_activation]
+  # --- memory tiers ---
+  - req: REQ-MEM-002
+    tests: [tests/test_jobs_tiers_metrics.py::test_refcount_blocks_eviction,
+            tests/test_jobs_tiers_metrics.py::test_pinned_tenant_never_evicted]
   # --- budget ---
   - req: REQ-BUD-001
     tests: [tests/test_resolver_api.py::test_exact_overflow_degrades_to_ambiguous,
@@ -149,13 +155,9 @@ deferred:
     reason: "EntityRelation/COMPOSES_TO expansion channel — M2 scope (relations are parsed/validated only)"
   - req: REQ-TRM-002
     reason: "termness classifier — V3/M4 scope (V1 keeps UNCERTAIN, never forces RESOLVED)"
-  - req: REQ-API-006
-    reason: "async document resolve API — M3 scope"
   - req: REQ-BUD-002
-    reason: "non-exact stage skip ordering needs cross-encoder/dense stages — M4 scope"
+    reason: "ordered stage-skip under a global time budget needs request timing enforcement; per-stage budgets (max_dense_queries, max_cross_encoder_pairs) are implemented and tested"
   - req: REQ-MEM-001
     reason: "mmap artifact format — Rust core (M1 production) scope; Python snapshots are in-memory"
-  - req: REQ-MEM-002
-    reason: "tier eviction/refcount — M3 scope"
   - req: REQ-INV-005
     reason: "appendix-D example alias of INV-005; covered by REQ-CAND-001 tests"

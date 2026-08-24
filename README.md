@@ -1,10 +1,16 @@
 # KTRF — Korean Terminology Resolver Framework
 
-Reference implementation (Python) of the **V1 symbolic core** described in
-[PLAN.md](PLAN.md) (spec v0.3). V1 corresponds to spec §33/§55: a zero-GPU,
-deterministic resolver covering all of **Level A** (closed-world surface
-resolution) plus the fuzzy / keyboard / document-local / abbreviation-alignment
-channels, with heuristic fusion and fast/aggressive/commit execution modes.
+Reference implementation (Python) of [PLAN.md](PLAN.md) (spec v0.3) through
+**milestone M4**: the complete V1 symbolic core (Level A closed-world
+resolution + fuzzy/keyboard/doc-local channels), the M3 operational layer
+(async document jobs, correction workflow, memory tiers, metrics), and the
+M4/V2 neural configuration — bi-encoder dense retrieval, conditional
+cross-encoder reranking, learned fusion, and group-conditional conformal
+calibration. Model selection follows [MODEL_RECOMMEND.md](MODEL_RECOMMEND.md):
+multilingual-e5-small (ONNX) as the Role-2 lightweight bi-encoder reference
+with a pure-Python lexical fallback; the Role-1/3 cross-encoder ships as a
+lexical baseline plus an ONNX loader for a fine-tuned KLUE-RoBERTa or
+bge-reranker export (in-house Stage-B training is tenant-data-dependent).
 
 ## What is implemented (V1 scope)
 
@@ -29,6 +35,13 @@ channels, with heuristic fusion and fast/aggressive/commit execution modes.
 | Snapshot save/load (artifact bundle + hash verification) | §11, §47.3 | `ktrf/artifacts.py` |
 | Correction workflow (approval, tenant isolation, caps) | §30 | `ktrf/corrections.py` |
 | Tenant calibrator: Platt + group-conditional conformal | §25, §48.3 | `ktrf/calibration.py` |
+| Async document resolve jobs (chunking, snapshot pin) | §28 | `ktrf/jobs.py` |
+| Snapshot memory tiers (LRU + refcount protection) | §32 | `ktrf/tiers.py` |
+| Runtime metrics (counters, latency reservoirs) | §46.1 | `ktrf/metrics.py` |
+| Bi-encoder backends (hash baseline, e5 ONNX) | §22.3, §33 | `ktrf/encoders.py` |
+| Entity vectors + flat-IP dense index (Pass 2) | §21.6, §22.3 | `ktrf/dense.py` |
+| Conditional cross-encoder rerank (lexical + ONNX) | §22.3–22.4 | `ktrf/rerank.py` |
+| Learned fusion over the feature vector | §23 | `ktrf/fusion.py` |
 | Evaluation harness (deterministic datagen + metrics) | §37, §43–44 | `eval/` |
 
 ## Deliberate deviations from the production spec
@@ -110,8 +123,19 @@ python -m pytest                 # 144 unit/property/conformance/traceability te
 python -m eval.run_eval          # eval corpus + golden set + release gate -> EVALUATION.md
 python -m eval.run_benchmarks    # adversarial anti-overfitting suite -> BENCHMARKS.md
 python -m eval.run_wild          # real Korean text (HuggingFace KLUE) -> WILD_CORPUS.md
+python -m eval.run_neural_eval   # Level B gate: UE splits, hash vs e5 -> NEURAL_EVAL.md
 python -m eval.benchmark         # latency-only scale benchmark
 ```
+
+[NEURAL_EVAL.md](NEURAL_EVAL.md) is the M4 Level B gate: 21 real-org
+abbreviations held out of the glossary, queried through real KLUE sentences
+(§42 UE-derived-abbreviation). Gold-in-prediction-set (E2E): symbolic-only
+**81.0%** → +hash dense **96.8%** → +e5 dense **98.4%** — both dense configs
+clear the spec's §5.2 UE target (95%). To enable the e5 backend:
+`pip install numpy onnxruntime tokenizers huggingface_hub`, download
+`Xenova/multilingual-e5-small` (ONNX + tokenizer) into
+`models/multilingual-e5-small/`, then
+`compile_snapshot(g, encoder=load_encoder("onnx:models/multilingual-e5-small"))`.
 
 Current results ([EVALUATION.md](EVALUATION.md)): conformance **0 failures /
 544 fixtures** (and 0/74,450 on a 500-entity synthetic glossary), Level A

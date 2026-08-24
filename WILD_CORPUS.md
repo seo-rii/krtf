@@ -11,7 +11,7 @@
 - gold-in-prediction-set (E2E): **1.0** (168/168, CI95 [0.9776, 1.0])
 - RESOLVED precision (|commit): **1.0** (147 commits, silver 대비 coverage 0.875)
 - 짧은/다의 표면형(한전·한은·KT 등) 탐지 mention: 174건 (recall 분모 제외)
-- latency p50/p95: 10.57 / 16.54 ms
+- latency p50/p95: 10.47 / 15.61 ms
 
 ## 2. 조사·어미 실분포 커버리지 (§5.2)
 

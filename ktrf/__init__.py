@@ -26,4 +26,22 @@ def __getattr__(name):
     if name in ("TunedCalibrator", "fit_calibrator", "empirical_coverage"):
         from . import calibration as m
         return getattr(m, name)
+    if name in ("HashEncoder", "OnnxE5Encoder", "load_encoder"):
+        from . import encoders as m
+        return getattr(m, name)
+    if name in ("LexicalCrossEncoder", "OnnxCrossEncoder", "load_reranker"):
+        from . import rerank as m
+        return getattr(m, name)
+    if name in ("FusionModel", "fit_fusion"):
+        from . import fusion as m
+        return getattr(m, name)
+    if name == "ResolveJobManager":
+        from .jobs import ResolveJobManager
+        return ResolveJobManager
+    if name == "TieredSnapshotStore":
+        from .tiers import TieredSnapshotStore
+        return TieredSnapshotStore
+    if name == "RuntimeMetrics":
+        from .metrics import RuntimeMetrics
+        return RuntimeMetrics
     raise AttributeError(name)

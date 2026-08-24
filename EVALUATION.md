@@ -67,7 +67,7 @@
 ## 5. 성능 (참고치, Python 구현)
 
 - 평가 예제: 229건, compile 0.001s
-- resolve(commit) p50 0.67ms / p95 1.12ms
+- resolve(commit) p50 0.67ms / p95 1.22ms
 
 ### 규모 벤치마크 (synthetic glossary, §53 축소판)
 
