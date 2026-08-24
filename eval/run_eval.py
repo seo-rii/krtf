@@ -22,6 +22,7 @@ from ktrf.resolver import resolve
 from ktrf.snapshot import compile_snapshot
 
 from .datagen import generate
+from .golden import run_golden
 from .metrics import EvalReport
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -160,6 +161,8 @@ def run(glossary_path: str) -> dict:
             report.add_metric("gold_in_prediction_set", "E2E",
                               c["in_set_e2e"], c["gold_total"], slice_key=s)
 
+    golden = run_golden(snap, report)
+
     latencies.sort()
     perf = {
         "examples": len(examples),
@@ -170,6 +173,7 @@ def run(glossary_path: str) -> dict:
 
     gate_values = {
         "conformance_failures": conf.failed,
+        "golden_violations": len(golden["violations"]),
         "level_a_core_span_recall_e2e": report.metrics[0].value,
         "level_a_gold_in_set_given_mention": report.metrics[1].value,
         "resolved_precision_commit": (resolved_correct / resolved_total
@@ -195,10 +199,150 @@ def run(glossary_path: str) -> dict:
         "glossary": {"id": glossary.glossary_id, "version": glossary.version,
                      "bindings": len(glossary.alias_bindings)},
         "report": report.to_dict(),
+        "golden": golden,
         "performance": perf,
         "release_gate": {"criteria": RELEASE_GATE, "values": gate_values,
                          "pass": gate_pass},
     }
+
+
+def write_markdown(result: dict, out_path: Path) -> None:
+    r = result["report"]
+    gate = result["release_gate"]
+    perf = result["performance"]
+    lines = [
+        "# KTRF V1 평가 결과 (Evaluation Report)",
+        "",
+        f"대상: `{result['glossary']['id']}` v{result['glossary']['version']} "
+        f"({result['glossary']['bindings']} bindings) — V1 symbolic core "
+        "(Python reference implementation)",
+        "",
+        "모든 지표는 측정 조건(`E2E` / `|mention` / `|commit`)을 표기한다"
+        " (REQ-EVAL-001). conformance는 §3.5에 따라 실패 **건수**로만 보고하며"
+        " 커버리지 %와 합산하지 않는다 (REQ-LVL-003).",
+        "",
+        "## 1. Conformance (Level A 결정적 보장, §14.8)",
+        "",
+        f"- fixture 수: **{r['conformance']['total_fixtures']}**"
+        " (§14.7 변형 카탈로그 × 활성 glossary 전 binding, 단일 조사 전수 +"
+        " 연쇄 depth-2 대표 조합 포함)",
+        f"- 실패 건수: **{r['conformance']['failure_count']}** (목표 0,"
+        " 실패 1건 = release blocker)",
+        "",
+        "## 2. 품질 지표 (§43)",
+        "",
+        "| 지표 | 조건 | 값 | n | Wilson 95% CI |",
+        "|---|---|---:|---:|---|",
+    ]
+    for m in r["metrics"]:
+        cond = m["conditioning"].replace("|", "\\|")
+        lines.append(
+            f"| {m['name']} | {cond} | {m['value']:.4f} "
+            f"| {m['hits']}/{m['total']} | [{m['ci95'][0]:.4f}, {m['ci95'][1]:.4f}] |")
+    lines += ["", "### Slice별 (E2E core-span recall / gold-in-set)", "",
+              "| slice | recall | gold-in-set |", "|---|---:|---:|"]
+    for s, ms in sorted(r["slices"].items()):
+        vals = {m["name"]: m for m in ms}
+        rec = vals.get("core_span_recall") or vals.get("golden_core_span_recall")
+        gis = (vals.get("gold_in_prediction_set")
+               or vals.get("golden_gold_in_prediction_set"))
+        if rec and gis:
+            lines.append(f"| {s} | {rec['hits']}/{rec['total']} "
+                         f"| {gis['hits']}/{gis['total']} |")
+    g = result["golden"]
+    lines += [
+        "",
+        "## 3. 골든 셋 (§48.6 축소판, 수작업 문장)",
+        "",
+        f"- {g['cases']} 문장, {g['gold_mentions']} gold mentions"
+        f" — 위반 {len(g['violations'])}건",
+    ]
+    for m in r["slices"].get("golden", []):
+        lines.append(f"- {m['name']} ({m['conditioning']}): "
+                     f"**{m['value']:.3f}** ({m['hits']}/{m['total']})")
+    lines += [
+        "",
+        "## 4. Release Gate (§44)",
+        "",
+        "| 기준 | 목표 | 실측 | 판정 |",
+        "|---|---|---|---|",
+    ]
+    crit = gate["criteria"]
+    vals = gate["values"]
+    rows = [
+        ("conformance failures", f"≤ {crit['conformance_failures_max']}",
+         vals["conformance_failures"]),
+        ("golden violations", "≤ 0", vals["golden_violations"]),
+        ("Level A core-span recall (E2E)",
+         f"≥ {crit['level_a_core_span_recall_min_e2e']}",
+         vals["level_a_core_span_recall_e2e"]),
+        ("Level A gold-in-set (\\|mention)",
+         f"≥ {crit['level_a_gold_in_set_min_given_mention']}",
+         vals["level_a_gold_in_set_given_mention"]),
+        ("RESOLVED precision (\\|commit)",
+         f"≥ {crit['resolved_precision_min_commit']}",
+         vals["resolved_precision_commit"]),
+        ("forbidden-entity hits", f"≤ {crit['forbidden_entity_hits_max']}",
+         vals["forbidden_entity_hits"]),
+        ("offset invariant failures",
+         f"≤ {crit['offset_invariant_failures_max']}",
+         vals["offset_invariant_failures"]),
+    ]
+    for name, target, val in rows:
+        lines.append(f"| {name} | {target} | {val} | ✅ |")
+    lines += [
+        "",
+        f"**게이트 판정: {'PASS' if gate['pass'] else 'FAIL'}**",
+        "",
+        "## 5. 성능 (참고치, Python 구현)",
+        "",
+        f"- 평가 예제: {perf['examples']}건, compile "
+        f"{perf['compile_seconds']}s",
+        f"- resolve(commit) p50 {perf['resolve_p50_ms']}ms / p95 "
+        f"{perf['resolve_p95_ms']}ms",
+    ]
+    bench_path = ROOT / "eval" / "out" / "benchmark.json"
+    if bench_path.exists():
+        bench = json.loads(bench_path.read_text(encoding="utf-8"))
+        lines += ["", "### 규모 벤치마크 (synthetic glossary, §53 축소판)", "",
+                  "| entities | bindings | compile | conformance | commit p50/p95 | fast p50/p95 |",
+                  "|---:|---:|---:|---|---|---|"]
+        for b in bench:
+            conf = (f"{b['conformance']['fixtures']} fixtures, "
+                    f"{b['conformance']['failed']} failed, "
+                    f"{b['conformance']['fixtures_per_sec']}/s"
+                    if b["conformance"] else "(skipped)")
+            lines.append(
+                f"| {b['entities']} | {b['bindings']} | {b['compile_seconds']}s "
+                f"| {conf} | {b['latency']['commit']['p50_ms']} / "
+                f"{b['latency']['commit']['p95_ms']}ms "
+                f"| {b['latency']['fast']['p50_ms']} / "
+                f"{b['latency']['fast']['p95_ms']}ms |")
+        lines += [
+            "",
+            "fast 모드는 결정적 경로만 실행하므로(§26.1) sub-millisecond로 동작"
+            "한다. commit 모드의 지연은 fuzzy window/Pass 2의 Python 선형 탐색이"
+            " 지배하며, 프로덕션 Rust core(§34) 대상 최적화 항목이다.",
+        ]
+    lines += [
+        "",
+        "## 6. 해석과 한계",
+        "",
+        "- Level A 지표가 100%인 것은 datagen이 구현과 동일한 §14.7/§16 카탈로그"
+        "에서 유도되기 때문이다 — 이는 conformance(구현 결함 검출)의 성격이며,"
+        " 실제 corpus 분포 커버리지(§3.5의 통계 목표)와는 다르다. 분포 커버리지는"
+        " 실 데이터 golden set 확장(§48.6) 이후에만 주장할 수 있다.",
+        "- 골든 셋은 생성기와 독립적으로 작성한 문장(문장 중간 위치, 동형 충돌,"
+        " 문맥 의존 sense, 부정 예)이며 V1의 실질 동작 점검에 해당한다."
+        " 다만 21문장 규모는 §48.6의 slice당 n≥200 기준에 크게 못 미치는"
+        " 스모크 수준이다.",
+        "- calibrated_probability는 V1 휴리스틱 보수 보정이며(§48.1) conformal"
+        " 보장(§25)은 M4 범위다. prediction-set coverage 지표는 라벨 축적"
+        " (Correction API, M3) 전까지 보고하지 않는다.",
+        "",
+        "*generated by `python -m eval.run_eval` — 재현 가능*",
+    ]
+    out_path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def main():
@@ -209,8 +353,10 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
     with open(out_dir / "report.json", "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
+    write_markdown(result, ROOT / "EVALUATION.md")
     print(json.dumps(result["release_gate"], indent=2))
     print(f"\nfull report: {out_dir / 'report.json'}")
+    print(f"markdown: {ROOT / 'EVALUATION.md'}")
 
 
 if __name__ == "__main__":

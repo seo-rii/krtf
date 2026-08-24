@@ -1,0 +1,99 @@
+# 수작업 골든 셋 (§48.6의 축소판) — datagen과 독립적으로 작성된 문장들.
+# 문장 중간 위치, 조사 연쇄, 동형 충돌, 중첩, 부정 예를 포함한다.
+# span은 surface의 n번째(기본 1) 출현으로 계산한다.
+
+- text: "이번 협약은 한전과 체결했다."
+  slice: golden_homograph_particle
+  gold: [{surface: 한전, entity: ORG_KEPCO}]
+
+- text: "사업 초기에는 한전에서부터 자료를 받아야 한다."
+  slice: golden_particle_chain
+  gold: [{surface: 한전, entity: ORG_KEPCO}]
+
+- text: "한전KDN과 한전이 공동으로 참여한다."
+  slice: golden_multi_nested
+  gold:
+    - {surface: 한전KDN, entity: ORG_KEPCO_KDN}
+    - {surface: 한전, entity: ORG_KEPCO, occurrence: 2}
+
+- text: "무선 AP 장애가 재발하여 교체를 요청했다."
+  slice: golden_sense_context
+  gold: [{surface: AP, entity: NETWORK_ACCESS_POINT}]
+
+- text: "AP 결재 부탁드립니다."
+  slice: golden_sense_context
+  gold: [{surface: AP, entity: WORKFLOW_APPROVAL_PROCESS}]
+
+- text: "점검 결과는 ＱＭＳ에 등록해 주세요."
+  slice: golden_width_mid
+  gold: [{surface: ＱＭＳ, entity: SYSTEM_QUALITY_MANAGEMENT}]
+
+- text: "전 한전 사장이 간담회에 참석했다."
+  slice: golden_prefix
+  gold: [{surface: 한전, entity: ORG_KEPCO}]
+
+- text: "구한전 시절의 규정을 따른다."
+  slice: golden_prefix
+  gold: [{surface: 한전, entity: ORG_KEPCO}]
+
+- text: "한국전력공사(이하 공사)는 입찰을 공고했다. 공사 측은 일정 변경을 부인했다."
+  slice: golden_doc_local
+  gold:
+    - {surface: 한국전력공사, entity: ORG_KEPCO}
+    # 1번째=한국전력"공사", 2번째=정의부 "(이하 공사)" (mention 아님), 3번째=본문
+    - {surface: 공사, entity: ORG_KEPCO, occurrence: 3}
+
+- text: "한전서울본부에서도 같은 문제가 보고되었다."
+  slice: golden_suffix_residual
+  gold: [{surface: 한전, entity: ORG_KEPCO}]
+
+- text: "담당자는 한전 담당자에게 회신을 보냈다."
+  slice: golden_suffix_spaced
+  gold: [{surface: 한전, entity: ORG_KEPCO}]
+
+- text: "장애 내용은 한국전려공사에 우선 공유한다."
+  slice: golden_jamo_typo
+  level: B
+  gold: [{surface: 한국전려공사, entity: ORG_KEPCO}]
+
+- text: "회의록은 gkswjs 쪽에 전달 바랍니다."
+  slice: golden_keyboard
+  level: B
+  gold: [{surface: gkswjs, entity: ORG_KEPCO}]
+
+- text: "과기정통부 고시에 따라 처리한다."
+  slice: golden_derived_abbrev
+  level: B
+  gold: [{surface: 과기정통부, entity: ORG_MSIT}]
+
+- text: "Kubernetes 클러스터의 AP 설정을 확인했다."
+  slice: golden_mixed_latin
+  gold:
+    - {surface: Kubernetes, entity: SW_KUBERNETES}
+    - {surface: AP, entity: NETWORK_ACCESS_POINT}
+
+- text: "kubernetes's ingress 설정은 별도 문서를 본다."
+  slice: golden_latin_morph
+  gold: [{surface: kubernetes, entity: SW_KUBERNETES}]
+
+# ---- 부정 예 (§37.8) ----
+
+- text: "대한전선 주가가 상한가를 기록했다."
+  slice: golden_negative
+  forbidden: [ORG_KEPCO]
+
+- text: "SAP ERP 도입 사업을 검토한다."
+  slice: golden_negative
+  forbidden: [NETWORK_ACCESS_POINT, WORKFLOW_APPROVAL_PROCESS]
+
+- text: "CAPEX 절감 목표를 상향했다."
+  slice: golden_negative
+  forbidden: [NETWORK_ACCESS_POINT, WORKFLOW_APPROVAL_PROCESS]
+
+- text: "오늘 일정은 평범하게 마무리되었다."
+  slice: golden_negative
+  no_resolved: true
+
+- text: "액포 장애 건 확인 부탁드립니다."
+  slice: golden_kb_missing
+  no_resolved: true
