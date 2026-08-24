@@ -24,6 +24,31 @@ from pathlib import Path
 from .hangul import to_jamo_seq
 
 
+def _register_cuda_dlls() -> None:
+    """Windows: preload torch-bundled CUDA runtime DLLs so onnxruntime's
+    CUDA provider can resolve them (ORT's loader ignores add_dll_directory;
+    already-loaded modules are found by name). No torch import needed."""
+    import importlib.util
+
+    spec = importlib.util.find_spec("torch")
+    if not (spec and spec.submodule_search_locations):
+        return
+    lib = Path(list(spec.submodule_search_locations)[0]) / "lib"
+    if not lib.exists():
+        return
+    import ctypes
+
+    # dependency order matters: runtime -> BLAS -> cuDNN (shim + components)
+    for pattern in ("cudart64_*.dll", "cublasLt64_*.dll", "cublas64_*.dll",
+                    "cufft64_*.dll", "curand64_*.dll", "nvrtc64_*.dll",
+                    "cudnn*.dll"):
+        for dll in sorted(lib.glob(pattern)):
+            try:
+                ctypes.WinDLL(str(dll))
+            except OSError:
+                pass  # best effort; session creation falls back to CPU
+
+
 def _providers(ort, device: str) -> list[str]:
     """GPU throughput path with CPU fallback (docs/GPU_PLAN.md Phase G1).
 
@@ -32,6 +57,7 @@ def _providers(ort, device: str) -> list[str]:
     falls back otherwise, so bundles stay loadable on any machine.
     """
     if device == "cuda" and "CUDAExecutionProvider" in ort.get_available_providers():
+        _register_cuda_dlls()
         return ["CUDAExecutionProvider", "CPUExecutionProvider"]
     return ["CPUExecutionProvider"]
 
