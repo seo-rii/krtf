@@ -31,6 +31,10 @@ entities:
   - entity_id: ORG_MSIT
     canonical: 과학기술정보통신부
     description: 과학기술과 정보통신 정책을 담당하는 중앙행정기관
+  - entity_id: SW_KUBERNETES
+    canonical: Kubernetes
+    description: 컨테이너 오케스트레이션 플랫폼
+    domain_ids: [INFRA]
 
 alias_families:
   - family_id: FAMILY_KEPCO_KR
@@ -48,6 +52,9 @@ alias_families:
   - family_id: FAMILY_MSIT
     representative: 과학기술정보통신부
     normalization_profile: korean_org_name
+  - family_id: FAMILY_K8S
+    representative: Kubernetes
+    normalization_profile: latin_word
 
 alias_bindings:
   - alias_id: KEPCO_KR
@@ -103,3 +110,10 @@ alias_bindings:
     surface: 과학기술정보통신부
     kind: name
     boundary_policy: {left: hangul_token_boundary, right: particle_or_token_boundary}
+
+  - alias_id: K8S_NAME
+    family_id: FAMILY_K8S
+    entity_id: SW_KUBERNETES
+    surface: Kubernetes
+    kind: name
+    boundary_policy: {left: latin_token_boundary, right: particle_or_token_boundary}

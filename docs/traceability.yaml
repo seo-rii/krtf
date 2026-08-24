@@ -1,0 +1,157 @@
+# 요구사항-테스트 추적성 매트릭스 (PLAN.md §1.2, §45.7, 부록 D; REQ-EVAL-003)
+#
+# implemented: 매핑된 테스트가 존재해야 하며, 존재하지 않는 테스트 참조는 CI 실패.
+# deferred:    V1 symbolic core 범위 밖 요구사항. 사유(마일스톤)를 명시한다.
+# tests/test_traceability.py 가 본 파일을 검증한다.
+
+implemented:
+  # --- Level A / conformance ---
+  - req: REQ-LVL-001
+    tests: [tests/test_conformance.py::test_demo_glossary_conformance_100]
+  - req: REQ-LVL-002
+    tests: [tests/test_conformance.py::test_demo_glossary_conformance_100,
+            tests/test_snapshot.py::test_conformance_failure_blocks_activation]
+  # --- offsets ---
+  - req: REQ-OFF-001
+    tests: [tests/test_offsets.py::test_reference_example_byte_spans]
+  - req: REQ-OFF-002
+    tests: [tests/test_offsets.py::test_invariant_checker_raises_on_mismatch,
+            tests/test_resolver_api.py::test_reference_sentence_spans]
+  - req: REQ-OFF-003
+    tests: [tests/test_offsets.py::test_roundtrip_mixed_content]
+  - req: REQ-OFF-004
+    tests: [tests/test_resolver_api.py::test_invalid_utf8_not_repaired]
+  # --- normalization ---
+  - req: REQ-NRM-001
+    tests: [tests/test_normalization.py::test_profile_field_override,
+            tests/test_glossary.py::test_binding_profile_precedence]
+  - req: REQ-NRM-002
+    tests: [tests/test_normalization.py::test_default_profiles_present,
+            tests/test_glossary.py::test_redefining_default_profile_rejected]
+  - req: REQ-NRM-003
+    tests: [tests/test_conformance.py::test_out_of_catalog_variants_not_guaranteed]
+  - req: REQ-NRM-004
+    tests: [tests/test_conformance.py::test_fixture_generation_deterministic]
+  - req: REQ-NRM-005
+    tests: [tests/test_snapshot.py::test_conformance_failure_blocks_activation]
+  - req: REQ-NRM-006
+    tests: [tests/test_conformance.py::test_single_particle_sweep_included]
+  # --- boundary ---
+  - req: REQ-BND-001
+    tests: [tests/test_matcher.py::test_inside_latin_run_rejected,
+            tests/test_matcher.py::test_hangul_left_attachment_rejected]
+  - req: REQ-BND-002
+    tests: [tests/test_morphology.py::test_accepts_prefix_boundary_interface,
+            tests/test_matcher.py::test_particle_attachment_passes_boundary]
+  - req: REQ-BND-003
+    tests: [tests/test_morphology.py::test_accepts_prefix_boundary_interface]
+  # --- tail/prefix ---
+  - req: REQ-TAIL-001
+    tests: [tests/test_morphology.py::test_chain_composition_not_enumeration]
+  - req: REQ-TAIL-003
+    tests: [tests/test_matcher.py::test_homograph_collision_both_kept]
+  - req: REQ-TAIL-004
+    tests: [tests/test_matcher.py::test_parse_full_pipeline]
+  - req: REQ-TAIL-005
+    tests: [tests/test_matcher.py::test_parse_full_pipeline,
+            tests/test_matcher.py::test_prefix_modifier_unspaced_left_boundary]
+  - req: REQ-TAIL-006
+    tests: [tests/test_matcher.py::test_latin_morph_plural]
+  # --- fuzzy ---
+  - req: REQ-FUZ-001
+    tests: [tests/test_fuzzy_doclocal_abbrev.py::test_min_cost_single_application]
+  - req: REQ-FUZ-002
+    tests: [tests/test_fuzzy_doclocal_abbrev.py::test_short_alias_fuzzy_disabled]
+  # --- doc-local ---
+  - req: REQ-LOC-001
+    tests: [tests/test_fuzzy_doclocal_abbrev.py::test_doclocal_no_global_overwrite,
+            tests/test_resolver_api.py::test_doclocal_boost_without_overwrite]
+  - req: REQ-LOC-002
+    tests: [tests/test_fuzzy_doclocal_abbrev.py::test_doclocal_no_global_overwrite]
+  # --- candidates ---
+  - req: REQ-CAND-001
+    tests: [tests/test_resolver_api.py::test_exact_pool_budget_exempt,
+            tests/test_candidates_injection.py::test_budget_never_cuts_exact]
+  - req: REQ-CAND-002
+    tests: [tests/test_resolver_api.py::test_exact_pool_budget_exempt]
+  - req: REQ-CAND-003
+    tests: [tests/test_resolver_api.py::test_exact_overflow_degrades_to_ambiguous]
+  - req: REQ-CAND-004
+    tests: [tests/test_resolver_api.py::test_fast_mode_no_pass2]
+  - req: REQ-CAND-005
+    tests: [tests/test_resolver_api.py::test_fast_mode_no_pass2]
+  # --- termness / calibration semantics ---
+  - req: REQ-TRM-001
+    tests: [tests/test_resolver_api.py::test_uncertain_mention_never_resolved]
+  - req: REQ-CAL-001
+    tests: [tests/test_resolver_api.py::test_marginal_probabilities_not_normalized]
+  # --- graph ---
+  - req: REQ-GRPH-001
+    tests: [tests/test_resolver_api.py::test_determinism,
+            tests/test_resolver_api.py::test_primary_vs_all_mentions]
+  # --- API ---
+  - req: REQ-API-001
+    tests: [tests/test_resolver_api.py::test_fast_mode_contract]
+  - req: REQ-API-002
+    tests: [tests/test_snapshot.py::test_version_policy_strict_mismatch]
+  - req: REQ-API-003
+    tests: [tests/test_resolver_api.py::test_input_too_large]
+  - req: REQ-API-004
+    tests: [tests/test_resolver_api.py::test_error_schema_shape]
+  - req: REQ-API-005
+    tests: [tests/test_resolver_api.py::test_exact_overflow_degrades_to_ambiguous]
+  # --- budget ---
+  - req: REQ-BUD-001
+    tests: [tests/test_resolver_api.py::test_exact_overflow_degrades_to_ambiguous,
+            tests/test_candidates_injection.py::test_budget_never_cuts_exact]
+  # --- tenant ---
+  - req: REQ-TEN-001
+    tests: [tests/test_snapshot.py::test_forbidden_glossary_outside_tenant_scope]
+  - req: REQ-TEN-002
+    tests: [tests/test_snapshot.py::test_tenant_isolation]
+  - req: REQ-TEN-003
+    tests: [tests/test_resolver_api.py::test_allow_mismatch_always_soft]
+  - req: REQ-TEN-004
+    tests: [tests/test_resolver_api.py::test_scope_deny_hard_only_at_verified_trust]
+  # --- security ---
+  - req: REQ-SEC-001
+    tests: [tests/test_candidates_injection.py::test_injection_escaping]
+  # --- eval ---
+  - req: REQ-EVAL-001
+    tests: [tests/test_eval_metrics.py::test_metrics_require_conditioning]
+  - req: REQ-EVAL-002
+    tests: [tests/test_eval_metrics.py::test_wilson_interval]
+  - req: REQ-EVAL-003
+    tests: [tests/test_traceability.py::test_all_reqs_mapped]
+  - req: REQ-LVL-003
+    tests: [tests/test_eval_metrics.py::test_conformance_and_coverage_not_merged]
+
+deferred:
+  - req: REQ-TAIL-002
+    reason: "EntityRelation/COMPOSES_TO expansion channel — M2 scope (relations are parsed/validated only)"
+  - req: REQ-TRM-002
+    reason: "termness classifier — V3/M4 scope (V1 keeps UNCERTAIN, never forces RESOLVED)"
+  - req: REQ-CAL-002
+    reason: "group-conditional split conformal — M4 scope (V1 ships heuristic conservative calibrator)"
+  - req: REQ-CAL-003
+    reason: "tenant calibration groups — M4 scope"
+  - req: REQ-CAL-004
+    reason: "online empirical coverage via Correction API — M3/M4 scope"
+  - req: REQ-API-006
+    reason: "async document resolve API — M3 scope"
+  - req: REQ-COR-001
+    reason: "Correction API — M3 scope"
+  - req: REQ-COR-002
+    reason: "Correction API — M3 scope"
+  - req: REQ-COR-003
+    reason: "Correction API — M3 scope"
+  - req: REQ-COR-004
+    reason: "Correction API — M3 scope"
+  - req: REQ-BUD-002
+    reason: "non-exact stage skip ordering needs cross-encoder/dense stages — M4 scope"
+  - req: REQ-MEM-001
+    reason: "mmap artifact format — Rust core (M1 production) scope; Python snapshots are in-memory"
+  - req: REQ-MEM-002
+    reason: "tier eviction/refcount — M3 scope"
+  - req: REQ-INV-005
+    reason: "appendix-D example alias of INV-005; covered by REQ-CAND-001 tests"

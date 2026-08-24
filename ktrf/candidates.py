@@ -60,10 +60,12 @@ class CandidatePool:
 
     def add(self, cand: Candidate) -> None:
         pool = self.exact if cand.is_exact else self.non_exact
-        existing = pool.get(cand.entity_id) or (
-            # an entity already in the exact pool absorbs non-exact evidence
-            self.exact.get(cand.entity_id) if not cand.is_exact else None
-        )
+        # evidence for the same entity merges across pools: an entity already
+        # in the exact pool absorbs fuzzy evidence, and exact evidence
+        # promotes a previously fuzzy-only candidate (INV-010)
+        existing = (pool.get(cand.entity_id)
+                    or self.exact.get(cand.entity_id)
+                    or self.non_exact.get(cand.entity_id))
         if existing is not None:
             existing.generation_channels |= cand.generation_channels
             for ch, sc in cand.channel_scores.items():
