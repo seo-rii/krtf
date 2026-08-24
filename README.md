@@ -109,6 +109,7 @@ through `save_snapshot`/`load_snapshot` with its own `calibrator_hash`.
 python -m pytest                 # 144 unit/property/conformance/traceability tests
 python -m eval.run_eval          # eval corpus + golden set + release gate -> EVALUATION.md
 python -m eval.run_benchmarks    # adversarial anti-overfitting suite -> BENCHMARKS.md
+python -m eval.run_wild          # real Korean text (HuggingFace KLUE) -> WILD_CORPUS.md
 python -m eval.benchmark         # latency-only scale benchmark
 ```
 
@@ -132,6 +133,19 @@ a fast subset runs in CI (`tests/test_adversarial_regressions.py`). This
 suite caught two real bugs on first run — unknown-tail overcommit and
 non-conservative calibration fallback — both now fixed and pinned by
 regression tests.
+
+[WILD_CORPUS.md](WILD_CORPUS.md) evaluates against **real Korean text**:
+~5,200 news sentences from HuggingFace KLUE (CC BY-SA 4.0, fetched by
+`eval/wild_data.py` — the repo ships the downloader, not the data) with a
+46-entity real-organization glossary (`examples/realorg_glossary.yaml`).
+Suites: silver-labeled recall on unambiguous org surfaces (168/168
+gold-in-set, RESOLVED precision 1.0), real-distribution particle/suffix
+coverage — the §5.2 metric, measurable only on real text — and a
+fake-glossary suite where any commit on real text is a false positive by
+construction (0 commits). The tail-coverage signal drove a §16 catalog
+extension exactly as §3.5 prescribes (role suffixes 장/장관/원장, corporate
+suffixes 그룹/증권, contracted particles 엔/에선), lifting real-tail coverage
+from 29% to 78% with the remainder being genuine non-organizational tails.
 
 The traceability matrix (`docs/traceability.yaml`, enforced by
 `tests/test_traceability.py`) maps all 61 spec REQ IDs: 54 implemented+tested,

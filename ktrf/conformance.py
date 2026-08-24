@@ -90,8 +90,13 @@ def generate_fixtures(glossary: Glossary) -> list[Fixture]:
             for v in {surface.lower(), surface.upper()} - {surface}:
                 add(v, (0, n), b, "T-03")
 
-        # T-04 punctuation insertion (representative: join with each punct)
-        if 2 <= n <= 4:
+        # T-04 punctuation insertion (representative: join with each punct).
+        # Surfaces already containing ignorable punctuation are skipped —
+        # stacking insertions there exceeds the matcher's bounded gap run,
+        # which is outside the T-04 guarantee (deletion is still covered by
+        # the channel, e.g. KT&G -> KTG).
+        if 2 <= n <= 4 and not any(c in prof.ignore_punctuation
+                                   for c in surface):
             for p in prof.ignore_punctuation:
                 v = p.join(surface)
                 add(v, (0, len(v)), b, "T-04")

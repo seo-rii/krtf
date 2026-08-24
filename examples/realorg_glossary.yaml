@@ -1,0 +1,206 @@
+# 실존 한국 조직 glossary — wild-corpus 벤치마크용 (KLUE 뉴스 헤드라인 도메인).
+# 표면형 선택은 corpus 빈도 스캔에 근거한다 (eval/run_wild.py 참조).
+glossary_id: realorg-kr
+version: "1"
+schema_version: "3"
+
+entities:
+  - {entity_id: ORG_MSIT, canonical: 과학기술정보통신부, description: 과학기술과 정보통신 정책을 담당하는 중앙행정기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MSIP, canonical: 미래창조과학부, description: 과학기술정보통신부의 전신인 중앙행정기관, domain_ids: [GOV]}
+  - {entity_id: ORG_KEPCO, canonical: 한국전력공사, description: 대한민국의 전력 공기업, domain_ids: [ENERGY]}
+  - {entity_id: ORG_KHNP, canonical: 한국수력원자력, description: 원자력과 수력 발전을 담당하는 공기업, domain_ids: [ENERGY]}
+  - {entity_id: ORG_FSC, canonical: 금융위원회, description: 금융 정책을 총괄하는 중앙행정기관, domain_ids: [FINANCE]}
+  - {entity_id: ORG_FSS, canonical: 금융감독원, description: 금융기관 감독 기구, domain_ids: [FINANCE]}
+  - {entity_id: ORG_FTC, canonical: 공정거래위원회, description: 공정거래 정책과 규제를 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MOEF, canonical: 기획재정부, description: 경제·재정 정책을 총괄하는 중앙행정기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MOLIT, canonical: 국토교통부, description: 국토와 교통 정책을 담당하는 중앙행정기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MOHW, canonical: 보건복지부, description: 보건과 복지 정책을 담당하는 중앙행정기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MOIS, canonical: 행정안전부, description: 행정과 안전 정책을 담당하는 중앙행정기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MOTIE, canonical: 산업통상자원부, description: 산업·통상·자원 정책을 담당하는 중앙행정기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MOFA, canonical: 외교부, description: 외교 정책을 담당하는 중앙행정기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MOU, canonical: 통일부, description: 남북관계 정책을 담당하는 중앙행정기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MND, canonical: 국방부, description: 국방 정책을 담당하는 중앙행정기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MOE, canonical: 교육부, description: 교육 정책을 담당하는 중앙행정기관, domain_ids: [GOV]}
+  - {entity_id: ORG_ME, canonical: 환경부, description: 환경 정책을 담당하는 중앙행정기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MOEL, canonical: 고용노동부, description: 고용과 노동 정책을 담당하는 중앙행정기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MCST, canonical: 문화체육관광부, description: 문화·체육·관광 정책을 담당하는 중앙행정기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MOF, canonical: 해양수산부, description: 해양과 수산 정책을 담당하는 중앙행정기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MAFRA, canonical: 농림축산식품부, description: 농림·축산·식품 정책을 담당하는 중앙행정기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MFDS, canonical: 식품의약품안전처, description: 식품과 의약품 안전을 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MSS, canonical: 중소벤처기업부, description: 중소기업과 벤처 정책을 담당하는 중앙행정기관, domain_ids: [GOV]}
+  - {entity_id: ORG_NTS, canonical: 국세청, description: 세무 행정을 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_KCS, canonical: 관세청, description: 관세 행정을 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_KOSTAT, canonical: 통계청, description: 국가 통계를 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_KMA, canonical: 기상청, description: 기상 예보와 관측을 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_KNPA, canonical: 경찰청, description: 치안을 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_SPO, canonical: 대검찰청, description: 검찰 조직의 최고 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_BAI, canonical: 감사원, description: 국가 회계 감사와 직무 감찰 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_BOK, canonical: 한국은행, description: 대한민국의 중앙은행, domain_ids: [FINANCE]}
+  - {entity_id: ORG_BLUEHOUSE, canonical: 청와대, description: 대한민국 대통령 집무 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_CCOURT, canonical: 헌법재판소, description: 헌법 재판을 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_NIS, canonical: 국가정보원, description: 국가 정보기관, domain_ids: [GOV]}
+  - {entity_id: ORG_NEC, canonical: 중앙선거관리위원회, description: 선거 관리를 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_KCC, canonical: 방송통신위원회, description: 방송과 통신 규제 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_NSSC, canonical: 원자력안전위원회, description: 원자력 안전 규제 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_NPS, canonical: 국민연금공단, description: 국민연금을 운영하는 공공기관, domain_ids: [GOV]}
+  - {entity_id: ORG_SAMSUNG_ELEC, canonical: 삼성전자, description: 전자제품과 반도체 제조 대기업, domain_ids: [CORP]}
+  - {entity_id: ORG_LG_ELEC, canonical: LG전자, description: 전자제품 제조 대기업, domain_ids: [CORP]}
+  - {entity_id: ORG_HYUNDAI_MOTOR, canonical: 현대자동차, description: 자동차 제조 대기업, domain_ids: [CORP]}
+  - {entity_id: ORG_SKT, canonical: SK텔레콤, description: 이동통신 사업자, domain_ids: [CORP]}
+  - {entity_id: ORG_KT, canonical: KT, description: 유무선 통신 사업자, domain_ids: [CORP]}
+  - {entity_id: ORG_KTNG, canonical: KT&G, description: 담배와 인삼 제품 제조 기업, domain_ids: [CORP]}
+  - {entity_id: ORG_NAVER, canonical: 네이버, description: 인터넷 포털과 IT 서비스 기업, domain_ids: [CORP]}
+  - {entity_id: ORG_KAKAO, canonical: 카카오, description: 모바일 플랫폼과 IT 서비스 기업, domain_ids: [CORP]}
+
+alias_families:
+  # 자동 생성 규칙: 본문 bindings 참조 (full name family + 약어 family)
+  - {family_id: F_MSIT_FULL, representative: 과학기술정보통신부, normalization_profile: korean_org_name}
+  - {family_id: F_MSIT_AB, representative: 과기정통부, normalization_profile: korean_org_name}
+  - {family_id: F_MSIP_FULL, representative: 미래창조과학부, normalization_profile: korean_org_name}
+  - {family_id: F_MSIP_AB, representative: 미래부, normalization_profile: korean_org_name}
+  - {family_id: F_KEPCO_FULL, representative: 한국전력공사, normalization_profile: korean_org_name}
+  - {family_id: F_KEPCO_MID, representative: 한국전력, normalization_profile: korean_org_name}
+  - {family_id: F_KEPCO_AB, representative: 한전, normalization_profile: korean_org_name}
+  - {family_id: F_KHNP_FULL, representative: 한국수력원자력, normalization_profile: korean_org_name}
+  - {family_id: F_KHNP_AB, representative: 한수원, normalization_profile: korean_org_name}
+  - {family_id: F_FSC_FULL, representative: 금융위원회, normalization_profile: korean_org_name}
+  - {family_id: F_FSC_AB, representative: 금융위, normalization_profile: korean_org_name}
+  - {family_id: F_FSS_FULL, representative: 금융감독원, normalization_profile: korean_org_name}
+  - {family_id: F_FSS_AB, representative: 금감원, normalization_profile: korean_org_name}
+  - {family_id: F_FTC_FULL, representative: 공정거래위원회, normalization_profile: korean_org_name}
+  - {family_id: F_FTC_AB, representative: 공정위, normalization_profile: korean_org_name}
+  - {family_id: F_MOEF_FULL, representative: 기획재정부, normalization_profile: korean_org_name}
+  - {family_id: F_MOEF_AB, representative: 기재부, normalization_profile: korean_org_name}
+  - {family_id: F_MOLIT_FULL, representative: 국토교통부, normalization_profile: korean_org_name}
+  - {family_id: F_MOLIT_AB, representative: 국토부, normalization_profile: korean_org_name}
+  - {family_id: F_MOHW_FULL, representative: 보건복지부, normalization_profile: korean_org_name}
+  - {family_id: F_MOHW_AB, representative: 복지부, normalization_profile: korean_org_name}
+  - {family_id: F_MOIS_FULL, representative: 행정안전부, normalization_profile: korean_org_name}
+  - {family_id: F_MOIS_AB, representative: 행안부, normalization_profile: korean_org_name}
+  - {family_id: F_MOTIE_FULL, representative: 산업통상자원부, normalization_profile: korean_org_name}
+  - {family_id: F_MOTIE_AB, representative: 산업부, normalization_profile: korean_org_name}
+  - {family_id: F_MOFA_FULL, representative: 외교부, normalization_profile: korean_org_name}
+  - {family_id: F_MOU_FULL, representative: 통일부, normalization_profile: korean_org_name}
+  - {family_id: F_MND_FULL, representative: 국방부, normalization_profile: korean_org_name}
+  - {family_id: F_MOE_FULL, representative: 교육부, normalization_profile: korean_org_name}
+  - {family_id: F_ME_FULL, representative: 환경부, normalization_profile: korean_org_name}
+  - {family_id: F_MOEL_FULL, representative: 고용노동부, normalization_profile: korean_org_name}
+  - {family_id: F_MOEL_AB, representative: 노동부, normalization_profile: korean_org_name}
+  - {family_id: F_MCST_FULL, representative: 문화체육관광부, normalization_profile: korean_org_name}
+  - {family_id: F_MCST_AB, representative: 문체부, normalization_profile: korean_org_name}
+  - {family_id: F_MOF_FULL, representative: 해양수산부, normalization_profile: korean_org_name}
+  - {family_id: F_MOF_AB, representative: 해수부, normalization_profile: korean_org_name}
+  - {family_id: F_MAFRA_FULL, representative: 농림축산식품부, normalization_profile: korean_org_name}
+  - {family_id: F_MAFRA_AB, representative: 농식품부, normalization_profile: korean_org_name}
+  - {family_id: F_MFDS_FULL, representative: 식품의약품안전처, normalization_profile: korean_org_name}
+  - {family_id: F_MFDS_AB, representative: 식약처, normalization_profile: korean_org_name}
+  - {family_id: F_MSS_FULL, representative: 중소벤처기업부, normalization_profile: korean_org_name}
+  - {family_id: F_MSS_AB, representative: 중기부, normalization_profile: korean_org_name}
+  - {family_id: F_NTS_FULL, representative: 국세청, normalization_profile: korean_org_name}
+  - {family_id: F_KCS_FULL, representative: 관세청, normalization_profile: korean_org_name}
+  - {family_id: F_KOSTAT_FULL, representative: 통계청, normalization_profile: korean_org_name}
+  - {family_id: F_KMA_FULL, representative: 기상청, normalization_profile: korean_org_name}
+  - {family_id: F_KNPA_FULL, representative: 경찰청, normalization_profile: korean_org_name}
+  - {family_id: F_SPO_FULL, representative: 대검찰청, normalization_profile: korean_org_name}
+  - {family_id: F_BAI_FULL, representative: 감사원, normalization_profile: korean_org_name}
+  - {family_id: F_BOK_FULL, representative: 한국은행, normalization_profile: korean_org_name}
+  - {family_id: F_BOK_AB, representative: 한은, normalization_profile: korean_org_name}
+  - {family_id: F_BH_FULL, representative: 청와대, normalization_profile: korean_org_name}
+  - {family_id: F_CC_FULL, representative: 헌법재판소, normalization_profile: korean_org_name}
+  - {family_id: F_CC_AB, representative: 헌재, normalization_profile: korean_org_name}
+  - {family_id: F_NIS_FULL, representative: 국가정보원, normalization_profile: korean_org_name}
+  - {family_id: F_NIS_AB, representative: 국정원, normalization_profile: korean_org_name}
+  - {family_id: F_NEC_FULL, representative: 중앙선거관리위원회, normalization_profile: korean_org_name}
+  - {family_id: F_NEC_AB, representative: 선관위, normalization_profile: korean_org_name}
+  - {family_id: F_KCC_FULL, representative: 방송통신위원회, normalization_profile: korean_org_name}
+  - {family_id: F_KCC_AB, representative: 방통위, normalization_profile: korean_org_name}
+  - {family_id: F_NSSC_FULL, representative: 원자력안전위원회, normalization_profile: korean_org_name}
+  - {family_id: F_NSSC_AB, representative: 원안위, normalization_profile: korean_org_name}
+  - {family_id: F_NPS_FULL, representative: 국민연금공단, normalization_profile: korean_org_name}
+  - {family_id: F_NPS_AB, representative: 국민연금, normalization_profile: korean_org_name}
+  - {family_id: F_SS_FULL, representative: 삼성전자, normalization_profile: korean_org_name}
+  - {family_id: F_LG_FULL, representative: LG전자, normalization_profile: mixed_alnum}
+  - {family_id: F_HMC_FULL, representative: 현대자동차, normalization_profile: korean_org_name}
+  - {family_id: F_HMC_AB, representative: 현대차, normalization_profile: korean_org_name}
+  - {family_id: F_SKT_FULL, representative: SK텔레콤, normalization_profile: mixed_alnum}
+  - {family_id: F_SKT_AB, representative: SKT, normalization_profile: latin_acronym}
+  - {family_id: F_KT_FULL, representative: KT, normalization_profile: latin_acronym}
+  - {family_id: F_KTNG_FULL, representative: KT&G, normalization_profile: mixed_alnum}
+  - {family_id: F_NAVER_FULL, representative: 네이버, normalization_profile: korean_org_name}
+  - {family_id: F_KAKAO_FULL, representative: 카카오, normalization_profile: korean_org_name}
+
+alias_bindings:
+  - {alias_id: A_MSIT_FULL, family_id: F_MSIT_FULL, entity_id: ORG_MSIT, surface: 과학기술정보통신부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MSIT_AB, family_id: F_MSIT_AB, entity_id: ORG_MSIT, surface: 과기정통부, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MSIP_FULL, family_id: F_MSIP_FULL, entity_id: ORG_MSIP, surface: 미래창조과학부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MSIP_AB, family_id: F_MSIP_AB, entity_id: ORG_MSIP, surface: 미래부, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KEPCO_FULL, family_id: F_KEPCO_FULL, entity_id: ORG_KEPCO, surface: 한국전력공사, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KEPCO_MID, family_id: F_KEPCO_MID, entity_id: ORG_KEPCO, surface: 한국전력, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KEPCO_AB, family_id: F_KEPCO_AB, entity_id: ORG_KEPCO, surface: 한전, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KHNP_FULL, family_id: F_KHNP_FULL, entity_id: ORG_KHNP, surface: 한국수력원자력, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KHNP_AB, family_id: F_KHNP_AB, entity_id: ORG_KHNP, surface: 한수원, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_FSC_FULL, family_id: F_FSC_FULL, entity_id: ORG_FSC, surface: 금융위원회, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_FSC_AB, family_id: F_FSC_AB, entity_id: ORG_FSC, surface: 금융위, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_FSS_FULL, family_id: F_FSS_FULL, entity_id: ORG_FSS, surface: 금융감독원, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_FSS_AB, family_id: F_FSS_AB, entity_id: ORG_FSS, surface: 금감원, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_FTC_FULL, family_id: F_FTC_FULL, entity_id: ORG_FTC, surface: 공정거래위원회, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_FTC_AB, family_id: F_FTC_AB, entity_id: ORG_FTC, surface: 공정위, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOEF_FULL, family_id: F_MOEF_FULL, entity_id: ORG_MOEF, surface: 기획재정부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOEF_AB, family_id: F_MOEF_AB, entity_id: ORG_MOEF, surface: 기재부, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOLIT_FULL, family_id: F_MOLIT_FULL, entity_id: ORG_MOLIT, surface: 국토교통부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOLIT_AB, family_id: F_MOLIT_AB, entity_id: ORG_MOLIT, surface: 국토부, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOHW_FULL, family_id: F_MOHW_FULL, entity_id: ORG_MOHW, surface: 보건복지부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOHW_AB, family_id: F_MOHW_AB, entity_id: ORG_MOHW, surface: 복지부, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOIS_FULL, family_id: F_MOIS_FULL, entity_id: ORG_MOIS, surface: 행정안전부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOIS_AB, family_id: F_MOIS_AB, entity_id: ORG_MOIS, surface: 행안부, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOTIE_FULL, family_id: F_MOTIE_FULL, entity_id: ORG_MOTIE, surface: 산업통상자원부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOTIE_AB, family_id: F_MOTIE_AB, entity_id: ORG_MOTIE, surface: 산업부, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOFA_FULL, family_id: F_MOFA_FULL, entity_id: ORG_MOFA, surface: 외교부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOU_FULL, family_id: F_MOU_FULL, entity_id: ORG_MOU, surface: 통일부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MND_FULL, family_id: F_MND_FULL, entity_id: ORG_MND, surface: 국방부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOE_FULL, family_id: F_MOE_FULL, entity_id: ORG_MOE, surface: 교육부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_ME_FULL, family_id: F_ME_FULL, entity_id: ORG_ME, surface: 환경부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOEL_FULL, family_id: F_MOEL_FULL, entity_id: ORG_MOEL, surface: 고용노동부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOEL_AB, family_id: F_MOEL_AB, entity_id: ORG_MOEL, surface: 노동부, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MCST_FULL, family_id: F_MCST_FULL, entity_id: ORG_MCST, surface: 문화체육관광부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MCST_AB, family_id: F_MCST_AB, entity_id: ORG_MCST, surface: 문체부, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOF_FULL, family_id: F_MOF_FULL, entity_id: ORG_MOF, surface: 해양수산부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOF_AB, family_id: F_MOF_AB, entity_id: ORG_MOF, surface: 해수부, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MAFRA_FULL, family_id: F_MAFRA_FULL, entity_id: ORG_MAFRA, surface: 농림축산식품부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MAFRA_AB, family_id: F_MAFRA_AB, entity_id: ORG_MAFRA, surface: 농식품부, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MFDS_FULL, family_id: F_MFDS_FULL, entity_id: ORG_MFDS, surface: 식품의약품안전처, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MFDS_AB, family_id: F_MFDS_AB, entity_id: ORG_MFDS, surface: 식약처, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MSS_FULL, family_id: F_MSS_FULL, entity_id: ORG_MSS, surface: 중소벤처기업부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MSS_AB, family_id: F_MSS_AB, entity_id: ORG_MSS, surface: 중기부, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NTS_FULL, family_id: F_NTS_FULL, entity_id: ORG_NTS, surface: 국세청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KCS_FULL, family_id: F_KCS_FULL, entity_id: ORG_KCS, surface: 관세청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KOSTAT_FULL, family_id: F_KOSTAT_FULL, entity_id: ORG_KOSTAT, surface: 통계청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KMA_FULL, family_id: F_KMA_FULL, entity_id: ORG_KMA, surface: 기상청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KNPA_FULL, family_id: F_KNPA_FULL, entity_id: ORG_KNPA, surface: 경찰청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SPO_FULL, family_id: F_SPO_FULL, entity_id: ORG_SPO, surface: 대검찰청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_BAI_FULL, family_id: F_BAI_FULL, entity_id: ORG_BAI, surface: 감사원, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_BOK_FULL, family_id: F_BOK_FULL, entity_id: ORG_BOK, surface: 한국은행, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_BOK_AB, family_id: F_BOK_AB, entity_id: ORG_BOK, surface: 한은, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_BH_FULL, family_id: F_BH_FULL, entity_id: ORG_BLUEHOUSE, surface: 청와대, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_CC_FULL, family_id: F_CC_FULL, entity_id: ORG_CCOURT, surface: 헌법재판소, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_CC_AB, family_id: F_CC_AB, entity_id: ORG_CCOURT, surface: 헌재, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NIS_FULL, family_id: F_NIS_FULL, entity_id: ORG_NIS, surface: 국가정보원, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NIS_AB, family_id: F_NIS_AB, entity_id: ORG_NIS, surface: 국정원, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NEC_FULL, family_id: F_NEC_FULL, entity_id: ORG_NEC, surface: 중앙선거관리위원회, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NEC_AB, family_id: F_NEC_AB, entity_id: ORG_NEC, surface: 선관위, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KCC_FULL, family_id: F_KCC_FULL, entity_id: ORG_KCC, surface: 방송통신위원회, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KCC_AB, family_id: F_KCC_AB, entity_id: ORG_KCC, surface: 방통위, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NSSC_FULL, family_id: F_NSSC_FULL, entity_id: ORG_NSSC, surface: 원자력안전위원회, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NSSC_AB, family_id: F_NSSC_AB, entity_id: ORG_NSSC, surface: 원안위, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NPS_FULL, family_id: F_NPS_FULL, entity_id: ORG_NPS, surface: 국민연금공단, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NPS_AB, family_id: F_NPS_AB, entity_id: ORG_NPS, surface: 국민연금, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SS_FULL, family_id: F_SS_FULL, entity_id: ORG_SAMSUNG_ELEC, surface: 삼성전자, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_LG_FULL, family_id: F_LG_FULL, entity_id: ORG_LG_ELEC, surface: LG전자, kind: name, boundary_policy: {left: latin_token_boundary}}
+  - {alias_id: A_HMC_FULL, family_id: F_HMC_FULL, entity_id: ORG_HYUNDAI_MOTOR, surface: 현대자동차, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_HMC_AB, family_id: F_HMC_AB, entity_id: ORG_HYUNDAI_MOTOR, surface: 현대차, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SKT_FULL, family_id: F_SKT_FULL, entity_id: ORG_SKT, surface: SK텔레콤, kind: name, boundary_policy: {left: latin_token_boundary}}
+  - {alias_id: A_SKT_AB, family_id: F_SKT_AB, entity_id: ORG_SKT, surface: SKT, kind: abbreviation, boundary_policy: {left: latin_token_boundary}}
+  - {alias_id: A_KT_FULL, family_id: F_KT_FULL, entity_id: ORG_KT, surface: KT, kind: name, boundary_policy: {left: latin_token_boundary, right: particle_or_token_boundary, allow_inside_latin_run: false}}
+  - {alias_id: A_KTNG_FULL, family_id: F_KTNG_FULL, entity_id: ORG_KTNG, surface: KT&G, kind: name, boundary_policy: {left: latin_token_boundary}}
+  - {alias_id: A_NAVER_FULL, family_id: F_NAVER_FULL, entity_id: ORG_NAVER, surface: 네이버, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KAKAO_FULL, family_id: F_KAKAO_FULL, entity_id: ORG_KAKAO, surface: 카카오, kind: name, boundary_policy: {left: hangul_token_boundary}}

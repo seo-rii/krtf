@@ -6,7 +6,7 @@
 
 ## 1. Conformance (Level A 결정적 보장, §14.8)
 
-- fixture 수: **544** (§14.7 변형 카탈로그 × 활성 glossary 전 binding, 단일 조사 전수 + 연쇄 depth-2 대표 조합 포함)
+- fixture 수: **568** (§14.7 변형 카탈로그 × 활성 glossary 전 binding, 단일 조사 전수 + 연쇄 depth-2 대표 조합 포함)
 - 실패 건수: **0** (목표 0, 실패 1건 = release blocker)
 
 ## 2. 품질 지표 (§43)
@@ -67,7 +67,7 @@
 ## 5. 성능 (참고치, Python 구현)
 
 - 평가 예제: 229건, compile 0.001s
-- resolve(commit) p50 0.67ms / p95 1.2ms
+- resolve(commit) p50 0.67ms / p95 1.23ms
 
 ### 규모 벤치마크 (synthetic glossary, §53 축소판)
 
