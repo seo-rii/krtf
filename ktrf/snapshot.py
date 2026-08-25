@@ -12,6 +12,7 @@ scope).
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 from dataclasses import dataclass, field
@@ -22,7 +23,8 @@ from .candidates import CandidateBudget
 from .doclocal import DocLocalDetector
 from .errors import KtrfApiError
 from .fuzzy import FuzzyIndex
-from .glossary import Glossary, GlossaryError, has_errors, validate_glossary
+from .glossary import (Glossary, GlossaryError, glossary_to_dict, has_errors,
+                       validate_glossary)
 from .matcher import ExactIndex
 from .morphology import DEFAULT_CHAIN_DEPTH, PARTICLES, PREFIXES, SUFFIXES, ParticleFST
 
@@ -71,9 +73,30 @@ class Snapshot:
 
 
 def _hash(obj) -> str:
+    """Full SHA-256 over a canonical JSON serialization.
+
+    Content-identity hashes are never truncated: a snapshot's semantics are
+    exactly what these digests cover, so any two artifacts that behave
+    differently must hash differently (§11.2, INV-015).
+    """
     return "sha256:" + hashlib.sha256(
         json.dumps(obj, sort_keys=True, ensure_ascii=False, default=str).encode()
-    ).hexdigest()[:16]
+    ).hexdigest()
+
+
+def compute_snapshot_id(manifest: dict) -> str:
+    """Deterministic snapshot identity over the *complete* manifest.
+
+    Excludes only ``snapshot_id`` itself and ``tenant_id`` (deployment
+    binding, not content). 128-bit prefix of SHA-256 — collision-safe for
+    any realistic artifact population, unlike the previous 32-bit id.
+    """
+    content = {k: v for k, v in manifest.items()
+               if k not in ("snapshot_id", "tenant_id")}
+    return "snap-" + hashlib.sha256(
+        json.dumps(content, sort_keys=True, ensure_ascii=False,
+                   default=str).encode()
+    ).hexdigest()[:32]
 
 
 def _morphology_hash() -> str:
@@ -119,13 +142,12 @@ def compile_snapshot(
         diagnostics=diagnostics,
     )
 
-    glossary_hash = _hash({
-        "id": glossary.glossary_id,
-        "version": glossary.version,
-        "entities": [e.entity_id + "|" + e.canonical for e in glossary.entities],
-        "bindings": [b.alias_id + "|" + b.surface + "|" + b.entity_id
-                     for b in glossary.alias_bindings],
-    })
+    # Full-content identity (§11.2): the digest covers the complete glossary
+    # serialization — descriptions, domains, normalization profiles, binding
+    # kinds, boundary/fuzzy policies, relations — not just IDs and surfaces.
+    # Any semantically meaningful edit therefore changes the snapshot_id.
+    glossary_hash = _hash(glossary_to_dict(glossary))
+    policy_hash = _hash(dataclasses.asdict(policy))
     manifest = {
         "schema_version": glossary.schema_version,
         "glossary_id": glossary.glossary_id,
@@ -134,6 +156,7 @@ def compile_snapshot(
         "normalizer_hash": _hash(NORMALIZER_VERSION),
         "morphology_rules_hash": _morphology_hash(),
         "entities_hash": glossary_hash,
+        "policy_hash": policy_hash,
         "calibrator_hash": None,
         # V2 dense retrieval artifact identity (§11.2); null = Level A-only
         "entity_encoder_hash": None,
@@ -155,9 +178,6 @@ def compile_snapshot(
         snapshot.reranker = reranker
         manifest["reranker_id"] = reranker.reranker_id
     snapshot.manifest = manifest
-    snapshot.snapshot_id = "snap-" + hashlib.sha256(
-        json.dumps(manifest, sort_keys=True, default=str).encode()
-    ).hexdigest()[:8]
 
     if run_conformance:
         from .conformance import generate_fixtures, run_fixtures
@@ -175,6 +195,9 @@ def compile_snapshot(
                 f"conformance suite failed: {report.failed}/{report.total} "
                 f"fixtures failed; first: {report.failures[:3]}"
             )
+    # identity is assigned only after every manifest field — including the
+    # conformance record — is final (§11.2: the id names the whole artifact)
+    snapshot.snapshot_id = compute_snapshot_id(manifest)
     return snapshot
 
 
@@ -185,11 +208,16 @@ class SnapshotRegistry:
         self._active: dict[str, Snapshot] = {}
         self._lock = Lock()
 
-    def activate(self, snapshot: Snapshot) -> None:
+    def activate(self, snapshot: Snapshot,
+                 allow_unverified: bool = False) -> None:
         """Atomic swap; only pre-validated snapshots reach this point.
 
-        Compatibility mismatch refuses activation (INV-015); the previous
-        snapshot always survives failures (INV-014).
+        Compatibility mismatch refuses activation (INV-015). A snapshot with
+        no conformance record — compiled with ``run_conformance=False`` —
+        is refused too (§11.4 step 3: conformance is an activation gate,
+        not an optional extra); ``allow_unverified=True`` is an explicit,
+        test-only escape hatch. The previous snapshot always survives
+        failures (INV-014).
         """
         if snapshot.manifest.get("compatibility_id") != COMPATIBILITY_ID:
             raise KtrfApiError(
@@ -197,6 +225,13 @@ class SnapshotRegistry:
                 f"compatibility mismatch: {snapshot.manifest.get('compatibility_id')}",
             )
         conf = snapshot.manifest.get("conformance")
+        if conf is None and not allow_unverified:
+            raise KtrfApiError(
+                "SNAPSHOT_UNAVAILABLE",
+                "snapshot has no conformance record; compile with "
+                "run_conformance=True (or pass allow_unverified=True in "
+                "tests) — §11.4 step 3",
+            )
         if conf is not None and conf.get("failed"):
             raise KtrfApiError(
                 "SNAPSHOT_UNAVAILABLE", "conformance failures block activation")

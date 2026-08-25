@@ -55,6 +55,38 @@ class MentionNode:
     pass2_applied: bool = False
 
 
+_OPTION_SCHEMA = {
+    # name -> (type, validator or None)
+    "return_all_mentions": (bool, None),
+    "return_features": (bool, None),
+    "return_trace": (bool, None),
+    "detect_unregistered_mentions": (bool, None),
+    "max_prediction_set": (int, lambda v: 1 <= v <= 500),
+}
+
+
+def _validate_options(options: dict) -> None:
+    """§27.2: every runtime option is schema-checked; misconfiguration is a
+    typed API error, never a silent quality change or a raw TypeError."""
+    for key, value in options.items():
+        spec = _OPTION_SCHEMA.get(key)
+        if spec is None:
+            raise KtrfApiError("INVALID_REQUEST",
+                               f"unknown option {key!r}",
+                               details={"known": sorted(_OPTION_SCHEMA)})
+        typ, check = spec
+        # bool is an int subclass — reject True where an int is expected
+        if typ is int and isinstance(value, bool) or \
+                not isinstance(value, typ):
+            raise KtrfApiError(
+                "INVALID_REQUEST",
+                f"option {key!r} expects {typ.__name__}, "
+                f"got {type(value).__name__}")
+        if check is not None and not check(value):
+            raise KtrfApiError("INVALID_REQUEST",
+                               f"option {key!r} out of range: {value!r}")
+
+
 def resolve(
     snapshot: Snapshot,
     text: str | bytes,
@@ -69,6 +101,7 @@ def resolve(
     options = options or {}
     context = context or {}
     policy = snapshot.policy
+    _validate_options(options)
 
     # ---- input validation (§13.6, §27.2) ----
     if isinstance(text, bytes):
@@ -631,6 +664,10 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
                    >= snapshot.policy.prediction_set_min_p]
     if top is not None and top not in members:
         members = [top] + members
+    # truncation drops tail members from a conformal set — the coverage
+    # guarantee no longer holds for a cut set, and we must say so instead
+    # of exposing set_confidence as if it were still valid (§25.2)
+    set_truncated = len(members) > max_set
     members = members[:max_set]
 
     kb_member = None
@@ -695,6 +732,10 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
                            else policy.set_confidence),
         "members": set_members,
     }
+    if set_truncated:
+        m["prediction_set"]["truncated"] = True
+        if calibrator is not None:
+            m["prediction_set"]["coverage_valid"] = False
     if calibration_fallback:
         # REQ-CAL-002: group sample below n_min → pooled-quantile fallback
         m["prediction_set"]["calibration_fallback"] = True

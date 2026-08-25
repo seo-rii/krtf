@@ -1,71 +1,11 @@
 # KTRF — Korean Terminology Resolver Framework
 
-Reference implementation (Python) of [PLAN.md](PLAN.md) (spec v0.3) through
-**milestone M4**: the complete V1 symbolic core (Level A closed-world
-resolution + fuzzy/keyboard/doc-local channels), the M3 operational layer
-(async document jobs, correction workflow, memory tiers, metrics), and the
-M4/V2 neural configuration — bi-encoder dense retrieval, conditional
-cross-encoder reranking, learned fusion, and group-conditional conformal
-calibration. Model selection follows [MODEL_RECOMMEND.md](MODEL_RECOMMEND.md):
-multilingual-e5-small (ONNX) as the Role-2 lightweight bi-encoder reference
-with a pure-Python lexical fallback; the Role-1/3 cross-encoder ships as a
-lexical baseline plus an ONNX loader for a fine-tuned KLUE-RoBERTa or
-bge-reranker export (in-house Stage-B training is tenant-data-dependent).
-
-## What is implemented (V1 scope)
-
-| Area | Spec | Module |
-|---|---|---|
-| Offset contract (byte/codepoint/UTF-16) | §13 | `ktrf/offsets.py` |
-| Hangul jamo decompose/compose, dubeolsik keyboard | §17.2, §17.4 | `ktrf/hangul.py` |
-| Canonical normalization stream + MappedUnit provenance | §14 | `ktrf/normalization.py` |
-| Glossary schema, strict validation, content lint | §10, §47.7 | `ktrf/glossary.py` |
-| Particle FST (조사 catalog + chaining), suffix/prefix catalogs | §16 | `ktrf/morphology.py` |
-| Exact alias matcher + boundary policies | §15 | `ktrf/matcher.py` |
-| Prefix/core/residual/particle tail parser | §16 | `ktrf/tailparser.py` |
-| Jamo/keyboard fuzzy recovery | §17 | `ktrf/fuzzy.py` |
-| Document-local alias | §18 | `ktrf/doclocal.py` |
-| Abbreviation alignment (Pass 2) | §21.7 | `ktrf/abbrev.py` |
-| Candidate union + budgets (exact pool exempt) | §21, §31 | `ktrf/candidates.py` |
-| Mention graph, primary selection, modes, resolve pipeline | §20, §26, §27 | `ktrf/resolver.py` |
-| Immutable snapshot + atomic activation | §11 | `ktrf/snapshot.py` |
-| Conformance fixture generation + suite | §14.8 | `ktrf/conformance.py` |
-| Error schema | §27.6 | `ktrf/errors.py` |
-| REQ traceability matrix + CI check | §1.2, 부록 D | `docs/traceability.yaml`, `tests/test_traceability.py` |
-| Snapshot save/load (artifact bundle + hash verification) | §11, §47.3 | `ktrf/artifacts.py` |
-| Correction workflow (approval, tenant isolation, caps) | §30 | `ktrf/corrections.py` |
-| Tenant calibrator: Platt + group-conditional conformal | §25, §48.3 | `ktrf/calibration.py` |
-| Async document resolve jobs (chunking, snapshot pin) | §28 | `ktrf/jobs.py` |
-| Snapshot memory tiers (LRU + refcount protection) | §32 | `ktrf/tiers.py` |
-| Runtime metrics (counters, latency reservoirs) | §46.1 | `ktrf/metrics.py` |
-| Bi-encoder backends (hash baseline, e5 ONNX) | §22.3, §33 | `ktrf/encoders.py` |
-| Entity vectors + flat-IP dense index (Pass 2) | §21.6, §22.3 | `ktrf/dense.py` |
-| Conditional cross-encoder rerank (lexical + ONNX) | §22.3–22.4 | `ktrf/rerank.py` |
-| Learned fusion over the feature vector | §23 | `ktrf/fusion.py` |
-| Evaluation harness (deterministic datagen + metrics) | §37, §43–44 | `eval/` |
-
-Status, milestone tracking, and the document map live in
-[docs/ROADMAP.md](docs/ROADMAP.md); generated evaluation reports live under
-[reports/](reports/).
-
-## Deliberate deviations from the production spec
-
-- **Language:** Python instead of Rust runtime core (§34). This is a reference
-  implementation; the module boundaries mirror the recommended monorepo layout.
-- **Artifacts:** snapshots are immutable in-memory objects with a hashed
-  manifest, not mmap `.bin` bundles (§11.1/REQ-MEM-001 deferred to Rust core).
-- **No HTTP layer:** every API (sync resolve, async jobs, corrections,
-  glossary lifecycle, finetuning) is exposed as library calls carrying the
-  spec's request/response/error schemas.
-- **Calibration:** zero-training tenants start on the heuristic "global
-  conservative calibrator" (§48.1); `finetune()` upgrades a tenant to Platt
-  marginals + group-conditional split conformal sets (§25.2) and optionally a
-  learned fusion model, all from ACCEPTED corrections.
-- **Cross-encoder training:** the Stage-B fine-tune (§35.2) is gated on
-  labeled-data volume (docs/GPU_PLAN.md G2); until then the reranker is the
-  lexical baseline, swappable for any ONNX pair-scorer.
-
-## Usage
+KTRF detects mentions of organization and domain terminology in Korean text
+and links them to glossary entities — deterministically where the surface
+form is known, statistically where it is not, and conservatively everywhere:
+candidates are generated broadly, but a resolver **commit** happens only when
+the evidence clears explicit thresholds. Anything less is returned as a
+calibrated prediction set, never a guess.
 
 ```python
 from ktrf import load_glossary, compile_snapshot, resolve
@@ -77,111 +17,159 @@ for m in resp["mentions"]:
     print(m["surface"], m["link_decision"])
 ```
 
-### Save / load snapshots (§11 artifact bundle)
+## Why KTRF
+
+General-purpose NER and embedding retrieval both struggle with Korean
+organizational terminology: agglutinative particle chains (`금감원은`,
+`한전이`), productive abbreviations (`과기정통부` ← 과학기술정보통신부),
+keyboard-layout typos (`gkswjs` ← 한전), homograph collisions (공사 the
+corporation vs 공사 construction), and nested names (경기도교육청 ⊃ 경기도).
+KTRF models each of these explicitly:
+
+- **Deterministic core** — normalization with full offset provenance
+  (byte/codepoint/UTF-16), Aho-Corasick exact matching over normalized
+  channels, boundary policies, a particle FST with batchim constraints and
+  depth-3 chaining, suffix/prefix catalogs, and a conformance suite that must
+  pass 100% for a snapshot to activate.
+- **Recovery channels** — jamo-level weighted edit distance, dubeolsik
+  keyboard-mapping recovery, document-local alias detection, and
+  abbreviation alignment for unseen short forms.
+- **Optional neural layer** — bi-encoder dense retrieval (ONNX
+  `multilingual-e5-small` reference backend, pure-Python hash-encoder
+  fallback), conditional cross-encoder reranking, learned score fusion, and
+  group-conditional split conformal prediction sets.
+- **Operations** — immutable content-addressed snapshots with atomic
+  activation and tamper-refusing artifact bundles, async document jobs,
+  a human-in-the-loop correction workflow that feeds calibration, tenant
+  isolation, memory tiering, and runtime metrics.
+
+The full technical specification lives in [PLAN.md](PLAN.md); design
+decisions for the neural backends are recorded in
+[MODEL_RECOMMEND.md](MODEL_RECOMMEND.md).
+
+## Installation
+
+Requires Python 3.11+. The core has a single dependency (PyYAML):
+
+```bash
+pip install -e .                # symbolic core
+pip install -e .[neural]        # + ONNX bi-encoder/cross-encoder backends
+pip install -e .[gpu]           # + CUDA inference (onnxruntime-gpu)
+pip install -e .[training]      # + cross-encoder fine-tuning (torch)
+```
+
+To enable the dense retrieval reference backend, download
+`Xenova/multilingual-e5-small` (ONNX + tokenizer) into
+`models/multilingual-e5-small/` and pass an encoder at compile time:
+
+```python
+from ktrf import compile_snapshot, load_encoder
+
+snapshot = compile_snapshot(
+    glossary, encoder=load_encoder("onnx:models/multilingual-e5-small"))
+```
+
+`load_encoder(spec, device="cuda")` selects the CUDA execution provider when
+`onnxruntime-gpu` is installed and falls back to CPU otherwise; the
+deterministic path always runs on CPU (see
+[docs/GPU_PLAN.md](docs/GPU_PLAN.md) for measured GPU throughput).
+
+## Snapshots as artifacts
+
+A compiled snapshot is immutable and content-addressed: its `snapshot_id` is
+a 128-bit digest over the complete manifest — full glossary serialization,
+runtime policy, morphology catalogs, normalizer version, encoder/reranker
+digests, and the conformance record. Any semantically meaningful change
+produces a different identity.
 
 ```python
 from ktrf import save_snapshot, load_snapshot
 
-save_snapshot(snapshot, "artifacts/demo-org")   # manifest + glossary + policy (+ calibrator)
-snapshot = load_snapshot("artifacts/demo-org")  # deterministic recompile + hash verification
+save_snapshot(snapshot, "artifacts/demo-org")
+snapshot = load_snapshot("artifacts/demo-org")
 ```
 
-Loading recompiles indexes from `glossary.yaml` and verifies the recomputed
-content hashes against the stored manifest — tampered or incompatible bundles
-refuse to load (§47.3, INV-015).
+Loading recompiles the indexes deterministically from the bundled glossary
+and re-verifies every content hash plus the manifest/id equation — a
+tampered `glossary.yaml`, `policy.json`, or `manifest.json` refuses to load.
+Activation through `SnapshotRegistry` additionally requires a passing
+conformance record.
 
-### Finetuning (§48.3 adaptation loop)
+## Adaptation without retraining
 
-V1 finetuning fits a **tenant calibrator** (Platt-scaled marginals +
-group-conditional split conformal prediction sets, §25.2) from approved
-corrections. The glossary and indexes are never modified; only the calibrator
-artifact changes, and the result is a *new* snapshot to activate explicitly.
+Approved corrections fit a per-tenant calibrator (Platt-scaled marginals +
+group-conditional split conformal sets, with fit and quantile data kept
+disjoint) and optionally a learned fusion model:
 
 ```python
 from ktrf import CorrectionStore, finetune
 
 store = CorrectionStore()
-c = store.submit(
-    tenant_id="default",
-    request_ref={"snapshot_id": resp["snapshot"]["snapshot_id"],
-                 "request_id": "req-1", "mention_id": "m2"},
-    correction_type="WRONG_ENTITY",
-    corrected={"entity_id": "WORKFLOW_APPROVAL_PROCESS"},
-    verifier={"kind": "REVIEWER", "principal_ref": "rev-1"},
-    mention_state=resp["mentions"][1],   # spans/scores — no raw text (§30.2)
-)
+c = store.submit(tenant_id="default", request_ref={...},
+                 correction_type="WRONG_ENTITY",
+                 corrected={"entity_id": "WORKFLOW_APPROVAL_PROCESS"},
+                 verifier={"kind": "REVIEWER", "principal_ref": "rev-1"},
+                 mention_state=resp["mentions"][1])
 store.review("default", c.correction_id, "ACCEPTED", reviewer="admin")
 
-tuned = finetune(snapshot, store, alpha=0.05,
-                 golden_check=lambda s: my_golden_regression(s))  # §48.3 gate
+tuned = finetune(snapshot, store, alpha=0.05, golden_check=my_regression)
 ```
 
-Only `ACCEPTED` corrections feed fitting (INV-018), verifier kinds are
-weighted and per-principal capped against poisoning (REQ-COR-003), and a
-failing golden regression refuses the finetune. The tuned snapshot round-trips
-through `save_snapshot`/`load_snapshot` with its own `calibrator_hash`.
+Only `ACCEPTED` corrections feed fitting, verifier kinds are weighted and
+per-principal capped against poisoning, and a failing golden-set regression
+refuses the finetune. The result is a *new* snapshot; the input is never
+mutated.
 
-## Tests & evaluation
+## Evaluation
+
+KTRF is evaluated in layers, each targeting a failure mode the previous
+layer cannot see. All reports are regenerated from code — the files under
+[reports/](reports/) are the source of truth for current numbers:
+
+| Layer | What it measures | Report |
+|---|---|---|
+| `python -m eval.run_eval` | deterministic conformance, golden set, release gate (CI-lower-bound gated) | [EVALUATION.md](reports/EVALUATION.md) |
+| `python -m eval.run_benchmarks` | adversarial anti-overfitting matrix: collisions, boundary traps, out-of-catalog tails, negative corpora, unicode fuzzing — hard gates must be 0 at every scale | [BENCHMARKS.md](reports/BENCHMARKS.md) |
+| `python -m eval.run_wild` | real multi-domain Korean text (news, petitions, court decisions, encyclopedia) with a real-organization glossary: silver recall, real particle-distribution coverage, fake-glossary false positives | [WILD_CORPUS.md](reports/WILD_CORPUS.md) |
+| `python -m eval.run_neural_eval` | unseen-abbreviation generalization: held-out short forms queried through real sentences, symbolic vs dense configs | [NEURAL_EVAL.md](reports/NEURAL_EVAL.md) |
+| `python -m eval.run_llm_rag` | baseline comparison against open-weight LLMs with retrieval-augmented prompting (recall, grounding, hallucination, speed) | [LLM_RAG_COMPARE.md](reports/LLM_RAG_COMPARE.md) |
+
+Highlights from the current reports: zero conformance failures and zero
+adversarial hard-gate violations at every tested scale; on real text, silver
+recall and commit precision hold at 1.0 with zero fake-glossary commits
+across symbolic and dense configurations; on the unseen-abbreviation track
+the dense channel recovers ~92% of held-out short forms where sentence-level
+RAG retrieval caps general LLMs near 60% — see the reports for exact
+numbers, sample sizes, and confidence intervals, and
+[docs/ROADMAP.md](docs/ROADMAP.md) for known gaps (the §5.2 95% unseen-
+surface target is currently **not met** at scale; closing it is the top
+roadmap item).
+
+Real-text corpora are fetched by `eval/wild_data.py` from public HuggingFace
+datasets (KLUE, 국민청원 petitions, 판례 court decisions, KorQuAD,
+Wikipedia, KoBEST) — the repository ships the downloader, not the text; each
+source carries its own license.
+
+## Testing & requirements traceability
 
 ```bash
-python -m pytest                 # unit/property/conformance/traceability tests
-python -m eval.run_eval          # eval corpus + golden set + release gate -> EVALUATION.md
-python -m eval.run_benchmarks    # adversarial anti-overfitting suite -> BENCHMARKS.md
-python -m eval.run_wild          # real Korean text (HuggingFace KLUE) -> WILD_CORPUS.md
-python -m eval.run_neural_eval   # Level B gate: UE splits, hash vs e5 -> NEURAL_EVAL.md
-python -m eval.benchmark         # latency-only scale benchmark
+python -m pytest
 ```
 
-[NEURAL_EVAL.md](reports/NEURAL_EVAL.md) is the M4 Level B gate: 21 real-org
-abbreviations held out of the glossary, queried through real KLUE sentences
-(§42 UE-derived-abbreviation). Gold-in-prediction-set (E2E): symbolic-only
-**81.0%** → +hash dense **96.8%** → +e5 dense **98.4%** — both dense configs
-clear the spec's §5.2 UE target (95%). To enable the e5 backend:
-`pip install numpy onnxruntime tokenizers huggingface_hub`, download
-`Xenova/multilingual-e5-small` (ONNX + tokenizer) into
-`models/multilingual-e5-small/`, then
-`compile_snapshot(g, encoder=load_encoder("onnx:models/multilingual-e5-small"))`.
-GPU execution (inference throughput, Stage-B/C training, multi-tenant adapter
-residency) is planned in [docs/GPU_PLAN.md](docs/GPU_PLAN.md); Phase G1 is
-already wired — `load_encoder(spec, device="cuda")` selects the CUDA provider
-when `onnxruntime-gpu` is installed and falls back to CPU otherwise, with the
-deterministic mode pinned to CPU per §34.
+The test suite covers unit/property tests, conformance, adversarial
+regressions, artifact tamper refusal, and release-gate edge cases. Every
+requirement ID in the specification is mapped to tests (or an explicit
+deferral with reasons) in [docs/traceability.yaml](docs/traceability.yaml),
+enforced by `tests/test_traceability.py`.
 
-Current results ([EVALUATION.md](reports/EVALUATION.md)): conformance **0 failures /
-544 fixtures** (and 0/74,450 on a 500-entity synthetic glossary), Level A
-core-span recall (E2E) 213/213, golden-set recall 19/19 with 0 violations,
-RESOLVED precision (|commit) 1.0, release gate **PASS**. fast mode resolves in
-&lt;1ms; commit mode p95 ≈ 54ms at 2,000 entities (Python reference — the
-production Rust core in §34 is the optimization target).
+## Scope and limitations
 
-Because the catalog-derived eval cannot detect overfitting (it shares the
-§14.7/§16 catalogs with the implementation), [BENCHMARKS.md](reports/BENCHMARKS.md)
-runs independently generated adversarial suites at 200/1000/3000 entities ×
-3 seeds: synthetic glossaries with natural abbreviation collisions and
-near-miss siblings, boundary-trap corpora (대한전선-style embeddings), stacked
-transform compositions, out-of-catalog tails, term-free negative corpora,
-1-jamo distractor typos, unicode fuzzing and pathological inputs, plus
-fit/holdout calibration coverage. Hard gates (boundary violations, sense
-loss, arbitrary commits, crashes, offset failures) must be 0 at every scale;
-a fast subset runs in CI (`tests/test_adversarial_regressions.py`). This
-suite caught two real bugs on first run — unknown-tail overcommit and
-non-conservative calibration fallback — both now fixed and pinned by
-regression tests.
-
-[WILD_CORPUS.md](reports/WILD_CORPUS.md) evaluates against **real Korean text**:
-~5,200 news sentences from HuggingFace KLUE (CC BY-SA 4.0, fetched by
-`eval/wild_data.py` — the repo ships the downloader, not the data) with a
-46-entity real-organization glossary (`examples/realorg_glossary.yaml`).
-Suites: silver-labeled recall on unambiguous org surfaces (168/168
-gold-in-set, RESOLVED precision 1.0), real-distribution particle/suffix
-coverage — the §5.2 metric, measurable only on real text — and a
-fake-glossary suite where any commit on real text is a false positive by
-construction (0 commits). The tail-coverage signal drove a §16 catalog
-extension exactly as §3.5 prescribes (role suffixes 장/장관/원장, corporate
-suffixes 그룹/증권, contracted particles 엔/에선), lifting real-tail coverage
-from 29% to 78% with the remainder being genuine non-organizational tails.
-
-The traceability matrix (`docs/traceability.yaml`, enforced by
-`tests/test_traceability.py`) maps all 61 spec REQ IDs: 54 implemented+tested,
-7 explicitly deferred with milestone reasons (async API → M3, neural
-stages/termness → M4, mmap artifacts and memory tiers → Rust core).
+This is a **Python reference implementation**. It favors clarity and
+verifiability over throughput; the production design (Rust core, mmap
+artifact bundles, HTTP service layer) is specified in PLAN.md §34 but not
+implemented here. Known limitations are tracked honestly in
+[docs/ROADMAP.md](docs/ROADMAP.md) — including current statistical limits of
+the evaluation (silver labels are rule-derived approximations, not human
+gold; sample sizes gate how tight the CI floors can be) and deferred
+operational hardening (latency SLO gates, deep snapshot immutability,
+concurrency load tests).

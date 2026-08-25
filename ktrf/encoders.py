@@ -122,10 +122,18 @@ class OnnxE5Encoder:
         self._tokenizer = Tokenizer.from_file(str(d / "tokenizer.json"))
         self._tokenizer.enable_truncation(max_length=max_length)
         self.max_length = max_length
+        # encoder identity = digest of the FULL model file plus tokenizer
+        # and config: swapping any of them must change the id, or stored
+        # entity vectors could be silently reused across models (§11.3)
+        h = hashlib.sha256()
         with open(onnx_file, "rb") as f:
-            head = f.read(1 << 20)
-        self.encoder_id = (f"e5-onnx:{d.name}:"
-                           + hashlib.sha256(head).hexdigest()[:12])
+            for chunk in iter(lambda: f.read(1 << 22), b""):
+                h.update(chunk)
+        h.update((d / "tokenizer.json").read_bytes())
+        cfg = d / "config.json"
+        if cfg.exists():
+            h.update(cfg.read_bytes())
+        self.encoder_id = f"e5-onnx:{d.name}:{h.hexdigest()[:32]}"
         self.dim = int(self._embed(["query: probe"]).shape[1])
 
     def _embed(self, texts: list[str]):

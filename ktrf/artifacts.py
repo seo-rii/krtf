@@ -21,7 +21,6 @@ explicit registry step, §11.4).
 from __future__ import annotations
 
 import dataclasses
-import hashlib
 import json
 from pathlib import Path
 
@@ -37,7 +36,8 @@ from .candidates import CandidateBudget
 from .corrections import CorrectionStore
 from .errors import KtrfApiError
 from .glossary import glossary_to_dict, load_glossary
-from .snapshot import RuntimePolicy, Snapshot, compile_snapshot, _hash
+from .snapshot import (RuntimePolicy, Snapshot, compile_snapshot,
+                       compute_snapshot_id, _hash)
 
 
 def _policy_to_dict(p: RuntimePolicy) -> dict:
@@ -83,7 +83,10 @@ def save_snapshot(snapshot: Snapshot, out_dir: str | Path) -> Path:
         manifest["fusion_hash"] = _hash(fus)
     if snapshot.reranker is not None:
         manifest["reranker_id"] = snapshot.reranker.reranker_id
-    manifest["snapshot_id"] = snapshot.snapshot_id
+    # the persisted id always matches the persisted manifest content — if
+    # artifacts were attached after compile, the bundle gets the id of what
+    # it actually contains (load re-verifies this equation)
+    manifest["snapshot_id"] = compute_snapshot_id(manifest)
     manifest["tenant_id"] = snapshot.tenant_id
     (out / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -115,15 +118,27 @@ def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False,
         policy=policy,
         run_conformance=run_conformance,
     )
-    # content-hash verification against the stored manifest (§47.3)
+    # content-hash verification against the stored manifest (§47.3): the
+    # digests are recomputed from the loaded glossary/policy, so tampering
+    # with glossary.yaml (any field, descriptions included) or policy.json
+    # produces a mismatch and the bundle is refused
     for key in ("compatibility_id", "normalizer_hash",
-                "morphology_rules_hash", "entities_hash"):
+                "morphology_rules_hash", "entities_hash", "policy_hash"):
         if snap.manifest.get(key) != manifest.get(key):
             raise KtrfApiError(
                 "SNAPSHOT_UNAVAILABLE",
                 f"bundle verification failed: {key} mismatch "
                 f"(stored {manifest.get(key)}, recomputed {snap.manifest.get(key)})",
             )
+    # the stored id must equal the id recomputed from the stored manifest —
+    # a manifest whose snapshot_id was edited (or whose fields no longer
+    # match its id) is refused rather than trusted (§47.3)
+    if manifest.get("snapshot_id") != compute_snapshot_id(manifest):
+        raise KtrfApiError(
+            "SNAPSHOT_UNAVAILABLE",
+            "bundle verification failed: snapshot_id does not match "
+            "manifest content",
+        )
     cal_path = d / "calibrator.json"
     if cal_path.exists():
         cal_dict = json.loads(cal_path.read_text(encoding="utf-8"))
@@ -253,9 +268,7 @@ def finetune(
         calibrator=calibrator,
         fusion=fusion,
         manifest=manifest,
-        snapshot_id="snap-" + hashlib.sha256(
-            json.dumps(manifest, sort_keys=True, default=str).encode()
-        ).hexdigest()[:8],
+        snapshot_id=compute_snapshot_id(manifest),
     )
     if golden_check is not None and not golden_check(candidate):
         raise KtrfApiError(

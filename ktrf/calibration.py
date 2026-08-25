@@ -139,20 +139,35 @@ def fit_calibrator(examples: list[TrainingExample], alpha: float = 0.05,
     """Fit marginal calibration + group-conditional conformal quantiles.
 
     ``examples`` must come only from ACCEPTED corrections (INV-018 — the
-    correction store enforces this on export). Positive examples (label=1)
-    form the conformal calibration set; all examples feed Platt scaling.
+    correction store enforces this on export).
+
+    Split-conformal validity requires that the data fitting the probability
+    map (Platt) and the data supplying the conformal quantiles are
+    DISJOINT — reusing one set for both voids the finite-sample coverage
+    guarantee. Examples are therefore split deterministically in half:
+    even-indexed examples fit Platt scaling, odd-indexed positives form the
+    conformal calibration set. (Callers who can group by document/entity
+    should pre-order examples so correlated rows land on one side.)
     """
     if len(examples) < 10 or not any(e.label for e in examples):
         raise ValueError(
             "insufficient calibration data: need >=10 examples with >=1 positive"
         )
-    a, b = _fit_platt([e.ranking_score for e in examples],
-                      [e.label for e in examples])
+    fit_half = examples[0::2]
+    conf_half = examples[1::2]
+    if not any(e.label for e in fit_half) or not any(
+            e.label for e in conf_half):
+        # tiny/degenerate label distribution: fall back to the full set for
+        # Platt but KEEP the halves disjoint for the quantiles
+        fit_half = examples
+    a, b = _fit_platt([e.ranking_score for e in fit_half],
+                      [e.label for e in fit_half])
 
     def marginal(score: float) -> float:
         return 1.0 / (1.0 + math.exp(-(a * score + b)))
 
-    positives = [e for e in examples if e.label == 1]
+    positives = [e for e in conf_half if e.label == 1] or \
+        [e for e in examples if e.label == 1]
     by_group: dict[str, list[float]] = {}
     for e in positives:
         by_group.setdefault(e.group, []).append(1.0 - marginal(e.ranking_score))

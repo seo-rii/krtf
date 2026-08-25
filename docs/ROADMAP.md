@@ -1,6 +1,7 @@
 # KTRF Roadmap & Status
 
-**기준일:** 2026-08-24 · **스펙:** PLAN.md v0.3 · 본 문서는 계획/현황 문서이며 규범이 아니다.
+**기준일:** 2026-08-25 · **스펙:** PLAN.md v0.3 · 본 문서는 계획/현황 문서이며 규범이 아니다.
+수치의 단일 출처는 `reports/`의 생성 리포트다 — 본 문서와 리포트가 어긋나면 리포트가 맞다.
 
 ## 문서 지도
 
@@ -53,7 +54,39 @@
   fake-FP 0 / 18ms를 qwen3:8b·gemma4:12b·26b·qwen3.5:27b가 recall로는 근접
   (0.98–1.0)하나 grounding 92–98% (환각 존재), fake-FP까지 0인 모델도 latency
   116×–570× 열세
-- 테스트: 182 (traceability: 56/61 REQ 구현+매핑, 5 deferred 사유 명시)
+- 테스트: 198 (traceability: 56/61 REQ 구현+매핑, 5 deferred 사유 명시)
+
+## 무결성·평가 하드닝 (외부 코드 리뷰 반영)
+
+외부 리뷰가 검증한 결함과 반영 상태. 완료 항목은 `tests/test_integrity_and_gate.py`가 고정한다.
+
+**반영 완료 (2026-08-25):**
+
+- snapshot identity가 **전체 내용**을 커버: glossary 전체 직렬화(설명·프로필·
+  경계 정책 포함) + runtime policy + conformance 결과의 SHA-256, 128-bit id,
+  conformance 확정 **후** 계산
+- artifact loader가 저장 hash 전체 + `snapshot_id`↔manifest 등식을 재검증 —
+  `glossary.yaml`/`policy.json`/`manifest.json` 변조는 로드 거부
+- encoder/reranker id를 전체 파일(+tokenizer/config) digest로 계산
+- conformance 기록 없는 snapshot의 registry activation 차단
+- release gate false-pass 제거: golden 위반 1건 = fail, commit 0건 = precision
+  N/A + fail(최소 commit 수 강제), Wilson CI 하한 게이트, 리포트 행별 판정을
+  실제 조건식으로 계산
+- calibration의 Platt 학습/quantile 산출 데이터 분리(split-conformal 전제);
+  prediction set truncation 시 `coverage_valid=false` 명시
+- runtime options 스키마 검증 (`max_prediction_set` 범위, 미지 옵션 거부,
+  일관된 `INVALID_REQUEST` 오류)
+
+**남은 백로그 (우선순위순):**
+
+1. snapshot 중첩 구조의 깊은 불변화 (frozen dataclass / read-only mapping)
+2. human-gold 평가셋: 문서 단위 exhaustive annotation, 2인 주석 + adjudication,
+   slice당 n≥200 — silver 근사와 분리 보고
+3. latency/memory hard gate (p95/p99, 문서 크기·entity 규모별 SLO), 동시성·
+   hot-swap·rollback 부하 테스트
+4. 평가 데이터/모델 버전 고정 (dataset revision·corpus SHA-256·모델 digest를
+   리포트 manifest에 기록), cluster-aware CI (문서/entity 단위 bootstrap)
+5. 원격 배포 시 manifest 서명, 1-byte tamper sweep의 hard-gate 편입
 
 ## 다음 단계 (우선순위)
 

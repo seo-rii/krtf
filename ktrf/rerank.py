@@ -77,7 +77,15 @@ class OnnxCrossEncoder:
             str(onnx_file), providers=_providers(ort, device))
         self._tokenizer = Tokenizer.from_file(str(d / "tokenizer.json"))
         self._tokenizer.enable_truncation(max_length=max_length)
-        self.reranker_id = f"onnx-xenc:{d.name}"
+        # content-derived identity (model + tokenizer digest), not just the
+        # directory name — a swapped model in a same-named dir must differ
+        import hashlib
+        h = hashlib.sha256()
+        with open(onnx_file, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 22), b""):
+                h.update(chunk)
+        h.update((d / "tokenizer.json").read_bytes())
+        self.reranker_id = f"onnx-xenc:{d.name}:{h.hexdigest()[:32]}"
 
     def score_pairs(self, pairs: list[tuple[str, str]]) -> list[float]:
         np = self._np

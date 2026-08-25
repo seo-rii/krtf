@@ -29,9 +29,19 @@ ROOT = Path(__file__).resolve().parent.parent
 
 RELEASE_GATE = {
     "conformance_failures_max": 0,  # REQ-LVL-002
-    "level_a_core_span_recall_min_e2e": 0.995,  # §44
+    "golden_violations_max": 0,  # a single golden violation is a hard fail
+    "level_a_core_span_recall_min_e2e": 0.995,  # §44 (point estimate)
     "level_a_gold_in_set_min_given_mention": 0.997,
     "resolved_precision_min_commit": 0.98,
+    # CI-lower-bound gates (§43.8): point estimates on small n are not
+    # evidence — the Wilson 95% lower bound must also clear these floors.
+    # They are set to what the CURRENT sample size can support at 100%
+    # observed; growing the eval set is the only way to tighten them.
+    "level_a_core_span_recall_ci_lower_min": 0.98,
+    "level_a_gold_in_set_ci_lower_min": 0.98,
+    "resolved_precision_ci_lower_min": 0.96,
+    # an always-abstaining system must not pass on vacuous precision
+    "resolved_min_commits": 25,
     "forbidden_entity_hits_max": 0,
     "offset_invariant_failures_max": 0,
 }
@@ -171,28 +181,15 @@ def run(glossary_path: str) -> dict:
         "resolve_p95_ms": round(1000 * latencies[int(len(latencies) * 0.95)], 2),
     }
 
-    gate_values = {
-        "conformance_failures": conf.failed,
-        "golden_violations": len(golden["violations"]),
-        "level_a_core_span_recall_e2e": report.metrics[0].value,
-        "level_a_gold_in_set_given_mention": report.metrics[1].value,
-        "resolved_precision_commit": (resolved_correct / resolved_total
-                                      if resolved_total else 1.0),
-        "forbidden_entity_hits": forbidden_hits,
-        "offset_invariant_failures": offset_failures,
-    }
-    gate_pass = (
-        gate_values["conformance_failures"] <= RELEASE_GATE["conformance_failures_max"]
-        and gate_values["level_a_core_span_recall_e2e"]
-        >= RELEASE_GATE["level_a_core_span_recall_min_e2e"]
-        and gate_values["level_a_gold_in_set_given_mention"]
-        >= RELEASE_GATE["level_a_gold_in_set_min_given_mention"]
-        and gate_values["resolved_precision_commit"]
-        >= RELEASE_GATE["resolved_precision_min_commit"]
-        and gate_values["forbidden_entity_hits"]
-        <= RELEASE_GATE["forbidden_entity_hits_max"]
-        and gate_values["offset_invariant_failures"]
-        <= RELEASE_GATE["offset_invariant_failures_max"]
+    gate = compute_gate(
+        conformance_failures=conf.failed,
+        golden_violations=len(golden["violations"]),
+        recall_metric=report.metrics[0],
+        in_set_metric=report.metrics[1],
+        resolved_correct=resolved_correct,
+        resolved_total=resolved_total,
+        forbidden_entity_hits=forbidden_hits,
+        offset_invariant_failures=offset_failures,
     )
 
     return {
@@ -201,9 +198,71 @@ def run(glossary_path: str) -> dict:
         "report": report.to_dict(),
         "golden": golden,
         "performance": perf,
-        "release_gate": {"criteria": RELEASE_GATE, "values": gate_values,
-                         "pass": gate_pass},
+        "release_gate": gate,
     }
+
+
+def compute_gate(*, conformance_failures, golden_violations, recall_metric,
+                 in_set_metric, resolved_correct, resolved_total,
+                 forbidden_entity_hits, offset_invariant_failures) -> dict:
+    """§44 release gate as a pure function so its edge cases are testable.
+
+    Every criterion is an explicit named check; 0 commits yields precision
+    ``None`` (never a vacuous 1.0) and fails the gate; point estimates must
+    also clear Wilson-lower-bound floors (§43.8).
+    """
+    from .metrics import wilson_interval
+    recall_m = recall_metric
+    in_set_m = in_set_metric
+    prec_ci_lo, _ = wilson_interval(resolved_correct, resolved_total)
+    gate_values = {
+        "conformance_failures": conformance_failures,
+        "golden_violations": golden_violations,
+        "level_a_core_span_recall_e2e": recall_m.value,
+        "level_a_core_span_recall_ci_lower": round(recall_m.ci95[0], 4),
+        "level_a_gold_in_set_given_mention": in_set_m.value,
+        "level_a_gold_in_set_ci_lower": round(in_set_m.ci95[0], 4),
+        # 0 commits => precision is undefined, NEVER vacuously 1.0
+        "resolved_precision_commit": (round(resolved_correct / resolved_total, 4)
+                                      if resolved_total else None),
+        "resolved_precision_ci_lower": (round(prec_ci_lo, 4)
+                                        if resolved_total else None),
+        "resolved_commits": resolved_total,
+        "forbidden_entity_hits": forbidden_entity_hits,
+        "offset_invariant_failures": offset_invariant_failures,
+    }
+    # every criterion is an explicit named check so the report can show
+    # per-row pass/fail honestly instead of a decorative checkmark
+    gate_checks = {
+        "conformance_failures":
+            conformance_failures <= RELEASE_GATE["conformance_failures_max"],
+        "golden_violations":
+            gate_values["golden_violations"]
+            <= RELEASE_GATE["golden_violations_max"],
+        "level_a_core_span_recall":
+            recall_m.value >= RELEASE_GATE["level_a_core_span_recall_min_e2e"]
+            and recall_m.ci95[0]
+            >= RELEASE_GATE["level_a_core_span_recall_ci_lower_min"],
+        "level_a_gold_in_set":
+            in_set_m.value
+            >= RELEASE_GATE["level_a_gold_in_set_min_given_mention"]
+            and in_set_m.ci95[0]
+            >= RELEASE_GATE["level_a_gold_in_set_ci_lower_min"],
+        "resolved_precision":
+            resolved_total >= RELEASE_GATE["resolved_min_commits"]
+            and gate_values["resolved_precision_commit"] is not None
+            and gate_values["resolved_precision_commit"]
+            >= RELEASE_GATE["resolved_precision_min_commit"]
+            and prec_ci_lo >= RELEASE_GATE["resolved_precision_ci_lower_min"],
+        "forbidden_entity_hits":
+            forbidden_entity_hits
+            <= RELEASE_GATE["forbidden_entity_hits_max"],
+        "offset_invariant_failures":
+            offset_invariant_failures
+            <= RELEASE_GATE["offset_invariant_failures_max"],
+    }
+    return {"criteria": RELEASE_GATE, "values": gate_values,
+            "checks": gate_checks, "pass": all(gate_checks.values())}
 
 
 def write_markdown(result: dict, out_path: Path) -> None:
@@ -269,27 +328,41 @@ def write_markdown(result: dict, out_path: Path) -> None:
     ]
     crit = gate["criteria"]
     vals = gate["values"]
+    checks = gate.get("checks", {})
     rows = [
         ("conformance failures", f"≤ {crit['conformance_failures_max']}",
-         vals["conformance_failures"]),
-        ("golden violations", "≤ 0", vals["golden_violations"]),
+         vals["conformance_failures"], "conformance_failures"),
+        ("golden violations", f"≤ {crit['golden_violations_max']}",
+         vals["golden_violations"], "golden_violations"),
         ("Level A core-span recall (E2E)",
-         f"≥ {crit['level_a_core_span_recall_min_e2e']}",
-         vals["level_a_core_span_recall_e2e"]),
+         f"≥ {crit['level_a_core_span_recall_min_e2e']} "
+         f"(CI하한 ≥ {crit['level_a_core_span_recall_ci_lower_min']})",
+         f"{vals['level_a_core_span_recall_e2e']} "
+         f"(CI하한 {vals['level_a_core_span_recall_ci_lower']})",
+         "level_a_core_span_recall"),
         ("Level A gold-in-set (\\|mention)",
-         f"≥ {crit['level_a_gold_in_set_min_given_mention']}",
-         vals["level_a_gold_in_set_given_mention"]),
+         f"≥ {crit['level_a_gold_in_set_min_given_mention']} "
+         f"(CI하한 ≥ {crit['level_a_gold_in_set_ci_lower_min']})",
+         f"{vals['level_a_gold_in_set_given_mention']} "
+         f"(CI하한 {vals['level_a_gold_in_set_ci_lower']})",
+         "level_a_gold_in_set"),
         ("RESOLVED precision (\\|commit)",
-         f"≥ {crit['resolved_precision_min_commit']}",
-         vals["resolved_precision_commit"]),
+         f"≥ {crit['resolved_precision_min_commit']}, commits ≥ "
+         f"{crit['resolved_min_commits']}, "
+         f"CI하한 ≥ {crit['resolved_precision_ci_lower_min']}",
+         f"{vals['resolved_precision_commit'] if vals['resolved_precision_commit'] is not None else 'N/A (0 commits)'} "
+         f"({vals['resolved_commits']} commits, "
+         f"CI하한 {vals['resolved_precision_ci_lower']})",
+         "resolved_precision"),
         ("forbidden-entity hits", f"≤ {crit['forbidden_entity_hits_max']}",
-         vals["forbidden_entity_hits"]),
+         vals["forbidden_entity_hits"], "forbidden_entity_hits"),
         ("offset invariant failures",
          f"≤ {crit['offset_invariant_failures_max']}",
-         vals["offset_invariant_failures"]),
+         vals["offset_invariant_failures"], "offset_invariant_failures"),
     ]
-    for name, target, val in rows:
-        lines.append(f"| {name} | {target} | {val} | ✅ |")
+    for name, target, val, key in rows:
+        mark = "✅" if checks.get(key) else "❌"
+        lines.append(f"| {name} | {target} | {val} | {mark} |")
     lines += [
         "",
         f"**게이트 판정: {'PASS' if gate['pass'] else 'FAIL'}**",
@@ -356,7 +429,7 @@ def main():
     write_markdown(result, ROOT / "reports" / "EVALUATION.md")
     print(json.dumps(result["release_gate"], indent=2))
     print(f"\nfull report: {out_dir / 'report.json'}")
-    print(f"markdown: {ROOT / 'EVALUATION.md'}")
+    print(f"markdown: {ROOT / 'reports' / 'EVALUATION.md'}")
 
 
 if __name__ == "__main__":

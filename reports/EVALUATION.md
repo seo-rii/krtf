@@ -56,9 +56,9 @@
 |---|---|---|---|
 | conformance failures | ≤ 0 | 0 | ✅ |
 | golden violations | ≤ 0 | 0 | ✅ |
-| Level A core-span recall (E2E) | ≥ 0.995 | 1.0 | ✅ |
-| Level A gold-in-set (\|mention) | ≥ 0.997 | 1.0 | ✅ |
-| RESOLVED precision (\|commit) | ≥ 0.98 | 1.0 | ✅ |
+| Level A core-span recall (E2E) | ≥ 0.995 (CI하한 ≥ 0.98) | 1.0 (CI하한 0.9823) | ✅ |
+| Level A gold-in-set (\|mention) | ≥ 0.997 (CI하한 ≥ 0.98) | 1.0 (CI하한 0.9823) | ✅ |
+| RESOLVED precision (\|commit) | ≥ 0.98, commits ≥ 25, CI하한 ≥ 0.96 | 1.0 (151 commits, CI하한 0.9752) | ✅ |
 | forbidden-entity hits | ≤ 0 | 0 | ✅ |
 | offset invariant failures | ≤ 0 | 0 | ✅ |
 
@@ -67,7 +67,7 @@
 ## 5. 성능 (참고치, Python 구현)
 
 - 평가 예제: 229건, compile 0.001s
-- resolve(commit) p50 0.81ms / p95 1.62ms
+- resolve(commit) p50 0.68ms / p95 1.35ms
 
 ### 규모 벤치마크 (synthetic glossary, §53 축소판)
 
