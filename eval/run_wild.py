@@ -45,7 +45,9 @@ ROOT = Path(__file__).resolve().parent.parent
 SILVER_MIN_LEN = 3
 # short/ambiguous aliases: measured for detection stats only, not recall
 DETECTION_ONLY = {"한전", "한은", "헌재", "KT", "SKT", "국민연금", "청와대",
-                  "네이버", "카카오"}
+                  "네이버", "카카오",
+                  # 지자체 축약형: 지명·수식 용법과 겹침 (서울시내, 제주도 여행)
+                  "서울시", "부산시", "인천시", "세종시", "제주도"}
 
 
 def _is_hangul(ch: str) -> bool:
@@ -252,9 +254,15 @@ def write_markdown(payload: dict, out_path: Path) -> None:
     lines = [
         "# KTRF Wild-Corpus 벤치마크 (실제 한국어 텍스트)",
         "",
-        f"코퍼스: HuggingFace KLUE (뉴스 헤드라인 등) {payload['corpus_sentences']}문장,"
-        " CC BY-SA 4.0. 합성 데이터와 달리 구현 카탈로그와 독립적인 실 분포다."
+        f"코퍼스: HuggingFace 공개 한국어 텍스트 {payload['corpus_sentences']}문장"
+        " (뉴스 헤드라인·국민청원·판례 전문·위키 지문 — 다중 도메인)."
+        " 합성 데이터와 달리 구현 카탈로그와 독립적인 실 분포다."
         " 재현: `python -m eval.run_wild` (최초 실행 시 다운로드).",
+        "",
+        "소스 구성: " + ", ".join(
+            f"`{k.split('/')[-1]}` {v}"
+            for k, v in sorted(payload.get("corpus_by_source", {}).items(),
+                               key=lambda kv: -kv[1])),
         "",
         "## 1. Silver recall — 실존 조직 표면형 (E2E, commit mode)",
         "",
@@ -361,6 +369,7 @@ def main():
         }
     payload = {
         "corpus_sentences": len(corpus),
+        "corpus_by_source": dict(Counter(r["source"] for r in corpus)),
         "silver": silver,
         "fake_fp": fake_fp,
         "dense_variants": dense_variants,

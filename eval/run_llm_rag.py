@@ -42,6 +42,7 @@ from ktrf.resolver import resolve
 from ktrf.snapshot import compile_snapshot
 
 from .metrics import wilson_interval
+from .run_neural_eval import _holdout_glossary, _pipeline_recall, _queries
 from .run_wild import DETECTION_ONLY, SILVER_MIN_LEN, _silver_occurrences
 from .synthetic import build_synthetic_glossary
 from .wild_data import load_corpus
@@ -124,7 +125,9 @@ def ollama_chat(base: str, model: str, system: str, user: str,
         "format": "json",
         "options": {"temperature": 0, "num_predict": NUM_PREDICT},
     }
-    if model.startswith(("qwen3", "gemma4")):
+    if model.startswith("gpt-oss"):
+        body["think"] = "low"  # reasoning can't be disabled, only shortened
+    elif model.startswith(("qwen3", "gemma4")):
         body["think"] = False  # measure answer latency, not chain-of-thought
     for attempt in (0, 1):
         req = urllib.request.Request(
@@ -302,6 +305,38 @@ def eval_ktrf_silver(samples, snap) -> dict:
     }
 
 
+def eval_llm_hard(base, model, queries, retriever, cards) -> dict:
+    """UE holdout: the mention surface is NOT a registered alias — the
+    system must infer the link from canonical/description world knowledge."""
+    total = hit = in_cand = 0
+    latencies: list[float] = []
+    misses: list[dict] = []
+    for q in queries:
+        cand = retriever.retrieve(q["text"])
+        in_cand += int(q["gold"] in cand)
+        prompt = USER_TEMPLATE.format(
+            cards="\n".join(cards[c] for c in cand), sentence=q["text"])
+        t0 = time.perf_counter()
+        raw, _ = ollama_chat(base, model, SYSTEM_PROMPT, prompt)
+        latencies.append(time.perf_counter() - t0)
+        mentions, _ = parse_mentions(raw, set(cand))
+        total += 1
+        if q["gold"] in {m["entity_id"] for m in mentions}:
+            hit += 1
+        elif len(misses) < 8:
+            misses.append({"text": q["text"], "surface": q["surface"]})
+    latencies.sort()
+    lo, hi = wilson_interval(hit, total)
+    return {
+        "recall": {"hits": hit, "total": total,
+                   "rate": round(hit / total, 4) if total else None,
+                   "ci95": [round(lo, 4), round(hi, 4)]},
+        "gold_in_candidates": round(in_cand / total, 4) if total else None,
+        "latency_s": _lat(latencies),
+        "misses": misses,
+    }
+
+
 def eval_ktrf_fake(sentences, snap) -> dict:
     fp = 0
     latencies: list[float] = []
@@ -349,11 +384,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument(
         "--models",
-        default="qwen3:8b,gemma4:12b,gemma4:26b@60,qwen3.5:27b@60",
+        default="qwen3:8b,gemma4:12b,gemma4:26b,gpt-oss:20b,qwen3.5:27b@60",
         help="comma list; 'name@N' caps that model's silver sample at N "
              "(fake sample at N/2) — for models needing CPU offload")
     ap.add_argument("--silver-n", type=int, default=200)
     ap.add_argument("--fake-n", type=int, default=100)
+    ap.add_argument("--hard-n", type=int, default=300,
+                    help="UE-holdout hard-track queries per model")
+    ap.add_argument("--track", choices=["easy", "hard", "both"],
+                    default="both",
+                    help="'hard' merges into an existing eval/out/llm_rag.json")
     ap.add_argument("--ollama", default="http://localhost:11434")
     args = ap.parse_args()
 
@@ -376,49 +416,92 @@ def main():
           f"({sum(len(s['gold']) for s in samples)} gold instances), "
           f"{len(fake_sentences)} fake-FP sentences")
 
-    # --- KTRF on the identical subset -------------------------------------
-    snap = compile_snapshot(glossary, encoder=encoder, run_conformance=False)
-    fake_glossary, fake_snap = build_fake_setup(corpus, encoder)
-    fake_cards = build_cards(fake_glossary)
-    fake_retriever = HybridRetriever(fake_glossary, encoder)
+    # resume support: 'hard' merges into a previous easy-track payload
+    out_json = ROOT / "eval" / "out" / "llm_rag.json"
+    results: dict = {}
+    if args.track == "hard" and out_json.exists():
+        results = json.loads(out_json.read_text(encoding="utf-8"))["results"]
+    results.setdefault("ktrf", {})
 
-    results: dict = {"ktrf": {
-        "silver": eval_ktrf_silver(samples, snap),
-        "fake": eval_ktrf_fake(fake_sentences, fake_snap),
-    }}
-    print("ktrf:", json.dumps(results["ktrf"]["silver"]["recall"],
-                              ensure_ascii=False))
+    specs = [m.strip() for m in args.models.split(",") if m.strip()]
 
-    # --- LLM models -------------------------------------------------------
-    for spec in [m.strip() for m in args.models.split(",") if m.strip()]:
-        model, _, cap = spec.partition("@")
-        n = min(int(cap), len(samples)) if cap else len(samples)
-        m_samples = samples[:n]
-        m_fake = fake_sentences[:max(1, n // 2)] if cap else fake_sentences
-        print(f"=== {model} (silver n={len(m_samples)}, "
-              f"fake n={len(m_fake)}) ===")
-        try:
-            t0 = time.perf_counter()
-            results[model] = {
-                "silver": eval_llm_silver(args.ollama, model, m_samples,
-                                          retriever, cards, surfaces),
-                "fake": eval_llm_fake(args.ollama, model, m_fake,
-                                      fake_retriever, fake_cards),
-                "silver_sentences": len(m_samples),
-                "fake_sentences": len(m_fake),
-                "elapsed_s": round(time.perf_counter() - t0, 1),
-            }
-            print(json.dumps(results[model]["silver"]["recall"],
-                             ensure_ascii=False))
-        except OllamaError as e:
-            results[model] = {"error": str(e)}
-            print(f"  SKIPPED: {e}")
+    if args.track in ("easy", "both"):
+        snap = compile_snapshot(glossary, encoder=encoder,
+                                run_conformance=False)
+        fake_glossary, fake_snap = build_fake_setup(corpus, encoder)
+        fake_cards = build_cards(fake_glossary)
+        fake_retriever = HybridRetriever(fake_glossary, encoder)
+        results["ktrf"]["silver"] = eval_ktrf_silver(samples, snap)
+        results["ktrf"]["fake"] = eval_ktrf_fake(fake_sentences, fake_snap)
+        print("ktrf:", json.dumps(results["ktrf"]["silver"]["recall"],
+                                  ensure_ascii=False))
+        for spec in specs:
+            model, _, cap = spec.partition("@")
+            n = min(int(cap), len(samples)) if cap else len(samples)
+            m_samples = samples[:n]
+            m_fake = fake_sentences[:max(1, n // 2)] if cap \
+                else fake_sentences
+            print(f"=== {model} (silver n={len(m_samples)}, "
+                  f"fake n={len(m_fake)}) ===")
+            try:
+                t0 = time.perf_counter()
+                results.setdefault(model, {}).update({
+                    "silver": eval_llm_silver(args.ollama, model, m_samples,
+                                              retriever, cards, surfaces),
+                    "fake": eval_llm_fake(args.ollama, model, m_fake,
+                                          fake_retriever, fake_cards),
+                    "silver_sentences": len(m_samples),
+                    "fake_sentences": len(m_fake),
+                    "elapsed_s": round(time.perf_counter() - t0, 1),
+                })
+                print(json.dumps(results[model]["silver"]["recall"],
+                                 ensure_ascii=False))
+            except OllamaError as e:
+                results[model] = {"error": str(e)}
+                print(f"  SKIPPED: {e}")
+
+    if args.track in ("hard", "both"):
+        # UE holdout: abbreviation bindings removed from the glossary, so
+        # the mention surface is unseen — KTRF is far from 1.0 here
+        hard_glossary, holdout_map = _holdout_glossary()
+        hard_queries = _queries(holdout_map)
+        random.Random(SEED + 2).shuffle(hard_queries)
+        hard_queries = hard_queries[:args.hard_n]
+        hard_cards = build_cards(hard_glossary)
+        hard_retriever = HybridRetriever(hard_glossary, encoder)
+        print(f"hard track: {len(hard_queries)} UE queries "
+              f"({len(holdout_map)} held-out abbreviations)")
+
+        hard_snap = compile_snapshot(hard_glossary, encoder=encoder,
+                                     run_conformance=False)
+        results["ktrf"]["hard"] = _pipeline_recall(
+            hard_snap, hard_queries, "ktrf-e5")
+        results["ktrf"]["hard_queries"] = len(hard_queries)
+        print("ktrf hard:", json.dumps(
+            results["ktrf"]["hard"]["gold_in_set_e2e"], ensure_ascii=False))
+        for spec in specs:
+            model, _, cap = spec.partition("@")
+            n = min(int(cap), len(hard_queries)) if cap else len(hard_queries)
+            print(f"=== {model} hard (n={n}) ===")
+            try:
+                results.setdefault(model, {}).update({
+                    "hard": eval_llm_hard(args.ollama, model,
+                                          hard_queries[:n],
+                                          hard_retriever, hard_cards),
+                    "hard_queries": n,
+                })
+                print(json.dumps(results[model]["hard"]["recall"],
+                                 ensure_ascii=False))
+            except OllamaError as e:
+                results[model].setdefault("hard", {"error": str(e)})
+                print(f"  SKIPPED: {e}")
 
     payload = {
         "corpus_sentences": len(corpus),
         "silver_sentences": len(samples),
         "gold_instances": sum(len(s["gold"]) for s in samples),
         "fake_sentences": len(fake_sentences),
+        "hard_queries": args.hard_n,
         "retriever": type(encoder).__name__,
         "results": results,
     }
@@ -456,7 +539,7 @@ def write_markdown(payload: dict, out_path: Path) -> None:
         f" | {ks['latency_s']['p95']}s"
         f" | {ks['latency_s']['throughput_per_min']} |")
     for model, res in r.items():
-        if model == "ktrf":
+        if model == "ktrf" or "silver" not in res and "error" not in res:
             continue
         if "error" in res:
             lines.append(f"| {model} | — | — | — | — | — | (실패: {res['error']}) |")
@@ -480,12 +563,52 @@ def write_markdown(payload: dict, out_path: Path) -> None:
         " 비율(미달분 = hallucination); fake-glossary FP = corpus에 없는"
         " 표면형만 가진 glossary 후보로 유도했을 때 주장된 mention 수"
         " (정의상 전부 오탐).",
+    ]
+    if any("hard" in res and "error" not in res.get("hard", {})
+           for res in r.values()):
+        lines += [
+            "",
+            "## Hard track — 미등록 약칭 (UE holdout, §42)",
+            "",
+            "glossary에서 약칭 binding 21종(과기정통부, 금감원, 방통위 등)을"
+            " 제거한 뒤 해당 표면형이 등장하는 실 문장을 질의로 사용한다."
+            " 언급 표면형이 등록되어 있지 않으므로 exact match가 불가능하고,"
+            " canonical/설명으로부터 링크를 추론해야 한다 — silver track과"
+            " 달리 어느 시스템도 1.0이 나오지 않는 변별 구간이다.",
+            "",
+            "| 시스템 | recall (UE) | CI95 | gold∈후보(검색 상한) | latency p50 |",
+            "|---|---:|---|---:|---:|",
+        ]
+        kh = r["ktrf"].get("hard")
+        if kh:
+            g = kh["gold_in_set_e2e"]
+            lines.append(
+                f"| **KTRF** (e5 dense) | **{g['rate']}**"
+                f" ({g['hits']}/{g['total']}) | {g['ci95']}"
+                f" | — (pipeline) | {kh['latency_p50_ms'] / 1000}s |")
+        for model, res in r.items():
+            if model == "ktrf" or "hard" not in res or "error" in res["hard"]:
+                continue
+            h = res["hard"]
+            g = h["recall"]
+            lines.append(
+                f"| {model} (n={h['recall']['total']}) | {g['rate']}"
+                f" ({g['hits']}/{g['total']}) | {g['ci95']}"
+                f" | {h['gold_in_candidates']}"
+                f" | {h['latency_s']['p50']}s |")
+        lines += [
+            "",
+            "LLM의 'gold∈후보'는 하이브리드 검색이 정답 entity를 후보에"
+            " 넣어준 비율 — LLM recall의 상한이다. KTRF는 자체 dense 채널이"
+            " 검색을 겸하므로 해당 없음.",
+        ]
+    lines += [
         "",
         "## 세부 (모델별)",
         "",
     ]
     for model, res in r.items():
-        if model == "ktrf" or "error" in res:
+        if model == "ktrf" or "error" in res or "silver" not in res:
             continue
         s = res["silver"]
         lines += [

@@ -12,6 +12,20 @@
 
 정의: recall = gold entity_id 출력 여부(silver 근사 label); grounding precision = 출력 entity의 등록 표면형이 문장에 실존하는 비율(미달분 = hallucination); fake-glossary FP = corpus에 없는 표면형만 가진 glossary 후보로 유도했을 때 주장된 mention 수 (정의상 전부 오탐).
 
+## Hard track — 미등록 약칭 (UE holdout, §42)
+
+glossary에서 약칭 binding 21종(과기정통부, 금감원, 방통위 등)을 제거한 뒤 해당 표면형이 등장하는 실 문장을 질의로 사용한다. 언급 표면형이 등록되어 있지 않으므로 exact match가 불가능하고, canonical/설명으로부터 링크를 추론해야 한다 — silver track과 달리 어느 시스템도 1.0이 나오지 않는 변별 구간이다.
+
+| 시스템 | recall (UE) | CI95 | gold∈후보(검색 상한) | latency p50 |
+|---|---:|---|---:|---:|
+| **KTRF** (e5 dense) | **0.9133** (274/300) | [0.876, 0.9402] | — (pipeline) | 0.05022s |
+| qwen3:8b (n=300) | 0.5667 (170/300) | [0.5101, 0.6215] | 0.6333 | 2.573s |
+| gemma4:12b (n=300) | 0.5633 (169/300) | [0.5068, 0.6183] | 0.6333 | 2.906s |
+| gemma4:26b (n=300) | 0.5933 (178/300) | [0.5369, 0.6474] | 0.6333 | 3.504s |
+| qwen3.5:27b (n=60) | 0.6 (36/60) | [0.4737, 0.7143] | 0.6167 | 11.6s |
+
+LLM의 'gold∈후보'는 하이브리드 검색이 정답 entity를 후보에 넣어준 비율 — LLM recall의 상한이다. KTRF는 자체 dense 채널이 검색을 겸하므로 해당 없음.
+
 ## 세부 (모델별)
 
 ### qwen3:8b

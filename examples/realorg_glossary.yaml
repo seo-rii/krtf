@@ -132,6 +132,45 @@ entities:
   - {entity_id: ORG_ACRC, canonical: 국민권익위원회, description: 부패 방지와 권익 구제 기관, domain_ids: [GOV]}
   - {entity_id: ORG_SCDPO, canonical: 서울중앙지검, description: 서울 중앙 지역 검찰청, domain_ids: [GOV]}
   - {entity_id: ORG_JCS, canonical: 합동참모본부, description: 군 작전을 총괄하는 기관, domain_ids: [GOV]}
+  # --- v3 확장: 법원·지자체·교육청·복지공단·시대별 부처 (청원·판례 도메인) ---
+  - {entity_id: ORG_NKAS, canonical: 국민안전처, description: 재난과 안전을 총괄하던 중앙행정기관(2014–2017), domain_ids: [GOV]}
+  - {entity_id: ORG_MOGAHA, canonical: 행정자치부, description: 행정안전부의 전신인 중앙행정기관(2014–2017), domain_ids: [GOV]}
+  - {entity_id: ORG_RDA, canonical: 농촌진흥청, description: 농업 연구와 기술 보급을 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_KDCA, canonical: 질병관리청, description: 질병관리본부가 승격된 방역 총괄 기관(2020–), domain_ids: [GOV]}
+  - {entity_id: ORG_CIO, canonical: 고위공직자범죄수사처, description: 고위공직자 부패 수사 독립 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_OPC, canonical: 국무조정실, description: 국정 운영을 조정하는 국무총리 소속 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_NSO, canonical: 국가안보실, description: 대통령 직속 안보 정책 컨트롤타워, domain_ids: [GOV]}
+  - {entity_id: ORG_SMPA, canonical: 서울지방경찰청, description: 서울 지역 치안을 담당하는 경찰 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_NFS, canonical: 국립과학수사연구원, description: 법의학과 과학수사 감정 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_KCA, canonical: 한국소비자원, description: 소비자 권익 보호 공공기관, domain_ids: [GOV]}
+  - {entity_id: ORG_KBA, canonical: 대한변호사협회, description: 변호사 법정 단체, domain_ids: [GOV]}
+  - {entity_id: ORG_SHC, canonical: 서울고등법원, description: 서울 지역 항소심 법원, domain_ids: [COURT]}
+  - {entity_id: ORG_SCDC, canonical: 서울중앙지방법원, description: 서울 중심부 제1심 법원, domain_ids: [COURT]}
+  - {entity_id: ORG_SAC, canonical: 서울행정법원, description: 행정 사건 전문 법원, domain_ids: [COURT]}
+  - {entity_id: ORG_SEOUL, canonical: 서울특별시, description: 대한민국 수도 광역자치단체, domain_ids: [LOCAL]}
+  - {entity_id: ORG_BUSAN, canonical: 부산광역시, description: 동남권 광역자치단체, domain_ids: [LOCAL]}
+  - {entity_id: ORG_INCHEON, canonical: 인천광역시, description: 수도권 서부 광역자치단체, domain_ids: [LOCAL]}
+  - {entity_id: ORG_DAEGU, canonical: 대구광역시, description: 영남 내륙 광역자치단체, domain_ids: [LOCAL]}
+  - {entity_id: ORG_GWANGJU_C, canonical: 광주광역시, description: 호남권 광역자치단체, domain_ids: [LOCAL]}
+  - {entity_id: ORG_DAEJEON, canonical: 대전광역시, description: 충청권 광역자치단체, domain_ids: [LOCAL]}
+  - {entity_id: ORG_ULSAN, canonical: 울산광역시, description: 동남권 산업 중심 광역자치단체, domain_ids: [LOCAL]}
+  - {entity_id: ORG_SEJONG, canonical: 세종특별자치시, description: 행정중심복합도시 광역자치단체, domain_ids: [LOCAL]}
+  - {entity_id: ORG_GYEONGGI, canonical: 경기도, description: 수도권 광역자치단체, domain_ids: [LOCAL]}
+  - {entity_id: ORG_GANGWON, canonical: 강원도, description: 영동·영서 광역자치단체, domain_ids: [LOCAL]}
+  - {entity_id: ORG_CHUNGNAM, canonical: 충청남도, description: 충청 서부 광역자치단체, domain_ids: [LOCAL]}
+  - {entity_id: ORG_CHUNGBUK, canonical: 충청북도, description: 충청 내륙 광역자치단체, domain_ids: [LOCAL]}
+  - {entity_id: ORG_JEONNAM, canonical: 전라남도, description: 호남 남부 광역자치단체, domain_ids: [LOCAL]}
+  - {entity_id: ORG_JEONBUK, canonical: 전라북도, description: 호남 북부 광역자치단체, domain_ids: [LOCAL]}
+  - {entity_id: ORG_GYEONGNAM, canonical: 경상남도, description: 영남 남부 광역자치단체, domain_ids: [LOCAL]}
+  - {entity_id: ORG_GYEONGBUK, canonical: 경상북도, description: 영남 북부 광역자치단체, domain_ids: [LOCAL]}
+  - {entity_id: ORG_JEJU, canonical: 제주특별자치도, description: 제주 광역자치단체, domain_ids: [LOCAL]}
+  - {entity_id: ORG_SMOE, canonical: 서울시교육청, description: 서울 지역 교육 행정 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_GOE, canonical: 경기도교육청, description: 경기 지역 교육 행정 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_KICE, canonical: 한국교육과정평가원, description: 수능 출제와 교육과정 평가 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_NHIS, canonical: 국민건강보험공단, description: 건강보험 운영 공공기관, domain_ids: [GOV]}
+  - {entity_id: ORG_HIRA, canonical: 건강보험심사평가원, description: 진료비 심사와 의료 평가 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_COMWEL, canonical: 근로복지공단, description: 산재보험과 근로자 복지 공공기관, domain_ids: [GOV]}
+  - {entity_id: ORG_KOSAF, canonical: 한국장학재단, description: 학자금 지원 공공기관, domain_ids: [GOV]}
   - {entity_id: ORG_KBS, canonical: KBS, description: 한국방송공사 공영방송, domain_ids: [MEDIA]}
   - {entity_id: ORG_MBC, canonical: MBC, description: 문화방송 지상파 방송사, domain_ids: [MEDIA]}
   - {entity_id: ORG_SBS, canonical: SBS, description: 민영 지상파 방송사, domain_ids: [MEDIA]}
@@ -316,6 +355,62 @@ alias_families:
   - {family_id: F_SCDPO, representative: 서울중앙지검, normalization_profile: korean_org_name}
   - {family_id: F_JCS_FULL, representative: 합동참모본부, normalization_profile: korean_org_name}
   - {family_id: F_JCS_AB, representative: 합참, normalization_profile: korean_org_name}
+  # --- v3 확장 ---
+  - {family_id: F_NKAS, representative: 국민안전처, normalization_profile: korean_org_name}
+  - {family_id: F_MOGAHA_FULL, representative: 행정자치부, normalization_profile: korean_org_name}
+  - {family_id: F_MOGAHA_AB, representative: 행자부, normalization_profile: korean_org_name}
+  - {family_id: F_RDA_FULL, representative: 농촌진흥청, normalization_profile: korean_org_name}
+  - {family_id: F_RDA_AB, representative: 농진청, normalization_profile: korean_org_name}
+  - {family_id: F_KDCA, representative: 질병관리청, normalization_profile: korean_org_name}
+  - {family_id: F_KCDC_AB, representative: 질본, normalization_profile: korean_org_name}
+  - {family_id: F_CIO_FULL, representative: 고위공직자범죄수사처, normalization_profile: korean_org_name}
+  - {family_id: F_CIO_AB, representative: 공수처, normalization_profile: korean_org_name}
+  - {family_id: F_OPC, representative: 국무조정실, normalization_profile: korean_org_name}
+  - {family_id: F_NSO, representative: 국가안보실, normalization_profile: korean_org_name}
+  - {family_id: F_SMPA_FULL, representative: 서울지방경찰청, normalization_profile: korean_org_name}
+  - {family_id: F_SMPA_AB, representative: 서울경찰청, normalization_profile: korean_org_name}
+  - {family_id: F_NFS_FULL, representative: 국립과학수사연구원, normalization_profile: korean_org_name}
+  - {family_id: F_NFS_AB, representative: 국과수, normalization_profile: korean_org_name}
+  - {family_id: F_KCA, representative: 한국소비자원, normalization_profile: korean_org_name}
+  - {family_id: F_KBA_FULL, representative: 대한변호사협회, normalization_profile: korean_org_name}
+  - {family_id: F_KBA_AB, representative: 변협, normalization_profile: korean_org_name}
+  - {family_id: F_SHC, representative: 서울고등법원, normalization_profile: korean_org_name}
+  - {family_id: F_SCDC, representative: 서울중앙지방법원, normalization_profile: korean_org_name}
+  - {family_id: F_SAC, representative: 서울행정법원, normalization_profile: korean_org_name}
+  - {family_id: F_SCDPO_FULL, representative: 서울중앙지방검찰청, normalization_profile: korean_org_name}
+  - {family_id: F_SEOUL_FULL, representative: 서울특별시, normalization_profile: korean_org_name}
+  - {family_id: F_SEOUL_AB, representative: 서울시, normalization_profile: korean_org_name}
+  - {family_id: F_BUSAN_FULL, representative: 부산광역시, normalization_profile: korean_org_name}
+  - {family_id: F_BUSAN_AB, representative: 부산시, normalization_profile: korean_org_name}
+  - {family_id: F_INCHEON_FULL, representative: 인천광역시, normalization_profile: korean_org_name}
+  - {family_id: F_INCHEON_AB, representative: 인천시, normalization_profile: korean_org_name}
+  - {family_id: F_DAEGU, representative: 대구광역시, normalization_profile: korean_org_name}
+  - {family_id: F_GWANGJU_C, representative: 광주광역시, normalization_profile: korean_org_name}
+  - {family_id: F_DAEJEON, representative: 대전광역시, normalization_profile: korean_org_name}
+  - {family_id: F_ULSAN, representative: 울산광역시, normalization_profile: korean_org_name}
+  - {family_id: F_SEJONG_FULL, representative: 세종특별자치시, normalization_profile: korean_org_name}
+  - {family_id: F_SEJONG_AB, representative: 세종시, normalization_profile: korean_org_name}
+  - {family_id: F_GYEONGGI, representative: 경기도, normalization_profile: korean_org_name}
+  - {family_id: F_GANGWON, representative: 강원도, normalization_profile: korean_org_name}
+  - {family_id: F_CHUNGNAM, representative: 충청남도, normalization_profile: korean_org_name}
+  - {family_id: F_CHUNGBUK, representative: 충청북도, normalization_profile: korean_org_name}
+  - {family_id: F_JEONNAM, representative: 전라남도, normalization_profile: korean_org_name}
+  - {family_id: F_JEONBUK, representative: 전라북도, normalization_profile: korean_org_name}
+  - {family_id: F_GYEONGNAM, representative: 경상남도, normalization_profile: korean_org_name}
+  - {family_id: F_GYEONGBUK, representative: 경상북도, normalization_profile: korean_org_name}
+  - {family_id: F_JEJU_FULL, representative: 제주특별자치도, normalization_profile: korean_org_name}
+  - {family_id: F_JEJU_AB, representative: 제주도, normalization_profile: korean_org_name}
+  - {family_id: F_SMOE_FULL, representative: 서울시교육청, normalization_profile: korean_org_name}
+  - {family_id: F_SMOE_LONG, representative: 서울특별시교육청, normalization_profile: korean_org_name}
+  - {family_id: F_GOE, representative: 경기도교육청, normalization_profile: korean_org_name}
+  - {family_id: F_KICE, representative: 한국교육과정평가원, normalization_profile: korean_org_name}
+  - {family_id: F_NHIS_FULL, representative: 국민건강보험공단, normalization_profile: korean_org_name}
+  - {family_id: F_NHIS_MID, representative: 건강보험공단, normalization_profile: korean_org_name}
+  - {family_id: F_NHIS_AB, representative: 건보공단, normalization_profile: korean_org_name}
+  - {family_id: F_HIRA_FULL, representative: 건강보험심사평가원, normalization_profile: korean_org_name}
+  - {family_id: F_HIRA_AB, representative: 심평원, normalization_profile: korean_org_name}
+  - {family_id: F_COMWEL, representative: 근로복지공단, normalization_profile: korean_org_name}
+  - {family_id: F_KOSAF, representative: 한국장학재단, normalization_profile: korean_org_name}
   - {family_id: F_KBS, representative: KBS, normalization_profile: latin_acronym}
   - {family_id: F_MBC, representative: MBC, normalization_profile: latin_acronym}
   - {family_id: F_SBS, representative: SBS, normalization_profile: latin_acronym}
@@ -499,6 +594,62 @@ alias_bindings:
   - {alias_id: A_SCDPO, family_id: F_SCDPO, entity_id: ORG_SCDPO, surface: 서울중앙지검, kind: name, boundary_policy: {left: hangul_token_boundary}}
   - {alias_id: A_JCS_FULL, family_id: F_JCS_FULL, entity_id: ORG_JCS, surface: 합동참모본부, kind: name, boundary_policy: {left: hangul_token_boundary}}
   - {alias_id: A_JCS_AB, family_id: F_JCS_AB, entity_id: ORG_JCS, surface: 합참, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  # --- v3 확장 ---
+  - {alias_id: A_NKAS, family_id: F_NKAS, entity_id: ORG_NKAS, surface: 국민안전처, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOGAHA_FULL, family_id: F_MOGAHA_FULL, entity_id: ORG_MOGAHA, surface: 행정자치부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOGAHA_AB, family_id: F_MOGAHA_AB, entity_id: ORG_MOGAHA, surface: 행자부, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_RDA_FULL, family_id: F_RDA_FULL, entity_id: ORG_RDA, surface: 농촌진흥청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_RDA_AB, family_id: F_RDA_AB, entity_id: ORG_RDA, surface: 농진청, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KDCA, family_id: F_KDCA, entity_id: ORG_KDCA, surface: 질병관리청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KCDC_AB, family_id: F_KCDC_AB, entity_id: ORG_KCDC, surface: 질본, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_CIO_FULL, family_id: F_CIO_FULL, entity_id: ORG_CIO, surface: 고위공직자범죄수사처, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_CIO_AB, family_id: F_CIO_AB, entity_id: ORG_CIO, surface: 공수처, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_OPC, family_id: F_OPC, entity_id: ORG_OPC, surface: 국무조정실, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NSO, family_id: F_NSO, entity_id: ORG_NSO, surface: 국가안보실, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SMPA_FULL, family_id: F_SMPA_FULL, entity_id: ORG_SMPA, surface: 서울지방경찰청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SMPA_AB, family_id: F_SMPA_AB, entity_id: ORG_SMPA, surface: 서울경찰청, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NFS_FULL, family_id: F_NFS_FULL, entity_id: ORG_NFS, surface: 국립과학수사연구원, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NFS_AB, family_id: F_NFS_AB, entity_id: ORG_NFS, surface: 국과수, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KCA, family_id: F_KCA, entity_id: ORG_KCA, surface: 한국소비자원, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KBA_FULL, family_id: F_KBA_FULL, entity_id: ORG_KBA, surface: 대한변호사협회, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KBA_AB, family_id: F_KBA_AB, entity_id: ORG_KBA, surface: 변협, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SHC, family_id: F_SHC, entity_id: ORG_SHC, surface: 서울고등법원, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SCDC, family_id: F_SCDC, entity_id: ORG_SCDC, surface: 서울중앙지방법원, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SAC, family_id: F_SAC, entity_id: ORG_SAC, surface: 서울행정법원, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SCDPO_FULL, family_id: F_SCDPO_FULL, entity_id: ORG_SCDPO, surface: 서울중앙지방검찰청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SEOUL_FULL, family_id: F_SEOUL_FULL, entity_id: ORG_SEOUL, surface: 서울특별시, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SEOUL_AB, family_id: F_SEOUL_AB, entity_id: ORG_SEOUL, surface: 서울시, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_BUSAN_FULL, family_id: F_BUSAN_FULL, entity_id: ORG_BUSAN, surface: 부산광역시, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_BUSAN_AB, family_id: F_BUSAN_AB, entity_id: ORG_BUSAN, surface: 부산시, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_INCHEON_FULL, family_id: F_INCHEON_FULL, entity_id: ORG_INCHEON, surface: 인천광역시, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_INCHEON_AB, family_id: F_INCHEON_AB, entity_id: ORG_INCHEON, surface: 인천시, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_DAEGU, family_id: F_DAEGU, entity_id: ORG_DAEGU, surface: 대구광역시, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_GWANGJU_C, family_id: F_GWANGJU_C, entity_id: ORG_GWANGJU_C, surface: 광주광역시, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_DAEJEON, family_id: F_DAEJEON, entity_id: ORG_DAEJEON, surface: 대전광역시, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_ULSAN, family_id: F_ULSAN, entity_id: ORG_ULSAN, surface: 울산광역시, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SEJONG_FULL, family_id: F_SEJONG_FULL, entity_id: ORG_SEJONG, surface: 세종특별자치시, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SEJONG_AB, family_id: F_SEJONG_AB, entity_id: ORG_SEJONG, surface: 세종시, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_GYEONGGI, family_id: F_GYEONGGI, entity_id: ORG_GYEONGGI, surface: 경기도, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_GANGWON, family_id: F_GANGWON, entity_id: ORG_GANGWON, surface: 강원도, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_CHUNGNAM, family_id: F_CHUNGNAM, entity_id: ORG_CHUNGNAM, surface: 충청남도, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_CHUNGBUK, family_id: F_CHUNGBUK, entity_id: ORG_CHUNGBUK, surface: 충청북도, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_JEONNAM, family_id: F_JEONNAM, entity_id: ORG_JEONNAM, surface: 전라남도, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_JEONBUK, family_id: F_JEONBUK, entity_id: ORG_JEONBUK, surface: 전라북도, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_GYEONGNAM, family_id: F_GYEONGNAM, entity_id: ORG_GYEONGNAM, surface: 경상남도, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_GYEONGBUK, family_id: F_GYEONGBUK, entity_id: ORG_GYEONGBUK, surface: 경상북도, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_JEJU_FULL, family_id: F_JEJU_FULL, entity_id: ORG_JEJU, surface: 제주특별자치도, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_JEJU_AB, family_id: F_JEJU_AB, entity_id: ORG_JEJU, surface: 제주도, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SMOE_FULL, family_id: F_SMOE_FULL, entity_id: ORG_SMOE, surface: 서울시교육청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SMOE_LONG, family_id: F_SMOE_LONG, entity_id: ORG_SMOE, surface: 서울특별시교육청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_GOE, family_id: F_GOE, entity_id: ORG_GOE, surface: 경기도교육청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KICE, family_id: F_KICE, entity_id: ORG_KICE, surface: 한국교육과정평가원, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NHIS_FULL, family_id: F_NHIS_FULL, entity_id: ORG_NHIS, surface: 국민건강보험공단, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NHIS_MID, family_id: F_NHIS_MID, entity_id: ORG_NHIS, surface: 건강보험공단, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NHIS_AB, family_id: F_NHIS_AB, entity_id: ORG_NHIS, surface: 건보공단, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_HIRA_FULL, family_id: F_HIRA_FULL, entity_id: ORG_HIRA, surface: 건강보험심사평가원, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_HIRA_AB, family_id: F_HIRA_AB, entity_id: ORG_HIRA, surface: 심평원, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_COMWEL, family_id: F_COMWEL, entity_id: ORG_COMWEL, surface: 근로복지공단, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KOSAF, family_id: F_KOSAF, entity_id: ORG_KOSAF, surface: 한국장학재단, kind: name, boundary_policy: {left: hangul_token_boundary}}
   - {alias_id: A_KBS, family_id: F_KBS, entity_id: ORG_KBS, surface: KBS, kind: name, boundary_policy: {left: latin_token_boundary, allow_inside_latin_run: false}}
   - {alias_id: A_MBC, family_id: F_MBC, entity_id: ORG_MBC, surface: MBC, kind: name, boundary_policy: {left: latin_token_boundary, allow_inside_latin_run: false}}
   - {alias_id: A_SBS, family_id: F_SBS, entity_id: ORG_SBS, surface: SBS, kind: name, boundary_policy: {left: latin_token_boundary, allow_inside_latin_run: false}}
