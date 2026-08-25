@@ -44,4 +44,9 @@ def __getattr__(name):
     if name == "RuntimeMetrics":
         from .metrics import RuntimeMetrics
         return RuntimeMetrics
+    if name in ("ContextPolicy", "build_context_pack", "render_context_pack",
+                "prepare_llm_context", "validate_llm_grounding",
+                "TERMINOLOGY_POLICY"):
+        from . import context as m
+        return getattr(m, name)
     raise AttributeError(name)

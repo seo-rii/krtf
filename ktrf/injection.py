@@ -5,6 +5,12 @@ embed in prompts. Every attribute value is XML-escaped and descriptions are
 length-capped before insertion; raw string interpolation and CDATA are
 forbidden (REQ-SEC-001). AMBIGUOUS mentions emit their prediction set (top-k)
 — never a single forced canonical (§49.2).
+
+.. note:: Legacy renderer. New integrations should use
+   :mod:`ktrf.context` (``prepare_llm_context`` / ``build_context_pack``),
+   which separates RESOLVED facts from AMBIGUOUS candidates structurally,
+   deduplicates entities, applies a hard token budget with omission
+   metadata, and ships a fixed terminology policy fragment.
 """
 
 from __future__ import annotations

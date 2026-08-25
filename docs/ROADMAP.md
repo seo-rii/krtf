@@ -88,6 +88,35 @@
    리포트 manifest에 기록), cluster-aware CI (문서/entity 단위 bootstrap)
 5. 원격 배포 시 manifest 서명, 1-byte tamper sweep의 hard-gate 편입
 
+## LLM Grounding — Terminology Context Pack (`ktrf/context.py`)
+
+LLM 앞단 통합 설계 리뷰 반영. **구현 완료 (2026-08-25):** ContextPack schema
+v1 (RESOLVED/AMBIGUOUS/document-definition/unknown 4분리, coverage·omission
+metadata), `ContextPolicy` (profile 4종·budget·clearance 검증),
+entity dedup(`observed_as`), query-aware 결정적 선별(생성형 호출 없음),
+hard token budget(고정 축소 순서, 상태 불변 보장), 안전 XML/JSON/text
+renderer(제어문자 제거·CDATA 금지), 코드 고정 `TERMINOLOGY_POLICY`,
+`prepare_llm_context()` 편의 API, `validate_llm_grounding()` 출력 검증기,
+glossary `grounding:` 블록(short_definition·hints·injection_policy·
+classification — entities_hash에 포함). 테스트 20종
+(`tests/test_context_pack.py`: 분리 불변조건·budget·injection 문자열·
+clearance 필터·validator).
+
+**Context-pack 백로그:**
+
+1. **Downstream A/B 평가 프로그램** — 핵심 제품 지표 확립: 최소 4조건
+   (LLM-only / full-glossary / KTRF context / gold context) + Helpful·Harmful
+   Flip, **Gold Benefit Recovery** 측정. pilot ~300사례 → 정식 1,000+
+   (문서 단위 cluster 처리, paired bootstrap/McNemar). counterfactual 오류
+   주입(잘못된 RESOLVED, gold 후보 제거, irrelevant flood) 포함
+2. relation 확장(allowlist·depth 1·entity당 2개 상한), semantic relevance
+   (기존 encoder 재사용), multi-turn context delta, 2단계 캐시
+   (resolve cache + pack cache)
+3. resolver 응답에 `resolution_quality` 블록 공식화 (integration layer의
+   내부 구현 의존 제거), document-local 정의 원문 span 추출
+4. 모델별 TokenCounter 주입 가이드, JSON Schema 파일 발행, prompt-injection
+   A/B (raw vs escape vs pack+policy) 자동화
+
 ## 다음 단계 (우선순위)
 
 1. **Level B 격차 해소**: 949질의 UE 평가에서 dense 91.8% < 목표 95% —

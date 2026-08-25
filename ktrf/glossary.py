@@ -42,6 +42,11 @@ class Entity:
     valid_to: str | None = None
     metadata: dict = field(default_factory=dict)
     provenance: dict = field(default_factory=dict)
+    # LLM-grounding block (context packs): short_definition,
+    # disambiguation_hints, injection_policy (auto|resolved_only|
+    # candidate_only|never), priority, classification
+    # (public|internal|restricted)
+    grounding: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -209,6 +214,7 @@ def load_glossary(source: str | dict) -> Glossary:
             valid_to=e.get("valid_to"),
             metadata=e.get("metadata") or {},
             provenance=e.get("provenance") or {},
+            grounding=e.get("grounding") or {},
         )
         for e in data.get("entities") or []
     ]
@@ -444,7 +450,7 @@ def glossary_to_dict(g: Glossary) -> dict:
                 "domain_ids": e.domain_ids, "description": e.description,
                 "examples": e.examples, "valid_from": e.valid_from,
                 "valid_to": e.valid_to, "metadata": e.metadata,
-                "provenance": e.provenance,
+                "provenance": e.provenance, "grounding": e.grounding,
             }
             for e in g.entities
         ],

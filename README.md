@@ -120,6 +120,37 @@ per-principal capped against poisoning, and a failing golden-set regression
 refuses the finetune. The result is a *new* snapshot; the input is never
 mutated.
 
+## LLM grounding (terminology context packs)
+
+To put KTRF in front of an LLM, don't render resolver output straight into a
+prompt — build a **context pack**, a structured intermediate representation
+with strict status separation:
+
+```python
+from ktrf import prepare_llm_context, ContextPolicy, validate_llm_grounding
+
+prepared = prepare_llm_context(
+    snapshot, document, query="금감원의 PF 점검 결과는?",
+    context_policy=ContextPolicy(profile="qa_grounding", max_tokens=800))
+
+prompt = prepared.policy_fragment + "\n" + prepared.prompt_fragment
+# ... call your LLM, then gate structured output before automation:
+check = validate_llm_grounding(llm_output, prepared.context_pack)
+```
+
+The builder keeps RESOLVED facts, AMBIGUOUS candidate sets,
+document-asserted definitions, and unknown mentions structurally separate
+(a candidate is never rendered as a fact), deduplicates entities across
+mentions (`observed_as` + occurrence count), selects query-relevant entities
+with a deterministic heuristic (no LLM calls inside the layer), enforces a
+hard token budget with a fixed reduction order and honest
+`coverage`/`omissions` metadata, strips control characters and escapes
+everything at render time, and ships a fixed `terminology_policy` fragment
+from code so glossary content can never rewrite the rules. Glossary entities
+can carry an optional `grounding:` block (`short_definition`,
+`disambiguation_hints`, `injection_policy`, `classification`) for
+prompt-ready definitions and clearance filtering.
+
 ## Evaluation
 
 KTRF is evaluated in layers, each targeting a failure mode the previous
