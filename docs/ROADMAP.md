@@ -10,6 +10,7 @@
 | [PLAN.md](../PLAN.md) | KTRF 기술 스펙 v0.3 (규범) | spec |
 | [MODEL_RECOMMEND.md](../MODEL_RECOMMEND.md) | 신경 모델 선정 근거 | 결정 기록 |
 | [docs/GPU_PLAN.md](GPU_PLAN.md) | GPU 실행 계획 (G1–G3) | 계획 |
+| [PLAN_PI.md](../PLAN_PI.md) | Pi Coding Agent Extension 통합 설계 (pi-ktrf) | 계획 |
 | [docs/traceability.yaml](traceability.yaml) | REQ ↔ 테스트 추적성 (CI 강제) | 계약 |
 | [reports/EVALUATION.md](../reports/EVALUATION.md) | 카탈로그 conformance + release gate | 생성 리포트 |
 | [reports/BENCHMARKS.md](../reports/BENCHMARKS.md) | 적대적 anti-overfitting 매트릭스 | 생성 리포트 |
@@ -116,6 +117,31 @@ clearance 필터·validator).
    내부 구현 의존 제거), document-local 정의 원문 span 추출
 4. 모델별 TokenCounter 주입 가이드, JSON Schema 파일 발행, prompt-injection
    A/B (raw vs escape vs pack+policy) 자동화
+
+## Pi Extension 통합 (PLAN_PI.md, 6단계)
+
+KTRF를 Pi Coding Agent의 terminology grounding 레이어로 배포하는 계획.
+원칙: **LLM은 제안자, KTRF 정책 엔진은 검증자, 영속 등록은 승인 정책이
+결정** — LLM 추론만으로 영구 사전을 수정하지 않는다. 첫 구현은 Python
+심볼릭 코어를 CPU-only stdio sidecar로 쓰고 TypeScript 재작성은 하지 않는다.
+
+| 단계 | 내용 | 상태 |
+|---|---|---|
+| 1. KTRF 기반 정비 | snapshot digest·ContextPack·safe renderer / layered glossary compiler·Simple Terminology Schema·explain API·stdio runtime | ◐ 전반부 완료 (무결성 하드닝 + `ktrf/context.py`); 후반부 미착수 |
+| 2. 수동 Pi Extension | Pi Package 스캐폴드, sidecar bridge, `/terms` 명령어, 계층 사전(global/project/session), project trust | 미착수 (별도 TS 패키지) |
+| 3. 자동 context injection | lifecycle hook (`before_agent_start`/`tool_result`/`context`), dedup, adaptive budget | 미착수 |
+| 4. LLM-assisted learning | `ktrf_propose_term`, proposal queue, `/terms review`, provisional term | 미착수 |
+| 5. 제한적 자동 등록 | 명시적 정의 session 자동 등록, 반복 evidence 기반 project 승격, shadow compile + conformance gate | 미착수 |
+| 6. 평가·배포 | Pi lifecycle E2E, scope/보안 테스트, A/B 평가, npm 배포 | 미착수 |
+
+선행 조건이던 "snapshot integrity 수정"(PLAN_PI §14)은 완료 상태다. KTRF
+저장소 쪽 다음 작업 단위는 1단계 후반부 4종: **layered glossary compiler**
+(Base→Global→Project→Session→Document 우선순위·shadow provenance),
+**Simple Terminology Schema** (`terms.yaml` → glossary compile),
+**explain API** (resolve 근거 노출), **stdio JSON-RPC runtime**
+(`ktrf/integrations/pi_stdio.py`, fail-open 계약). proposal 상태 모델
+(OBSERVED→PROPOSED→VALIDATED→PROVISIONAL→ACTIVE)과 `TermAdmissionPolicy`는
+correction workflow와 분리된 `TermProposalStore`로 구현한다.
 
 ## 다음 단계 (우선순위)
 
