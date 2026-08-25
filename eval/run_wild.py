@@ -65,6 +65,10 @@ def _silver_occurrences(text: str, aliases: list[str]) -> list[tuple[int, int, s
             prev = text[i - 1] if i > 0 else ""
             if prev and (_is_hangul(prev) or prev.isascii() and prev.isalnum()):
                 continue  # compound like 서울지방경찰청 — not silver-certain
+            nxt = text[i + len(a)] if i + len(a) < len(text) else ""
+            if (a[-1].isascii() and a[-1].isalnum()
+                    and nxt.isascii() and nxt.isalnum()):
+                continue  # KBS inside KBSN — mid-Latin-run, not a clean token
             raw.append((i, i + len(a), a))
     # keep only maximal occurrences (복지부 inside 보건복지부 drops out)
     out = []
@@ -373,7 +377,7 @@ def main():
         "tail_coverage": silver["tail_distribution"]["coverage"],
         "fake_fp_resolved": fake_fp["resolved_fp_count"],
     }, ensure_ascii=False, indent=2))
-    print(f"wrote {out / 'wild.json'} and {ROOT / 'WILD_CORPUS.md'}")
+    print(f"wrote {out / 'wild.json'} and {ROOT / 'reports' / 'WILD_CORPUS.md'}")
 
 
 if __name__ == "__main__":

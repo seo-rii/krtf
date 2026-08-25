@@ -51,6 +51,93 @@ entities:
   - {entity_id: ORG_KTNG, canonical: KT&G, description: 담배와 인삼 제품 제조 기업, domain_ids: [CORP]}
   - {entity_id: ORG_NAVER, canonical: 네이버, description: 인터넷 포털과 IT 서비스 기업, domain_ids: [CORP]}
   - {entity_id: ORG_KAKAO, canonical: 카카오, description: 모바일 플랫폼과 IT 서비스 기업, domain_ids: [CORP]}
+  # --- v2 확장: 대기업·금융·공기업·협회·정부기관·언론 (silver 밀도 확대) ---
+  - {entity_id: ORG_SKHYNIX, canonical: SK하이닉스, description: 메모리 반도체 제조 대기업, domain_ids: [CORP]}
+  - {entity_id: ORG_LGCHEM, canonical: LG화학, description: 화학과 배터리 제조 대기업, domain_ids: [CORP]}
+  - {entity_id: ORG_LGD, canonical: LG디스플레이, description: 디스플레이 패널 제조 기업, domain_ids: [CORP]}
+  - {entity_id: ORG_LGU, canonical: LG유플러스, description: 이동통신 사업자, domain_ids: [CORP]}
+  - {entity_id: ORG_SSCT, canonical: 삼성물산, description: 건설과 상사 부문 대기업, domain_ids: [CORP]}
+  - {entity_id: ORG_SSBIO, canonical: 삼성바이오로직스, description: 바이오의약품 위탁생산 기업, domain_ids: [CORP]}
+  - {entity_id: ORG_SSHEAVY, canonical: 삼성중공업, description: 조선과 해양플랜트 제조 기업, domain_ids: [CORP]}
+  - {entity_id: ORG_SSLIFE, canonical: 삼성생명, description: 생명보험 대기업, domain_ids: [CORP]}
+  - {entity_id: ORG_SSSDI, canonical: 삼성SDI, description: 배터리와 전자소재 제조 기업, domain_ids: [CORP]}
+  - {entity_id: ORG_HHI, canonical: 현대중공업, description: 조선과 중공업 대기업, domain_ids: [CORP]}
+  - {entity_id: ORG_HSTEEL, canonical: 현대제철, description: 철강 제조 대기업, domain_ids: [CORP]}
+  - {entity_id: ORG_HMOBIS, canonical: 현대모비스, description: 자동차 부품 제조 대기업, domain_ids: [CORP]}
+  - {entity_id: ORG_HMM, canonical: 현대상선, description: 컨테이너 해운 기업, domain_ids: [CORP]}
+  - {entity_id: ORG_KIA, canonical: 기아자동차, description: 자동차 제조 대기업, domain_ids: [CORP]}
+  - {entity_id: ORG_GMKOREA, canonical: 한국GM, description: 미국 GM의 한국 자동차 제조 법인, domain_ids: [CORP]}
+  - {entity_id: ORG_SYMC, canonical: 쌍용자동차, description: SUV 중심 자동차 제조 기업, domain_ids: [CORP]}
+  - {entity_id: ORG_RSM, canonical: 르노삼성자동차, description: 르노 계열 자동차 제조 기업, domain_ids: [CORP]}
+  - {entity_id: ORG_POSCO, canonical: 포스코, description: 철강 제조 대기업, domain_ids: [CORP]}
+  - {entity_id: ORG_DSME, canonical: 대우조선해양, description: 조선과 해양플랜트 제조 기업, domain_ids: [CORP]}
+  - {entity_id: ORG_DHIC, canonical: 두산중공업, description: 발전설비와 담수화 플랜트 기업, domain_ids: [CORP]}
+  - {entity_id: ORG_KAL, canonical: 대한항공, description: 국적 항공사, domain_ids: [CORP]}
+  - {entity_id: ORG_ASIANA, canonical: 아시아나항공, description: 국적 항공사, domain_ids: [CORP]}
+  - {entity_id: ORG_JEJUAIR, canonical: 제주항공, description: 저비용 항공사, domain_ids: [CORP]}
+  - {entity_id: ORG_HANJIN, canonical: 한진해운, description: 컨테이너 해운 기업, domain_ids: [CORP]}
+  - {entity_id: ORG_EMART, canonical: 이마트, description: 대형마트 유통 기업, domain_ids: [CORP]}
+  - {entity_id: ORG_HOMEPLUS, canonical: 홈플러스, description: 대형마트 유통 기업, domain_ids: [CORP]}
+  - {entity_id: ORG_LOTTEMART, canonical: 롯데마트, description: 대형마트 유통 기업, domain_ids: [CORP]}
+  - {entity_id: ORG_CJCJ, canonical: CJ제일제당, description: 식품과 바이오 제조 기업, domain_ids: [CORP]}
+  - {entity_id: ORG_CELLTRION, canonical: 셀트리온, description: 바이오시밀러 제조 기업, domain_ids: [CORP]}
+  - {entity_id: ORG_AMORE, canonical: 아모레퍼시픽, description: 화장품 제조 대기업, domain_ids: [CORP]}
+  - {entity_id: ORG_NETMARBLE, canonical: 넷마블, description: 모바일 게임 기업, domain_ids: [CORP]}
+  - {entity_id: ORG_NCSOFT, canonical: 엔씨소프트, description: 온라인 게임 기업, domain_ids: [CORP]}
+  - {entity_id: ORG_KBBANK, canonical: 국민은행, description: KB금융그룹의 시중은행, domain_ids: [FINANCE]}
+  - {entity_id: ORG_SHINHAN_BANK, canonical: 신한은행, description: 신한금융그룹의 시중은행, domain_ids: [FINANCE]}
+  - {entity_id: ORG_WOORI_BANK, canonical: 우리은행, description: 우리금융그룹의 시중은행, domain_ids: [FINANCE]}
+  - {entity_id: ORG_HANA_BANK, canonical: 하나은행, description: 하나금융그룹의 시중은행, domain_ids: [FINANCE]}
+  - {entity_id: ORG_KDB, canonical: 산업은행, description: 국책 개발금융 은행, domain_ids: [FINANCE]}
+  - {entity_id: ORG_IBK, canonical: 기업은행, description: 중소기업 금융 국책은행, domain_ids: [FINANCE]}
+  - {entity_id: ORG_KEXIM, canonical: 수출입은행, description: 수출입 금융 국책은행, domain_ids: [FINANCE]}
+  - {entity_id: ORG_NHBANK, canonical: 농협은행, description: NH농협금융그룹의 시중은행, domain_ids: [FINANCE]}
+  - {entity_id: ORG_KRX, canonical: 한국거래소, description: 증권과 파생상품 거래소 운영 기관, domain_ids: [FINANCE]}
+  - {entity_id: ORG_KDIC, canonical: 예금보험공사, description: 예금자 보호 공공기관, domain_ids: [FINANCE]}
+  - {entity_id: ORG_LH, canonical: 한국토지주택공사, description: 토지와 주택 개발 공기업, domain_ids: [GOV]}
+  - {entity_id: ORG_EXCORP, canonical: 한국도로공사, description: 고속도로 건설과 관리 공기업, domain_ids: [GOV]}
+  - {entity_id: ORG_KORAIL, canonical: 한국철도공사, description: 철도 운영 공기업, domain_ids: [GOV]}
+  - {entity_id: ORG_IIAC, canonical: 인천국제공항공사, description: 인천국제공항 운영 공기업, domain_ids: [GOV]}
+  - {entity_id: ORG_KAC, canonical: 한국공항공사, description: 국내 공항 운영 공기업, domain_ids: [GOV]}
+  - {entity_id: ORG_KOGAS, canonical: 한국가스공사, description: 천연가스 도입과 공급 공기업, domain_ids: [ENERGY]}
+  - {entity_id: ORG_KNOC, canonical: 한국석유공사, description: 석유 개발과 비축 공기업, domain_ids: [ENERGY]}
+  - {entity_id: ORG_GWL, canonical: 강원랜드, description: 카지노와 리조트 운영 공기업, domain_ids: [CORP]}
+  - {entity_id: ORG_KTO, canonical: 한국관광공사, description: 관광 진흥 공공기관, domain_ids: [GOV]}
+  - {entity_id: ORG_KOTRA, canonical: 코트라, description: 무역과 투자 진흥 공공기관, domain_ids: [GOV]}
+  - {entity_id: ORG_KITA, canonical: 한국무역협회, description: 무역업계 경제단체, domain_ids: [CORP]}
+  - {entity_id: ORG_KCCI, canonical: 대한상공회의소, description: 상공업계 경제단체, domain_ids: [CORP]}
+  - {entity_id: ORG_FKI, canonical: 전국경제인연합회, description: 대기업 중심 경제단체, domain_ids: [CORP]}
+  - {entity_id: ORG_KBIZ, canonical: 중소기업중앙회, description: 중소기업 경제단체, domain_ids: [CORP]}
+  - {entity_id: ORG_KEF, canonical: 한국경영자총협회, description: 사용자측 경제단체, domain_ids: [CORP]}
+  - {entity_id: ORG_KCTU, canonical: 민주노총, description: 전국 단위 노동조합 총연맹, domain_ids: [CORP]}
+  - {entity_id: ORG_FKTU, canonical: 한국노총, description: 전국 단위 노동조합 총연맹, domain_ids: [CORP]}
+  - {entity_id: ORG_KTU, canonical: 전교조, description: 교원 노동조합, domain_ids: [CORP]}
+  - {entity_id: ORG_PSPD, canonical: 참여연대, description: 시민사회 감시 단체, domain_ids: [CORP]}
+  - {entity_id: ORG_MOJ, canonical: 법무부, description: 법무 행정을 담당하는 중앙행정기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MOGEF, canonical: 여성가족부, description: 여성과 가족 정책을 담당하는 중앙행정기관, domain_ids: [GOV]}
+  - {entity_id: ORG_CHA, canonical: 문화재청, description: 문화재 보존과 관리를 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_KFS, canonical: 산림청, description: 산림 정책을 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_PPS, canonical: 조달청, description: 정부 조달을 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_KIPO, canonical: 특허청, description: 특허와 지식재산권 행정을 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MMA, canonical: 병무청, description: 병역 행정을 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_NFA, canonical: 소방청, description: 소방과 방재를 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_KCG, canonical: 해양경찰청, description: 해양 치안을 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_DAPA, canonical: 방위사업청, description: 방위력 개선 사업을 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MPVA, canonical: 국가보훈처, description: 보훈 정책을 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MPM, canonical: 인사혁신처, description: 공무원 인사 정책을 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_MOLEG, canonical: 법제처, description: 법제 업무를 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_SCOURT, canonical: 대법원, description: 대한민국 최고 법원, domain_ids: [GOV]}
+  - {entity_id: ORG_KCDC, canonical: 질병관리본부, description: 감염병 관리와 방역을 담당하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_NHRC, canonical: 국가인권위원회, description: 인권 보호 독립 국가기관, domain_ids: [GOV]}
+  - {entity_id: ORG_ACRC, canonical: 국민권익위원회, description: 부패 방지와 권익 구제 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_SCDPO, canonical: 서울중앙지검, description: 서울 중앙 지역 검찰청, domain_ids: [GOV]}
+  - {entity_id: ORG_JCS, canonical: 합동참모본부, description: 군 작전을 총괄하는 기관, domain_ids: [GOV]}
+  - {entity_id: ORG_KBS, canonical: KBS, description: 한국방송공사 공영방송, domain_ids: [MEDIA]}
+  - {entity_id: ORG_MBC, canonical: MBC, description: 문화방송 지상파 방송사, domain_ids: [MEDIA]}
+  - {entity_id: ORG_SBS, canonical: SBS, description: 민영 지상파 방송사, domain_ids: [MEDIA]}
+  - {entity_id: ORG_JTBC, canonical: JTBC, description: 종합편성채널 방송사, domain_ids: [MEDIA]}
+  - {entity_id: ORG_YTN, canonical: YTN, description: 보도전문채널 방송사, domain_ids: [MEDIA]}
+  - {entity_id: ORG_YONHAP, canonical: 연합뉴스, description: 국가기간 뉴스통신사, domain_ids: [MEDIA]}
 
 alias_families:
   # 자동 생성 규칙: 본문 bindings 참조 (full name family + 약어 family)
@@ -128,6 +215,113 @@ alias_families:
   - {family_id: F_KTNG_FULL, representative: KT&G, normalization_profile: mixed_alnum}
   - {family_id: F_NAVER_FULL, representative: 네이버, normalization_profile: korean_org_name}
   - {family_id: F_KAKAO_FULL, representative: 카카오, normalization_profile: korean_org_name}
+  # --- v2 확장 ---
+  - {family_id: F_SKHYNIX, representative: SK하이닉스, normalization_profile: mixed_alnum}
+  - {family_id: F_LGCHEM, representative: LG화학, normalization_profile: mixed_alnum}
+  - {family_id: F_LGD, representative: LG디스플레이, normalization_profile: mixed_alnum}
+  - {family_id: F_LGU, representative: LG유플러스, normalization_profile: mixed_alnum}
+  - {family_id: F_SSCT, representative: 삼성물산, normalization_profile: korean_org_name}
+  - {family_id: F_SSBIO_FULL, representative: 삼성바이오로직스, normalization_profile: korean_org_name}
+  - {family_id: F_SSBIO_AB, representative: 삼성바이오, normalization_profile: korean_org_name}
+  - {family_id: F_SSHEAVY, representative: 삼성중공업, normalization_profile: korean_org_name}
+  - {family_id: F_SSLIFE, representative: 삼성생명, normalization_profile: korean_org_name}
+  - {family_id: F_SSSDI, representative: 삼성SDI, normalization_profile: mixed_alnum}
+  - {family_id: F_HHI, representative: 현대중공업, normalization_profile: korean_org_name}
+  - {family_id: F_HSTEEL, representative: 현대제철, normalization_profile: korean_org_name}
+  - {family_id: F_HMOBIS, representative: 현대모비스, normalization_profile: korean_org_name}
+  - {family_id: F_HMM, representative: 현대상선, normalization_profile: korean_org_name}
+  - {family_id: F_KIA_FULL, representative: 기아자동차, normalization_profile: korean_org_name}
+  - {family_id: F_KIA_AB, representative: 기아차, normalization_profile: korean_org_name}
+  - {family_id: F_GMKOREA, representative: 한국GM, normalization_profile: mixed_alnum}
+  - {family_id: F_SYMC_FULL, representative: 쌍용자동차, normalization_profile: korean_org_name}
+  - {family_id: F_SYMC_AB, representative: 쌍용차, normalization_profile: korean_org_name}
+  - {family_id: F_RSM_FULL, representative: 르노삼성자동차, normalization_profile: korean_org_name}
+  - {family_id: F_RSM_AB, representative: 르노삼성, normalization_profile: korean_org_name}
+  - {family_id: F_POSCO, representative: 포스코, normalization_profile: korean_org_name}
+  - {family_id: F_DSME_FULL, representative: 대우조선해양, normalization_profile: korean_org_name}
+  - {family_id: F_DSME_AB, representative: 대우조선, normalization_profile: korean_org_name}
+  - {family_id: F_DHIC, representative: 두산중공업, normalization_profile: korean_org_name}
+  - {family_id: F_KAL, representative: 대한항공, normalization_profile: korean_org_name}
+  - {family_id: F_ASIANA, representative: 아시아나항공, normalization_profile: korean_org_name}
+  - {family_id: F_JEJUAIR, representative: 제주항공, normalization_profile: korean_org_name}
+  - {family_id: F_HANJIN, representative: 한진해운, normalization_profile: korean_org_name}
+  - {family_id: F_EMART, representative: 이마트, normalization_profile: korean_org_name}
+  - {family_id: F_HOMEPLUS, representative: 홈플러스, normalization_profile: korean_org_name}
+  - {family_id: F_LOTTEMART, representative: 롯데마트, normalization_profile: korean_org_name}
+  - {family_id: F_CJCJ, representative: CJ제일제당, normalization_profile: mixed_alnum}
+  - {family_id: F_CELLTRION, representative: 셀트리온, normalization_profile: korean_org_name}
+  - {family_id: F_AMORE, representative: 아모레퍼시픽, normalization_profile: korean_org_name}
+  - {family_id: F_NETMARBLE, representative: 넷마블, normalization_profile: korean_org_name}
+  - {family_id: F_NCSOFT, representative: 엔씨소프트, normalization_profile: korean_org_name}
+  - {family_id: F_KBBANK, representative: 국민은행, normalization_profile: korean_org_name}
+  - {family_id: F_SHINHAN_BANK, representative: 신한은행, normalization_profile: korean_org_name}
+  - {family_id: F_WOORI_BANK, representative: 우리은행, normalization_profile: korean_org_name}
+  - {family_id: F_HANA_BANK_FULL, representative: 하나은행, normalization_profile: korean_org_name}
+  - {family_id: F_HANA_BANK_KEB, representative: KEB하나은행, normalization_profile: mixed_alnum}
+  - {family_id: F_KDB, representative: 산업은행, normalization_profile: korean_org_name}
+  - {family_id: F_IBK, representative: 기업은행, normalization_profile: korean_org_name}
+  - {family_id: F_KEXIM, representative: 수출입은행, normalization_profile: korean_org_name}
+  - {family_id: F_NHBANK, representative: 농협은행, normalization_profile: korean_org_name}
+  - {family_id: F_KRX, representative: 한국거래소, normalization_profile: korean_org_name}
+  - {family_id: F_KDIC, representative: 예금보험공사, normalization_profile: korean_org_name}
+  - {family_id: F_LH, representative: 한국토지주택공사, normalization_profile: korean_org_name}
+  - {family_id: F_EXCORP, representative: 한국도로공사, normalization_profile: korean_org_name}
+  - {family_id: F_KORAIL_FULL, representative: 한국철도공사, normalization_profile: korean_org_name}
+  - {family_id: F_KORAIL_AB, representative: 코레일, normalization_profile: korean_org_name}
+  - {family_id: F_IIAC_FULL, representative: 인천국제공항공사, normalization_profile: korean_org_name}
+  - {family_id: F_IIAC_AB, representative: 인천공항공사, normalization_profile: korean_org_name}
+  - {family_id: F_KAC, representative: 한국공항공사, normalization_profile: korean_org_name}
+  - {family_id: F_KOGAS, representative: 한국가스공사, normalization_profile: korean_org_name}
+  - {family_id: F_KNOC, representative: 한국석유공사, normalization_profile: korean_org_name}
+  - {family_id: F_GWL, representative: 강원랜드, normalization_profile: korean_org_name}
+  - {family_id: F_KTO, representative: 한국관광공사, normalization_profile: korean_org_name}
+  - {family_id: F_KOTRA_KR, representative: 코트라, normalization_profile: korean_org_name}
+  - {family_id: F_KOTRA_EN, representative: KOTRA, normalization_profile: latin_acronym}
+  - {family_id: F_KITA_FULL, representative: 한국무역협회, normalization_profile: korean_org_name}
+  - {family_id: F_KITA_AB, representative: 무역협회, normalization_profile: korean_org_name}
+  - {family_id: F_KCCI_FULL, representative: 대한상공회의소, normalization_profile: korean_org_name}
+  - {family_id: F_KCCI_AB, representative: 대한상의, normalization_profile: korean_org_name}
+  - {family_id: F_FKI_FULL, representative: 전국경제인연합회, normalization_profile: korean_org_name}
+  - {family_id: F_FKI_AB, representative: 전경련, normalization_profile: korean_org_name}
+  - {family_id: F_KBIZ, representative: 중소기업중앙회, normalization_profile: korean_org_name}
+  - {family_id: F_KEF_FULL, representative: 한국경영자총협회, normalization_profile: korean_org_name}
+  - {family_id: F_KEF_AB, representative: 경총, normalization_profile: korean_org_name}
+  - {family_id: F_KCTU, representative: 민주노총, normalization_profile: korean_org_name}
+  - {family_id: F_FKTU, representative: 한국노총, normalization_profile: korean_org_name}
+  - {family_id: F_KTU, representative: 전교조, normalization_profile: korean_org_name}
+  - {family_id: F_PSPD, representative: 참여연대, normalization_profile: korean_org_name}
+  - {family_id: F_MOJ, representative: 법무부, normalization_profile: korean_org_name}
+  - {family_id: F_MOGEF_FULL, representative: 여성가족부, normalization_profile: korean_org_name}
+  - {family_id: F_MOGEF_AB, representative: 여가부, normalization_profile: korean_org_name}
+  - {family_id: F_CHA, representative: 문화재청, normalization_profile: korean_org_name}
+  - {family_id: F_KFS, representative: 산림청, normalization_profile: korean_org_name}
+  - {family_id: F_PPS, representative: 조달청, normalization_profile: korean_org_name}
+  - {family_id: F_KIPO, representative: 특허청, normalization_profile: korean_org_name}
+  - {family_id: F_MMA, representative: 병무청, normalization_profile: korean_org_name}
+  - {family_id: F_NFA, representative: 소방청, normalization_profile: korean_org_name}
+  - {family_id: F_KCG_FULL, representative: 해양경찰청, normalization_profile: korean_org_name}
+  - {family_id: F_KCG_AB, representative: 해경, normalization_profile: korean_org_name}
+  - {family_id: F_DAPA_FULL, representative: 방위사업청, normalization_profile: korean_org_name}
+  - {family_id: F_DAPA_AB, representative: 방사청, normalization_profile: korean_org_name}
+  - {family_id: F_MPVA_FULL, representative: 국가보훈처, normalization_profile: korean_org_name}
+  - {family_id: F_MPVA_AB, representative: 보훈처, normalization_profile: korean_org_name}
+  - {family_id: F_MPM, representative: 인사혁신처, normalization_profile: korean_org_name}
+  - {family_id: F_MOLEG, representative: 법제처, normalization_profile: korean_org_name}
+  - {family_id: F_SCOURT, representative: 대법원, normalization_profile: korean_org_name}
+  - {family_id: F_KCDC, representative: 질병관리본부, normalization_profile: korean_org_name}
+  - {family_id: F_NHRC_FULL, representative: 국가인권위원회, normalization_profile: korean_org_name}
+  - {family_id: F_NHRC_AB, representative: 인권위, normalization_profile: korean_org_name}
+  - {family_id: F_ACRC_FULL, representative: 국민권익위원회, normalization_profile: korean_org_name}
+  - {family_id: F_ACRC_AB, representative: 권익위, normalization_profile: korean_org_name}
+  - {family_id: F_SCDPO, representative: 서울중앙지검, normalization_profile: korean_org_name}
+  - {family_id: F_JCS_FULL, representative: 합동참모본부, normalization_profile: korean_org_name}
+  - {family_id: F_JCS_AB, representative: 합참, normalization_profile: korean_org_name}
+  - {family_id: F_KBS, representative: KBS, normalization_profile: latin_acronym}
+  - {family_id: F_MBC, representative: MBC, normalization_profile: latin_acronym}
+  - {family_id: F_SBS, representative: SBS, normalization_profile: latin_acronym}
+  - {family_id: F_JTBC, representative: JTBC, normalization_profile: latin_acronym}
+  - {family_id: F_YTN, representative: YTN, normalization_profile: latin_acronym}
+  - {family_id: F_YONHAP, representative: 연합뉴스, normalization_profile: korean_org_name}
 
 alias_bindings:
   - {alias_id: A_MSIT_FULL, family_id: F_MSIT_FULL, entity_id: ORG_MSIT, surface: 과학기술정보통신부, kind: name, boundary_policy: {left: hangul_token_boundary}}
@@ -204,3 +398,110 @@ alias_bindings:
   - {alias_id: A_KTNG_FULL, family_id: F_KTNG_FULL, entity_id: ORG_KTNG, surface: KT&G, kind: name, boundary_policy: {left: latin_token_boundary}}
   - {alias_id: A_NAVER_FULL, family_id: F_NAVER_FULL, entity_id: ORG_NAVER, surface: 네이버, kind: name, boundary_policy: {left: hangul_token_boundary}}
   - {alias_id: A_KAKAO_FULL, family_id: F_KAKAO_FULL, entity_id: ORG_KAKAO, surface: 카카오, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  # --- v2 확장 ---
+  - {alias_id: A_SKHYNIX, family_id: F_SKHYNIX, entity_id: ORG_SKHYNIX, surface: SK하이닉스, kind: name, boundary_policy: {left: latin_token_boundary}}
+  - {alias_id: A_LGCHEM, family_id: F_LGCHEM, entity_id: ORG_LGCHEM, surface: LG화학, kind: name, boundary_policy: {left: latin_token_boundary}}
+  - {alias_id: A_LGD, family_id: F_LGD, entity_id: ORG_LGD, surface: LG디스플레이, kind: name, boundary_policy: {left: latin_token_boundary}}
+  - {alias_id: A_LGU, family_id: F_LGU, entity_id: ORG_LGU, surface: LG유플러스, kind: name, boundary_policy: {left: latin_token_boundary}}
+  - {alias_id: A_SSCT, family_id: F_SSCT, entity_id: ORG_SSCT, surface: 삼성물산, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SSBIO_FULL, family_id: F_SSBIO_FULL, entity_id: ORG_SSBIO, surface: 삼성바이오로직스, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SSBIO_AB, family_id: F_SSBIO_AB, entity_id: ORG_SSBIO, surface: 삼성바이오, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SSHEAVY, family_id: F_SSHEAVY, entity_id: ORG_SSHEAVY, surface: 삼성중공업, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SSLIFE, family_id: F_SSLIFE, entity_id: ORG_SSLIFE, surface: 삼성생명, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SSSDI, family_id: F_SSSDI, entity_id: ORG_SSSDI, surface: 삼성SDI, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_HHI, family_id: F_HHI, entity_id: ORG_HHI, surface: 현대중공업, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_HSTEEL, family_id: F_HSTEEL, entity_id: ORG_HSTEEL, surface: 현대제철, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_HMOBIS, family_id: F_HMOBIS, entity_id: ORG_HMOBIS, surface: 현대모비스, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_HMM, family_id: F_HMM, entity_id: ORG_HMM, surface: 현대상선, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KIA_FULL, family_id: F_KIA_FULL, entity_id: ORG_KIA, surface: 기아자동차, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KIA_AB, family_id: F_KIA_AB, entity_id: ORG_KIA, surface: 기아차, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_GMKOREA, family_id: F_GMKOREA, entity_id: ORG_GMKOREA, surface: 한국GM, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SYMC_FULL, family_id: F_SYMC_FULL, entity_id: ORG_SYMC, surface: 쌍용자동차, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SYMC_AB, family_id: F_SYMC_AB, entity_id: ORG_SYMC, surface: 쌍용차, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_RSM_FULL, family_id: F_RSM_FULL, entity_id: ORG_RSM, surface: 르노삼성자동차, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_RSM_AB, family_id: F_RSM_AB, entity_id: ORG_RSM, surface: 르노삼성, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_POSCO, family_id: F_POSCO, entity_id: ORG_POSCO, surface: 포스코, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_DSME_FULL, family_id: F_DSME_FULL, entity_id: ORG_DSME, surface: 대우조선해양, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_DSME_AB, family_id: F_DSME_AB, entity_id: ORG_DSME, surface: 대우조선, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_DHIC, family_id: F_DHIC, entity_id: ORG_DHIC, surface: 두산중공업, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KAL, family_id: F_KAL, entity_id: ORG_KAL, surface: 대한항공, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_ASIANA, family_id: F_ASIANA, entity_id: ORG_ASIANA, surface: 아시아나항공, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_JEJUAIR, family_id: F_JEJUAIR, entity_id: ORG_JEJUAIR, surface: 제주항공, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_HANJIN, family_id: F_HANJIN, entity_id: ORG_HANJIN, surface: 한진해운, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_EMART, family_id: F_EMART, entity_id: ORG_EMART, surface: 이마트, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_HOMEPLUS, family_id: F_HOMEPLUS, entity_id: ORG_HOMEPLUS, surface: 홈플러스, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_LOTTEMART, family_id: F_LOTTEMART, entity_id: ORG_LOTTEMART, surface: 롯데마트, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_CJCJ, family_id: F_CJCJ, entity_id: ORG_CJCJ, surface: CJ제일제당, kind: name, boundary_policy: {left: latin_token_boundary}}
+  - {alias_id: A_CELLTRION, family_id: F_CELLTRION, entity_id: ORG_CELLTRION, surface: 셀트리온, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_AMORE, family_id: F_AMORE, entity_id: ORG_AMORE, surface: 아모레퍼시픽, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NETMARBLE, family_id: F_NETMARBLE, entity_id: ORG_NETMARBLE, surface: 넷마블, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NCSOFT, family_id: F_NCSOFT, entity_id: ORG_NCSOFT, surface: 엔씨소프트, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KBBANK, family_id: F_KBBANK, entity_id: ORG_KBBANK, surface: 국민은행, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SHINHAN_BANK, family_id: F_SHINHAN_BANK, entity_id: ORG_SHINHAN_BANK, surface: 신한은행, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_WOORI_BANK, family_id: F_WOORI_BANK, entity_id: ORG_WOORI_BANK, surface: 우리은행, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_HANA_BANK_FULL, family_id: F_HANA_BANK_FULL, entity_id: ORG_HANA_BANK, surface: 하나은행, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_HANA_BANK_KEB, family_id: F_HANA_BANK_KEB, entity_id: ORG_HANA_BANK, surface: KEB하나은행, kind: name, boundary_policy: {left: latin_token_boundary}}
+  - {alias_id: A_KDB, family_id: F_KDB, entity_id: ORG_KDB, surface: 산업은행, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_IBK, family_id: F_IBK, entity_id: ORG_IBK, surface: 기업은행, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KEXIM, family_id: F_KEXIM, entity_id: ORG_KEXIM, surface: 수출입은행, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NHBANK, family_id: F_NHBANK, entity_id: ORG_NHBANK, surface: 농협은행, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KRX, family_id: F_KRX, entity_id: ORG_KRX, surface: 한국거래소, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KDIC, family_id: F_KDIC, entity_id: ORG_KDIC, surface: 예금보험공사, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_LH, family_id: F_LH, entity_id: ORG_LH, surface: 한국토지주택공사, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_EXCORP, family_id: F_EXCORP, entity_id: ORG_EXCORP, surface: 한국도로공사, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KORAIL_FULL, family_id: F_KORAIL_FULL, entity_id: ORG_KORAIL, surface: 한국철도공사, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KORAIL_AB, family_id: F_KORAIL_AB, entity_id: ORG_KORAIL, surface: 코레일, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_IIAC_FULL, family_id: F_IIAC_FULL, entity_id: ORG_IIAC, surface: 인천국제공항공사, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_IIAC_AB, family_id: F_IIAC_AB, entity_id: ORG_IIAC, surface: 인천공항공사, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KAC, family_id: F_KAC, entity_id: ORG_KAC, surface: 한국공항공사, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KOGAS, family_id: F_KOGAS, entity_id: ORG_KOGAS, surface: 한국가스공사, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KNOC, family_id: F_KNOC, entity_id: ORG_KNOC, surface: 한국석유공사, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_GWL, family_id: F_GWL, entity_id: ORG_GWL, surface: 강원랜드, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KTO, family_id: F_KTO, entity_id: ORG_KTO, surface: 한국관광공사, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KOTRA_KR, family_id: F_KOTRA_KR, entity_id: ORG_KOTRA, surface: 코트라, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KOTRA_EN, family_id: F_KOTRA_EN, entity_id: ORG_KOTRA, surface: KOTRA, kind: name, boundary_policy: {left: latin_token_boundary}}
+  - {alias_id: A_KITA_FULL, family_id: F_KITA_FULL, entity_id: ORG_KITA, surface: 한국무역협회, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KITA_AB, family_id: F_KITA_AB, entity_id: ORG_KITA, surface: 무역협회, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KCCI_FULL, family_id: F_KCCI_FULL, entity_id: ORG_KCCI, surface: 대한상공회의소, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KCCI_AB, family_id: F_KCCI_AB, entity_id: ORG_KCCI, surface: 대한상의, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_FKI_FULL, family_id: F_FKI_FULL, entity_id: ORG_FKI, surface: 전국경제인연합회, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_FKI_AB, family_id: F_FKI_AB, entity_id: ORG_FKI, surface: 전경련, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KBIZ, family_id: F_KBIZ, entity_id: ORG_KBIZ, surface: 중소기업중앙회, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KEF_FULL, family_id: F_KEF_FULL, entity_id: ORG_KEF, surface: 한국경영자총협회, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KEF_AB, family_id: F_KEF_AB, entity_id: ORG_KEF, surface: 경총, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KCTU, family_id: F_KCTU, entity_id: ORG_KCTU, surface: 민주노총, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_FKTU, family_id: F_FKTU, entity_id: ORG_FKTU, surface: 한국노총, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KTU, family_id: F_KTU, entity_id: ORG_KTU, surface: 전교조, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_PSPD, family_id: F_PSPD, entity_id: ORG_PSPD, surface: 참여연대, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOJ, family_id: F_MOJ, entity_id: ORG_MOJ, surface: 법무부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOGEF_FULL, family_id: F_MOGEF_FULL, entity_id: ORG_MOGEF, surface: 여성가족부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOGEF_AB, family_id: F_MOGEF_AB, entity_id: ORG_MOGEF, surface: 여가부, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_CHA, family_id: F_CHA, entity_id: ORG_CHA, surface: 문화재청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KFS, family_id: F_KFS, entity_id: ORG_KFS, surface: 산림청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_PPS, family_id: F_PPS, entity_id: ORG_PPS, surface: 조달청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KIPO, family_id: F_KIPO, entity_id: ORG_KIPO, surface: 특허청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MMA, family_id: F_MMA, entity_id: ORG_MMA, surface: 병무청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NFA, family_id: F_NFA, entity_id: ORG_NFA, surface: 소방청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KCG_FULL, family_id: F_KCG_FULL, entity_id: ORG_KCG, surface: 해양경찰청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KCG_AB, family_id: F_KCG_AB, entity_id: ORG_KCG, surface: 해경, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_DAPA_FULL, family_id: F_DAPA_FULL, entity_id: ORG_DAPA, surface: 방위사업청, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_DAPA_AB, family_id: F_DAPA_AB, entity_id: ORG_DAPA, surface: 방사청, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MPVA_FULL, family_id: F_MPVA_FULL, entity_id: ORG_MPVA, surface: 국가보훈처, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MPVA_AB, family_id: F_MPVA_AB, entity_id: ORG_MPVA, surface: 보훈처, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MPM, family_id: F_MPM, entity_id: ORG_MPM, surface: 인사혁신처, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_MOLEG, family_id: F_MOLEG, entity_id: ORG_MOLEG, surface: 법제처, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SCOURT, family_id: F_SCOURT, entity_id: ORG_SCOURT, surface: 대법원, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KCDC, family_id: F_KCDC, entity_id: ORG_KCDC, surface: 질병관리본부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NHRC_FULL, family_id: F_NHRC_FULL, entity_id: ORG_NHRC, surface: 국가인권위원회, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_NHRC_AB, family_id: F_NHRC_AB, entity_id: ORG_NHRC, surface: 인권위, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_ACRC_FULL, family_id: F_ACRC_FULL, entity_id: ORG_ACRC, surface: 국민권익위원회, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_ACRC_AB, family_id: F_ACRC_AB, entity_id: ORG_ACRC, surface: 권익위, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_SCDPO, family_id: F_SCDPO, entity_id: ORG_SCDPO, surface: 서울중앙지검, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_JCS_FULL, family_id: F_JCS_FULL, entity_id: ORG_JCS, surface: 합동참모본부, kind: name, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_JCS_AB, family_id: F_JCS_AB, entity_id: ORG_JCS, surface: 합참, kind: abbreviation, boundary_policy: {left: hangul_token_boundary}}
+  - {alias_id: A_KBS, family_id: F_KBS, entity_id: ORG_KBS, surface: KBS, kind: name, boundary_policy: {left: latin_token_boundary, allow_inside_latin_run: false}}
+  - {alias_id: A_MBC, family_id: F_MBC, entity_id: ORG_MBC, surface: MBC, kind: name, boundary_policy: {left: latin_token_boundary, allow_inside_latin_run: false}}
+  - {alias_id: A_SBS, family_id: F_SBS, entity_id: ORG_SBS, surface: SBS, kind: name, boundary_policy: {left: latin_token_boundary, allow_inside_latin_run: false}}
+  - {alias_id: A_JTBC, family_id: F_JTBC, entity_id: ORG_JTBC, surface: JTBC, kind: name, boundary_policy: {left: latin_token_boundary, allow_inside_latin_run: false}}
+  - {alias_id: A_YTN, family_id: F_YTN, entity_id: ORG_YTN, surface: YTN, kind: name, boundary_policy: {left: latin_token_boundary, allow_inside_latin_run: false}}
+  - {alias_id: A_YONHAP, family_id: F_YONHAP, entity_id: ORG_YONHAP, surface: 연합뉴스, kind: name, boundary_policy: {left: hangul_token_boundary}}

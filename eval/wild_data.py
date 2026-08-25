@@ -27,9 +27,12 @@ API = "https://datasets-server.huggingface.co/rows"
 
 SOURCES = [
     # (dataset, config, split, text_field, max_rows)
-    ("klue/klue", "ynat", "validation", "title", 3000),
-    ("klue/klue", "ynat", "train", "title", 3000),
-    ("klue/klue", "nli", "validation", "premise", 2000),
+    # ynat = Yonhap news headlines (org-dense) — take the full splits
+    ("klue/klue", "ynat", "train", "title", 45678),
+    ("klue/klue", "ynat", "validation", "title", 9107),
+    ("klue/klue", "nli", "train", "premise", 15000),
+    ("klue/klue", "nli", "validation", "premise", 3000),
+    ("klue/klue", "sts", "train", "sentence1", 11668),
     ("klue/klue", "sts", "validation", "sentence1", 519),
 ]
 LICENSE = "CC BY-SA 4.0 (KLUE benchmark, https://huggingface.co/datasets/klue)"
@@ -66,16 +69,17 @@ def download(force: bool = False, verbose: bool = True) -> Path:
                 page = _fetch_page(dataset, config, split, offset)
             except urllib.error.HTTPError as e:
                 errors += 1
-                if errors > 3:
+                if errors > 8:
                     break  # give up on this source, keep others
                 time.sleep(30.0 if e.code == 429 else 2.0)  # rate-limit backoff
                 continue
             except OSError:
                 errors += 1
-                if errors > 3:
+                if errors > 8:
                     break
                 time.sleep(2.0)
                 continue
+            errors = 0  # consecutive-error budget: reset on success
             got = page.get("rows", [])
             if not got:
                 break

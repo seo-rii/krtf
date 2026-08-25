@@ -1,37 +1,46 @@
 # KTRF Wild-Corpus 벤치마크 (실제 한국어 텍스트)
 
-코퍼스: HuggingFace KLUE (뉴스 헤드라인 등) 5192문장, CC BY-SA 4.0. 합성 데이터와 달리 구현 카탈로그와 독립적인 실 분포다. 재현: `python -m eval.run_wild` (최초 실행 시 다운로드).
+코퍼스: HuggingFace KLUE (뉴스 헤드라인 등) 72935문장, CC BY-SA 4.0. 합성 데이터와 달리 구현 카탈로그와 독립적인 실 분포다. 재현: `python -m eval.run_wild` (최초 실행 시 다운로드).
 
 ## 1. Silver recall — 실존 조직 표면형 (E2E, commit mode)
 
 무모호 표면형(정부기관 전체명·3자 이상 약칭)의 뉴스 내 출현은 사실상 확실한 mention이다(silver label). 좌측 문자 결합·상위 alias 내포 출현은 분모에서 제외한다.
 
-- silver mentions: **168**
-- core 탐지 (E2E): **1.0** (168/168)
-- gold-in-prediction-set (E2E): **1.0** (168/168, CI95 [0.9776, 1.0])
-- RESOLVED precision (|commit): **1.0** (147 commits, silver 대비 coverage 0.875)
-- 짧은/다의 표면형(한전·한은·KT 등) 탐지 mention: 174건 (recall 분모 제외)
-- latency p50/p95: 11.42 / 26.13 ms
+- silver mentions: **4711**
+- core 탐지 (E2E): **1.0** (4711/4711)
+- gold-in-prediction-set (E2E): **1.0** (4711/4711, CI95 [0.9992, 1.0])
+- RESOLVED precision (|commit): **1.0** (4258 commits, silver 대비 coverage 0.9038)
+- 짧은/다의 표면형(한전·한은·KT 등) 탐지 mention: 2434건 (recall 분모 제외)
+- latency p50/p95: 15.86 / 28.21 ms
 
 ## 2. 조사·어미 실분포 커버리지 (§5.2)
 
-silver mention 직후의 한글 run 27건 중 카탈로그(조사 연쇄·기관 suffix)로 완전히 설명되는 비율: **0.7778** (CI95 [0.5924, 0.8939])
+silver mention 직후의 한글 run 966건 중 카탈로그(조사 연쇄·기관 suffix)로 완전히 설명되는 비율: **0.823** (CI95 [0.7976, 0.8458])
 
 카탈로그 미포함 상위 tail (확장 우선순위 신호, §3.5):
 
-- `중소형주` × 1
-- `배` × 1
-- `중진공` × 1
-- `전교조` × 1
-- `안양시` × 1
-- `투자` × 1
+- `노조` × 16
+- `서` × 14
+- `기` × 9
+- `교향악단` × 6
+- `이사회` × 6
+- `헬스케어` × 4
+- `케미칼` × 4
+- `교도통신` × 4
+- `투자` × 3
+- `콘텐츠허브` × 3
+- `클래식` × 3
+- `행` × 3
+- `네트웍스` × 3
+- `리츠` × 2
+- `엠텍` × 2
 
 ## 3. Fake-glossary 오탐 (구조적 FP 측정)
 
-corpus에 존재하지 않는 표면형만 남긴 합성 glossary(639 bindings)로 실 텍스트를 처리 — 모든 RESOLVED commit은 정의상 오탐이다.
+corpus에 존재하지 않는 표면형만 남긴 합성 glossary(523 bindings)로 실 텍스트를 처리 — 모든 RESOLVED commit은 정의상 오탐이다.
 
-- candidate mentions /1k chars: 4.793 (fuzzy/keyboard 채널의 실 텍스트 자극 밀도)
-- **RESOLVED FP: 0건** (0.0 /1k chars, 141045 chars)
+- candidate mentions /1k chars: 4.553 (fuzzy/keyboard 채널의 실 텍스트 자극 밀도)
+- **RESOLVED FP: 0건** (0.0 /1k chars, 2186264 chars)
 
 ## 3.5 V2 dense 구성 비교 (실 텍스트)
 
