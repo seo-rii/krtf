@@ -164,14 +164,20 @@ layer cannot see. All reports are regenerated from code — the files under
 | `python -m eval.run_wild` | real multi-domain Korean text (news, petitions, court decisions, encyclopedia) with a real-organization glossary: silver recall, real particle-distribution coverage, fake-glossary false positives | [WILD_CORPUS.md](reports/WILD_CORPUS.md) |
 | `python -m eval.run_neural_eval` | unseen-abbreviation generalization: held-out short forms queried through real sentences, symbolic vs dense configs | [NEURAL_EVAL.md](reports/NEURAL_EVAL.md) |
 | `python -m eval.run_llm_rag` | baseline comparison against open-weight LLMs with retrieval-augmented prompting (recall, grounding, hallucination, speed) | [LLM_RAG_COMPARE.md](reports/LLM_RAG_COMPARE.md) |
+| `python -m eval.run_ab_grounding` | downstream A/B: does KTRF context actually improve LLM answers? four paired conditions, Helpful/Harmful Flips, Gold Benefit Recovery | [AB_GROUNDING.md](reports/AB_GROUNDING.md) |
 
 Highlights from the current reports: zero conformance failures and zero
-adversarial hard-gate violations at every tested scale; on real text, silver
-recall and commit precision hold at 1.0 with zero fake-glossary commits
-across symbolic and dense configurations; on the unseen-abbreviation track
-the dense channel recovers ~92% of held-out short forms where sentence-level
-RAG retrieval caps general LLMs near 60% — see the reports for exact
-numbers, sample sizes, and confidence intervals, and
+adversarial hard-gate violations at every tested scale; across 114k
+sentences of real Korean text spanning news, government petitions, court
+decisions and encyclopedia prose, silver recall and commit precision hold
+at 1.0 with zero fake-glossary commits in every encoder configuration; on
+the unseen-abbreviation track the dense channel recovers ~90% of held-out
+short forms where sentence-level RAG retrieval caps general LLMs near 60%;
+and in the downstream A/B, terminology context lifts an 8B model from 77%
+to 93% on term-interpretation questions (**71% Gold Benefit Recovery**)
+while a naive glossary dump at the same token budget *lowers* accuracy to
+68% — the gain comes from selection, not from having a glossary. See the
+reports for exact numbers, sample sizes, and confidence intervals, and
 [docs/ROADMAP.md](docs/ROADMAP.md) for known gaps (the §5.2 95% unseen-
 surface target is currently **not met** at scale; closing it is the top
 roadmap item).

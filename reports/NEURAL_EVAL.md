@@ -1,21 +1,21 @@
 # KTRF Level B 평가 — Dense Retrieval (M4 gate)
 
-§42 **UE-derived-abbreviation** 조건: 실존 조직 glossary에서 약칭 binding 21종을 제거하고, 실제 KLUE 뉴스 문장 중 해당 표면형이 등장하는 949문장을 질의로 사용한다. 시스템은 canonical/description만으로 정답 entity를 복구해야 한다 (Pass 2: abbreviation alignment ∪ dense retrieval). 재현: `python -m eval.run_neural_eval`.
+§42 **UE-derived-abbreviation** 조건: 실존 조직 glossary에서 약칭 binding 21종을 제거하고, 실제 KLUE 뉴스 문장 중 해당 표면형이 등장하는 1073문장을 질의로 사용한다. 시스템은 canonical/description만으로 정답 entity를 복구해야 한다 (Pass 2: abbreviation alignment ∪ dense retrieval). 재현: `python -m eval.run_neural_eval`.
 
 ## 파이프라인 E2E (gold-in-prediction-set)
 
 | 구성 | recall | CI95 | RESOLVED precision | p50/p95 |
 |---|---:|---|---|---|
-| symbolic | **0.7998** (759/949) | [0.7731, 0.824] | 1.0 (2) | 20.85 / 48.29 ms |
-| hash | **0.9178** (871/949) | [0.8986, 0.9336] | 1.0 (2) | 23.57 / 57.82 ms |
-| e5 | **0.9094** (863/949) | [0.8894, 0.926] | 1.0 (2) | 54.32 / 145.88 ms |
+| symbolic | **0.7968** (855/1073) | [0.7717, 0.8198] | 1.0 (7) | 25.72 / 87.08 ms |
+| hash | **0.8947** (960/1073) | [0.8749, 0.9117] | 1.0 (7) | 27.32 / 92.33 ms |
+| e5 | **0.8984** (964/1073) | [0.8789, 0.9151] | 1.0 (7) | 59.42 / 193.89 ms |
 
 ## Retrieval-only (encoder 단독, 문맥 window -> entity 순위)
 
 | encoder | dim | R@1 | R@5 | R@10 | encode p50 | index build |
 |---|---:|---:|---:|---:|---:|---:|
-| hash (`hash-jamo-ngram-v1-d256…`) | 256 | 0.2624 | 0.5269 | 0.6733 | 0.22 ms | 0.03 s |
-| e5 (`e5-onnx:multilingual-e5-smal…`) | 384 | 0.2603 | 0.5269 | 0.6301 | 4.37 ms | 0.3 s |
+| hash (`hash-jamo-ngram-v1-d256…`) | 256 | 0.2227 | 0.4641 | 0.5899 | 0.23 ms | 0.05 s |
+| e5 (`e5-onnx:multilingual-e5-smal…`) | 384 | 0.2302 | 0.4902 | 0.6002 | 4.24 ms | 0.39 s |
 
 ## 해석
 

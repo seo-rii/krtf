@@ -1,46 +1,48 @@
 # KTRF Wild-Corpus 벤치마크 (실제 한국어 텍스트)
 
-코퍼스: HuggingFace KLUE (뉴스 헤드라인 등) 72935문장, CC BY-SA 4.0. 합성 데이터와 달리 구현 카탈로그와 독립적인 실 분포다. 재현: `python -m eval.run_wild` (최초 실행 시 다운로드).
+코퍼스: HuggingFace 공개 한국어 텍스트 114605문장 (뉴스 헤드라인·국민청원·판례 전문·위키 지문 — 다중 도메인). 합성 데이터와 달리 구현 카탈로그와 독립적인 실 분포다. 재현: `python -m eval.run_wild` (최초 실행 시 다운로드).
+
+소스 구성: `klue:ynat:train` 45634, `korean-petitions:default:train` 12000, `korean_law_open_data_precedents:default:train` 12000, `klue:sts:train` 11652, `klue:ynat:validation` 9096, `wikipedia:20231101.ko:train` 8000, `squad_kor_v1:squad_kor_v1:train` 6670, `klue:nli:train` 5036, `kobest_v1:boolq:train` 3000, `klue:nli:validation` 1000, `klue:sts:validation` 517
 
 ## 1. Silver recall — 실존 조직 표면형 (E2E, commit mode)
 
 무모호 표면형(정부기관 전체명·3자 이상 약칭)의 뉴스 내 출현은 사실상 확실한 mention이다(silver label). 좌측 문자 결합·상위 alias 내포 출현은 분모에서 제외한다.
 
-- silver mentions: **4711**
-- core 탐지 (E2E): **1.0** (4711/4711)
-- gold-in-prediction-set (E2E): **1.0** (4711/4711, CI95 [0.9992, 1.0])
-- RESOLVED precision (|commit): **1.0** (4258 commits, silver 대비 coverage 0.9038)
-- 짧은/다의 표면형(한전·한은·KT 등) 탐지 mention: 2434건 (recall 분모 제외)
-- latency p50/p95: 15.86 / 28.21 ms
+- silver mentions: **6916**
+- core 탐지 (E2E): **1.0** (6916/6916)
+- gold-in-prediction-set (E2E): **1.0** (6916/6916, CI95 [0.9994, 1.0])
+- RESOLVED precision (|commit): **1.0** (6126 commits, silver 대비 coverage 0.8858)
+- 짧은/다의 표면형(한전·한은·KT 등) 탐지 mention: 3118건 (recall 분모 제외)
+- latency p50/p95: 20.67 / 110.38 ms
 
 ## 2. 조사·어미 실분포 커버리지 (§5.2)
 
-silver mention 직후의 한글 run 966건 중 카탈로그(조사 연쇄·기관 suffix)로 완전히 설명되는 비율: **0.823** (CI95 [0.7976, 0.8458])
+silver mention 직후의 한글 run 1969건 중 카탈로그(조사 연쇄·기관 suffix)로 완전히 설명되는 비율: **0.8431** (CI95 [0.8263, 0.8585])
 
 카탈로그 미포함 상위 tail (확장 우선순위 신호, §3.5):
 
+- `법` × 21
 - `노조` × 16
 - `서` × 14
 - `기` × 9
 - `교향악단` × 6
 - `이사회` × 6
+- `써비스` × 6
+- `판결은` × 5
 - `헬스케어` × 4
 - `케미칼` × 4
 - `교도통신` × 4
+- `민일보` × 4
+- `구범위에` × 4
 - `투자` × 3
 - `콘텐츠허브` × 3
-- `클래식` × 3
-- `행` × 3
-- `네트웍스` × 3
-- `리츠` × 2
-- `엠텍` × 2
 
 ## 3. Fake-glossary 오탐 (구조적 FP 측정)
 
-corpus에 존재하지 않는 표면형만 남긴 합성 glossary(523 bindings)로 실 텍스트를 처리 — 모든 RESOLVED commit은 정의상 오탐이다.
+corpus에 존재하지 않는 표면형만 남긴 합성 glossary(500 bindings)로 실 텍스트를 처리 — 모든 RESOLVED commit은 정의상 오탐이다.
 
-- candidate mentions /1k chars: 4.553 (fuzzy/keyboard 채널의 실 텍스트 자극 밀도)
-- **RESOLVED FP: 0건** (0.0 /1k chars, 2186264 chars)
+- candidate mentions /1k chars: 4.388 (fuzzy/keyboard 채널의 실 텍스트 자극 밀도)
+- **RESOLVED FP: 0건** (0.0 /1k chars, 4896272 chars)
 
 ## 3.5 V2 dense 구성 비교 (실 텍스트)
 

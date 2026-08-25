@@ -29,7 +29,7 @@
 | M1 | 심볼릭 코어 (normalization, exact, boundary, FST, fuzzy, snapshot) | ✅ 완료 (Python; Rust 코어는 프로덕션 과제) |
 | M2 | compiler·동기 API·오류 스키마·budget·tenant 격리 | ✅ 완료 (library-level, HTTP 계층 없음) |
 | M3 | 비동기 API·correction·관측성·메모리 tier | ✅ 완료 |
-| M4 | bi-encoder·cross-encoder·fusion·conformal calibration | ✅ 구현 완료 — 단, 대형화된 UE 평가(949질의)에서 dense gold-in-set 91.8%로 §5.2 목표(95%) 미달 → G2 본 학습이 남은 격차 |
+| M4 | bi-encoder·cross-encoder·fusion·conformal calibration | ✅ 구현 완료 — 단, 대형화된 UE 평가(1,073질의)에서 dense gold-in-set ~90%로 §5.2 목표(95%) 미달 → G2 본 학습이 남은 격차 |
 | M5 | benchmark·release gate 자동화 | ✅ 실질 완료 (4계층 평가 + CI hard gates); §53 GPU 열 포함 |
 | M6 | Level C proposer(flag)·adaptation 루프 | ◐ adaptation 루프 완료; neural proposer는 학습 데이터 게이트 대기 |
 
@@ -45,17 +45,27 @@
 
 - Conformance: 0 실패 (Level A 결정적 보장, release blocker 기준)
 - 적대적 매트릭스: hard gate 위반 0 (9 base + 4 dense runs, 200–3000 entities × 3 seeds)
-- 실 텍스트(KLUE 72,935문장, 실존 조직 132 entity): silver gold-in-set **4,711/4,711**,
-  RESOLVED precision 1.0 (4,258 commits), fake-glossary FP 0 (2.19M chars,
-  symbolic/hash/e5 전 구성), tail 분포 커버리지 82.3% (966 tails)
-- Level B gate (UE 약칭, 실 텍스트 949질의): symbolic 80.0% → hash dense 91.8%
-  → e5 dense 90.9% — 벤치마크 대형화(63→949질의)로 §5.2 목표(95%) **미달**이
-  드러남; G2 본 학습(라벨 게이트)이 남은 격차를 메우는 경로
-- vs 범용 LLM+RAG (동일 샘플, reports/LLM_RAG_COMPARE.md): KTRF recall 1.0 /
-  fake-FP 0 / 18ms를 qwen3:8b·gemma4:12b·26b·qwen3.5:27b가 recall로는 근접
-  (0.98–1.0)하나 grounding 92–98% (환각 존재), fake-FP까지 0인 모델도 latency
-  116×–570× 열세
-- 테스트: 198 (traceability: 56/61 REQ 구현+매핑, 5 deferred 사유 명시)
+- 실 텍스트(5도메인 114,605문장 — 뉴스·국민청원·판례·위키; 실존 조직 170
+  entity): silver gold-in-set **6,916/6,916**, RESOLVED precision 1.0
+  (6,126 commits, coverage 88.6%), fake-glossary FP 0 (4.90M chars,
+  symbolic/hash/e5 전 구성), tail 분포 커버리지 84.3% (1,969 tails)
+- Level B gate (UE 약칭, 실 텍스트 1,073질의): symbolic 79.7% → hash dense
+  89.5% → e5 dense 89.8% — 벤치마크 대형화(63→1,073질의)로 §5.2 목표(95%)
+  **미달**이 드러남; G2 본 학습(라벨 게이트)이 남은 격차를 메우는 경로
+- vs 범용 LLM+RAG (동일 샘플, reports/LLM_RAG_COMPARE.md): silver track에서
+  qwen3:8b·gemma4:12b/26b·gpt-oss:20b·qwen3.5:27b recall 0.98–1.0로 근접하나
+  grounding 92–98%(환각 존재), latency 116×–570× 열세. **hard track(UE 미등록
+  약칭 300질의)**: KTRF 91.7% vs LLM 54.7–66.7% — 병목은 LLM 링크가 아니라
+  문장 임베딩 RAG 검색(gold∈후보 ~63%)이며, 심볼릭 mention 탐지 + 조준된
+  Pass-2가 격차의 원인
+- **Downstream A/B** (reports/AB_GROUNDING.md, qwen3:8b, paired 300사례):
+  LLM-only 76.7% → **KTRF context 93.3%** (gold oracle 100%),
+  **Gold Benefit Recovery 71.4%** (known 슬라이스 87.0%).
+  Helpful flip 67 / Harmful flip 17. 대조군 naive full-glossary는 **68.0%로
+  LLM-only보다 낮음**(harmful flip 50) — 관련성 선별 없는 사전 덤프는
+  오히려 해롭고, 이득의 출처가 "사전 제공"이 아니라 **KTRF의 선별**임을
+  보여준다
+- 테스트: 218 (traceability: 56/61 REQ 구현+매핑, 5 deferred 사유 명시)
 
 ## 무결성·평가 하드닝 (외부 코드 리뷰 반영)
 
@@ -105,11 +115,12 @@ clearance 필터·validator).
 
 **Context-pack 백로그:**
 
-1. **Downstream A/B 평가 프로그램** — 핵심 제품 지표 확립: 최소 4조건
-   (LLM-only / full-glossary / KTRF context / gold context) + Helpful·Harmful
-   Flip, **Gold Benefit Recovery** 측정. pilot ~300사례 → 정식 1,000+
-   (문서 단위 cluster 처리, paired bootstrap/McNemar). counterfactual 오류
-   주입(잘못된 RESOLVED, gold 후보 제거, irrelevant flood) 포함
+1. **Downstream A/B 평가** — 파일럿 완료 (`eval/run_ab_grounding.py`,
+   4조건 paired 300사례, 위 실측 참조). 남은 확장: 모델 다변화(현재
+   qwen3:8b 단일), 정식 규모 1,000+ 사례와 문서 단위 cluster bootstrap /
+   McNemar, Track 2(문서 QA)·Track 3(요약) 과제 추가, counterfactual 오류
+   주입(잘못된 RESOLVED, gold 후보 제거, irrelevant flood), harmful flip
+   17건 원인 분석(다의 지자체 축약형 서울시·현대차 등 관측)
 2. relation 확장(allowlist·depth 1·entity당 2개 상한), semantic relevance
    (기존 encoder 재사용), multi-turn context delta, 2단계 캐시
    (resolve cache + pack cache)

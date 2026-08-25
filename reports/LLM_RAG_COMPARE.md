@@ -1,14 +1,15 @@
 # KTRF vs 범용 LLM+RAG 비교 (실제 한국어 텍스트)
 
-동일 seeded sample: silver 문장 200개 (gold 213건) + fake-glossary 문장 100개. LLM은 관대한 하이브리드 검색 (dense top-10 ∪ 문장 내 별칭 literal hit, 후보 14개 상한)을 제공받는다 — 검색기 품질이 아니라 linking/grounding 품질을 비교한다. LLM backend: Ollama (양자화 q4, RTX 3080 10GB; 27B급은 VRAM 초과분 CPU offload로 실행 — dense 27B는 축소 샘플, n 표기).
+동일 seeded sample: silver 문장 200개 (gold 218건) + fake-glossary 문장 100개. LLM은 관대한 하이브리드 검색 (dense top-10 ∪ 문장 내 별칭 literal hit, 후보 14개 상한)을 제공받는다 — 검색기 품질이 아니라 linking/grounding 품질을 비교한다. LLM backend: Ollama (양자화 q4, RTX 3080 10GB; 27B급은 VRAM 초과분 CPU offload로 실행 — dense 27B는 축소 샘플, n 표기).
 
 | 시스템 | recall (silver) | grounding precision | fake-glossary FP | latency p50 | p95 | 문장/분 |
 |---|---:|---:|---:|---:|---:|---:|
-| **KTRF** (symbolic+dense) | **1.0** (213/213) | 1.0 (RESOLVED 기준 0.9946) | **0** | 0.018s | 0.038s | 2985.7 |
-| qwen3:8b | 1.0 (213/213) | 0.9224 | 2 | 2.599s | 2.777s | 22.7 |
-| gemma4:12b | 0.9859 (210/213) | 0.9814 | 0 | 2.993s | 3.307s | 19.6 |
-| gemma4:26b | 0.9953 (212/213) | 0.9815 | 0 | 3.582s | 3.966s | 16.0 |
-| qwen3.5:27b (n=60문장) | 0.9844 (63/64) | 0.9701 | 0 | 12.16s | 18.812s | 4.6 |
+| **KTRF** (symbolic+dense) | **1.0** (218/218) | 1.0 (RESOLVED 기준 0.9684) | **0** | 0.026s | 0.161s | 1358.9 |
+| qwen3:8b | 0.9908 (216/218) | 0.8884 | 4 | 2.596s | 2.922s | 22.5 |
+| gemma4:12b | 0.9908 (216/218) | 0.9732 | 0 | 3.001s | 3.476s | 19.3 |
+| gemma4:26b | 0.9908 (216/218) | 0.9776 | 0 | 3.611s | 4.085s | 15.6 |
+| gpt-oss:20b | 0.9954 (217/218) | 0.9648 | 1 | 5.853s | 11.045s | 9.1 |
+| qwen3.5:27b (n=60문장) | 0.9844 (63/64) | 0.9851 | 0 | 12.488s | 19.317s | 4.4 |
 
 정의: recall = gold entity_id 출력 여부(silver 근사 label); grounding precision = 출력 entity의 등록 표면형이 문장에 실존하는 비율(미달분 = hallucination); fake-glossary FP = corpus에 없는 표면형만 가진 glossary 후보로 유도했을 때 주장된 mention 수 (정의상 전부 오탐).
 
@@ -18,11 +19,12 @@ glossary에서 약칭 binding 21종(과기정통부, 금감원, 방통위 등)�
 
 | 시스템 | recall (UE) | CI95 | gold∈후보(검색 상한) | latency p50 |
 |---|---:|---|---:|---:|
-| **KTRF** (e5 dense) | **0.9133** (274/300) | [0.876, 0.9402] | — (pipeline) | 0.05022s |
-| qwen3:8b (n=300) | 0.5667 (170/300) | [0.5101, 0.6215] | 0.6333 | 2.573s |
-| gemma4:12b (n=300) | 0.5633 (169/300) | [0.5068, 0.6183] | 0.6333 | 2.906s |
-| gemma4:26b (n=300) | 0.5933 (178/300) | [0.5369, 0.6474] | 0.6333 | 3.504s |
-| qwen3.5:27b (n=60) | 0.6 (36/60) | [0.4737, 0.7143] | 0.6167 | 11.6s |
+| **KTRF** (e5 dense) | **0.9167** (275/300) | [0.8799, 0.9429] | — (pipeline) | 0.06722s |
+| qwen3:8b (n=300) | 0.5667 (170/300) | [0.5101, 0.6215] | 0.63 | 2.577s |
+| gemma4:12b (n=300) | 0.5467 (164/300) | [0.4901, 0.6021] | 0.63 | 2.949s |
+| gemma4:26b (n=300) | 0.5833 (175/300) | [0.5268, 0.6377] | 0.63 | 3.505s |
+| gpt-oss:20b (n=300) | 0.5967 (179/300) | [0.5403, 0.6506] | 0.63 | 6.693s |
+| qwen3.5:27b (n=60) | 0.6667 (40/60) | [0.5406, 0.7727] | 0.6833 | 12.17s |
 
 LLM의 'gold∈후보'는 하이브리드 검색이 정답 entity를 후보에 넣어준 비율 — LLM recall의 상한이다. KTRF는 자체 dense 채널이 검색을 겸하므로 해당 없음.
 
@@ -30,26 +32,32 @@ LLM의 'gold∈후보'는 하이브리드 검색이 정답 entity를 후보에 �
 
 ### qwen3:8b
 
-- recall CI95: [0.9823, 1.0], parse 실패: 0
-- hallucinated mentions: 18 / reported 232
-- fake-FP 예시: [{"text": "세텐자는 남부 동맹의 군자금 20만 달러가 빼돌려졌다는 정보를 입수하게 된다.", "claimed": [{"surface": "남부정보", "entity_id": "E00390", "in_candidates": true}, {"surface": "남부금융위원회", "entity_id": "E00300", "in_candidates": true}]}]
+- recall CI95: [0.9672, 0.9975], parse 실패: 0
+- hallucinated mentions: 28 / reported 251
+- fake-FP 예시: [{"text": "세텐자는 남부 동맹의 군자금 20만 달러가 빼돌려졌다는 정보를 입수하게 된다.", "claimed": [{"surface": "남부정보", "entity_id": "E00390", "in_candidates": true}, {"surface": "남부금융위원회", "entity_id": "E00300", "in_candidates": true}]}, {"text": "또한 대권 주자로 유력하게 부상되고 있는 김문수 경기도지사는 인천국제공항의 기능을 분할할 필요가 있느냐며 좁은 땅에 인천국제공항외 다른 공항을 또 지어야 하면서 분명히 동남권 신공항에 대한 반대 입장을 밝혔다.", "claimed": [{"surface": "경기도지사", "entity_id": "E00009", "in_candidates": true}, {"surface": "인천국제공항", "entity_id": "E00119", "in_candidates": true}]}]
 
 ### gemma4:12b
 
-- recall CI95: [0.9594, 0.9952], parse 실패: 0
-- hallucinated mentions: 4 / reported 215
+- recall CI95: [0.9672, 0.9975], parse 실패: 0
+- hallucinated mentions: 6 / reported 224
 - fake-FP 예시: 없음
 
 ### gemma4:26b
 
-- recall CI95: [0.9739, 0.9992], parse 실패: 0
-- hallucinated mentions: 4 / reported 216
+- recall CI95: [0.9672, 0.9975], parse 실패: 0
+- hallucinated mentions: 5 / reported 223
 - fake-FP 예시: 없음
+
+### gpt-oss:20b
+
+- recall CI95: [0.9745, 0.9992], parse 실패: 1
+- hallucinated mentions: 8 / reported 227
+- fake-FP 예시: [{"text": "對중국 투자 트렌드 서부·서비스업·내수시장으로 변화", "claimed": [{"surface": "서부", "entity_id": "E00205", "in_candidates": true}]}]
 
 ### qwen3.5:27b
 
 - recall CI95: [0.9167, 0.9972], parse 실패: 0
-- hallucinated mentions: 2 / reported 67
+- hallucinated mentions: 1 / reported 67
 - fake-FP 예시: 없음
 
 ## 해석
