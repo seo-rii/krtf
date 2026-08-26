@@ -116,11 +116,18 @@ clearance 필터·validator).
 **Context-pack 백로그:**
 
 1. **Downstream A/B 평가** — 파일럿 완료 (`eval/run_ab_grounding.py`,
-   4조건 paired 300사례, 위 실측 참조). 남은 확장: 모델 다변화(현재
-   qwen3:8b 단일), 정식 규모 1,000+ 사례와 문서 단위 cluster bootstrap /
-   McNemar, Track 2(문서 QA)·Track 3(요약) 과제 추가, counterfactual 오류
-   주입(잘못된 RESOLVED, gold 후보 제거, irrelevant flood), harmful flip
-   17건 원인 분석(다의 지자체 축약형 서울시·현대차 등 관측)
+   4조건 paired 300사례, 위 실측 참조).
+   **harmful flip 원인 분석 결과 (17건):** 13건이 *빈 pack 주입* —
+   grounding할 내용이 없는데도 terminology 블록을 넣으면 모델이 그것을
+   "부재의 근거"로 받아들여 원래 알던 답을 뒤집는다. PLAN_PI 의사코드가
+   이미 `if (pack.isEmpty) return` 규칙을 규정했으므로 이를 계약으로
+   구현함(`coverage.empty` + `PreparedContext.is_empty`, A/B 하네스도
+   준수). 나머지: 잘못된 RESOLVED 2건(dense/fuzzy 오연결 — 잔여 위험),
+   후보로만 존재 2건. **개선 효과 재측정 필요.**
+   남은 확장: 모델 다변화(gemma4:12b 진행 중), 정식 규모 1,000+ 사례와
+   문서 단위 cluster bootstrap / McNemar, Track 2(문서 QA)·Track 3(요약),
+   counterfactual 오류 주입(잘못된 RESOLVED, gold 후보 제거,
+   irrelevant flood)
 2. relation 확장(allowlist·depth 1·entity당 2개 상한), semantic relevance
    (기존 encoder 재사용), multi-turn context delta, 2단계 캐시
    (resolve cache + pack cache)

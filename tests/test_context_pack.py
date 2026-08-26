@@ -244,6 +244,17 @@ def test_grounding_short_definition_used(snap):
     assert by_id["E_IR_INV"]["short_definition"] == "투자자 대상 IR 활동"
 
 
+def test_empty_pack_is_flagged_for_skipping(snap):
+    # no glossary term occurs in this text
+    p = _prepare(snap, "오늘 날씨가 참 좋습니다.")
+    assert p.context_pack["coverage"]["empty"] is True
+    assert p.is_empty is True
+    # a pack that grounds something is not flagged
+    q = _prepare(snap, "금감원은 조사에 착수했다.")
+    assert q.context_pack["coverage"]["empty"] is False
+    assert q.is_empty is False
+
+
 def test_json_render_round_trips(snap):
     pack = _prepare(snap, "금감원 발표").context_pack
     assert json.loads(render_context_pack(pack, "json")) == pack

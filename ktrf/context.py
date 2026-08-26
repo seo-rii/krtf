@@ -383,6 +383,14 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
     pack["coverage"]["complete"] = (not pack["omissions"]
                                     and not pack["coverage"]
                                     ["budget_truncated"])
+    # An empty pack must not be injected. Presenting a terminology block
+    # that grounds nothing measurably degrades answers: the model treats
+    # the empty context as authoritative evidence of absence and second-
+    # guesses knowledge it already had. Hosts skip injection on this flag.
+    pack["coverage"]["empty"] = not (pack["resolved_terms"]
+                                     or pack["ambiguous_mentions"]
+                                     or pack["document_definitions"]
+                                     or pack["unknown_mentions"])
     pack["pack_id"] = "ctx-" + hashlib.sha256(
         json.dumps(pack, sort_keys=True, ensure_ascii=False).encode()
     ).hexdigest()[:16]
@@ -553,6 +561,11 @@ class PreparedContext:
     context_pack: dict
     prompt_fragment: str
     policy_fragment: str = TERMINOLOGY_POLICY
+
+    @property
+    def is_empty(self) -> bool:
+        """True when the pack grounds nothing — inject neither fragment."""
+        return bool(self.context_pack["coverage"].get("empty"))
 
 
 def prepare_llm_context(snapshot: Snapshot, text: str,

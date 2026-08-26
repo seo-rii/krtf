@@ -170,6 +170,12 @@ def _ktrf_fragment(snapshot, case: dict, question: str) -> str:
     pack = build_context_pack(
         snapshot, resp, query=question,
         policy=ContextPolicy(max_tokens=BUDGET_TOKENS))
+    if pack["coverage"].get("empty"):
+        # a pack that grounds nothing is not injected: an empty
+        # terminology block reads as authoritative absence and makes the
+        # model distrust knowledge it already had (measured: 13 of 17
+        # harmful flips in the first pilot came from empty packs)
+        return ""
     return render_context_pack(pack, "xml")
 
 
@@ -311,8 +317,7 @@ def main():
               f"({time.perf_counter() - t0:.0f}s)")
 
     summary = summarize(cases, results_by_cond)
-    payload = {
-        "model": args.model,
+    run = {
         "budget_tokens": BUDGET_TOKENS,
         "cases": len(cases),
         "seed": SEED,
@@ -325,47 +330,75 @@ def main():
     }
     out = ROOT / "eval" / "out"
     out.mkdir(parents=True, exist_ok=True)
-    (out / "ab_grounding.json").write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    path = out / "ab_grounding.json"
+    # accumulate across models: a second model must extend the comparison,
+    # not overwrite the first model's run
+    payload = {"runs": {}}
+    if path.exists():
+        prior = json.loads(path.read_text(encoding="utf-8"))
+        payload["runs"] = prior.get("runs") or (
+            {prior["model"]: prior} if "model" in prior else {})
+    payload["runs"][args.model] = run
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2),
+                    encoding="utf-8")
     write_markdown(payload, ROOT / "reports" / "AB_GROUNDING.md")
     print(json.dumps(summary["overall"], ensure_ascii=False, indent=2)[:800])
     print("wrote eval/out/ab_grounding.json and reports/AB_GROUNDING.md")
 
 
 def write_markdown(payload: dict, out_path: Path) -> None:
-    s = payload["summary"]
+    runs = payload["runs"]
     conds = [("A_llm_only", "A. LLM only"),
              ("B_full_glossary", "B. naive full glossary"),
              ("C_ktrf", "C. KTRF context pack"),
              ("D_gold", "D. gold context (oracle)")]
+    any_run = next(iter(runs.values()))
     lines = [
         "# KTRF Downstream A/B — LLM 답변 개선 효과",
         "",
-        f"모델 {payload['model']}, 동일 seeded {payload['cases']}사례"
-        f" (paired), context budget {payload['budget_tokens']} tokens"
-        " (B/C/D 동일 — 선택 방식만 다름). 과제: 문장 속 약칭이 가리키는"
-        " 대상의 정식 명칭 답하기 (Track 1). gold label은 silver/UE 규칙"
-        " 기반 근사다.",
+        f"동일 seeded {any_run['cases']}사례 (paired), context budget"
+        f" {any_run['budget_tokens']} tokens (B/C/D 동일 — 선택 방식만"
+        " 다름). 과제: 문장 속 약칭이 가리키는 대상의 정식 명칭 답하기"
+        " (Track 1). gold label은 silver/UE 규칙 기반 근사다."
+        " 재현: `python -m eval.run_ab_grounding --model <name>`.",
         "",
+        "## 요약 (모델별 전체 accuracy)",
+        "",
+        "| 모델 | A. LLM only | C. KTRF | D. gold | GBR | harmful flip |",
+        "|---|---:|---:|---:|---:|---:|",
     ]
-    for scope_name, block in [("전체", s["overall"])] + [
-            (k, v) for k, v in s["slices"].items()]:
-        lines += [f"## {scope_name}", "",
-                  "| 조건 | accuracy | CI95 | helpful flip | harmful flip |",
-                  "|---|---:|---|---:|---:|"]
-        for key, label in conds:
-            b = block[key]
-            f = b.get("flips_vs_A")
-            lines.append(
-                f"| {label} | {b['rate']} ({b['hits']}/{b['total']})"
-                f" | {b['ci95']}"
-                f" | {f['helpful'] if f else '—'}"
-                f" | {f['harmful'] if f else '—'} |")
-        gbr = block.get("gold_benefit_recovery")
-        lines += ["",
-                  f"**Gold Benefit Recovery: {gbr if gbr is not None else 'N/A'}**"
-                  " — KTRF context가 이상적 context 효과의 몇 %를 회수하는가"
-                  " ((C−A)/(D−A); D−A가 미미하면 N/A).", ""]
+    for model, run in runs.items():
+        o = run["summary"]["overall"]
+        gbr = o.get("gold_benefit_recovery")
+        lines.append(
+            f"| {model} | {o['A_llm_only']['rate']}"
+            f" | **{o['C_ktrf']['rate']}** | {o['D_gold']['rate']}"
+            f" | {gbr if gbr is not None else 'N/A'}"
+            f" | {o['C_ktrf']['flips_vs_A']['harmful']} |")
+    lines.append("")
+
+    for model, run in runs.items():
+        s = run["summary"]
+        lines += [f"## {model}", ""]
+        for scope_name, block in [("전체", s["overall"])] + [
+                (k, v) for k, v in s["slices"].items()]:
+            lines += [f"### {scope_name}", "",
+                      "| 조건 | accuracy | CI95 | helpful flip | harmful flip |",
+                      "|---|---:|---|---:|---:|"]
+            for key, label in conds:
+                b = block[key]
+                f = b.get("flips_vs_A")
+                lines.append(
+                    f"| {label} | {b['rate']} ({b['hits']}/{b['total']})"
+                    f" | {b['ci95']}"
+                    f" | {f['helpful'] if f else '—'}"
+                    f" | {f['harmful'] if f else '—'} |")
+            gbr = block.get("gold_benefit_recovery")
+            lines += ["",
+                      f"**Gold Benefit Recovery: "
+                      f"{gbr if gbr is not None else 'N/A'}**"
+                      " — KTRF context가 이상적 context 효과의 몇 %를"
+                      " 회수하는가 ((C−A)/(D−A); D−A가 미미하면 N/A).", ""]
     lines += [
         "## 해석과 한계",
         "",
