@@ -63,13 +63,21 @@
   약칭 300질의)**: KTRF 91.7% vs LLM 54.7–66.7% — 병목은 LLM 링크가 아니라
   문장 임베딩 RAG 검색(gold∈후보 ~63%)이며, 심볼릭 mention 탐지 + 조준된
   Pass-2가 격차의 원인
-- **Downstream A/B** (reports/AB_GROUNDING.md, qwen3:8b, paired 300사례):
-  LLM-only 76.7% → **KTRF context 93.3%** (gold oracle 100%),
-  **Gold Benefit Recovery 71.4%** (known 슬라이스 87.0%).
-  Helpful flip 67 / Harmful flip 17. 대조군 naive full-glossary는 **68.0%로
-  LLM-only보다 낮음**(harmful flip 50) — 관련성 선별 없는 사전 덤프는
-  오히려 해롭고, 이득의 출처가 "사전 제공"이 아니라 **KTRF의 선별**임을
-  보여준다
+- **Downstream A/B** (reports/AB_GROUNDING.md, 2모델 × paired 450사례,
+  strict 채점): **효과가 슬라이스별로 정반대라 전체 평균은 무의미하다.**
+
+  | 슬라이스 | qwen3:8b A→C | gemma4:12b A→C |
+  |---|---|---|
+  | private_glossary (사내 용어) | **0.00 → 1.00** (harmful 0) | **0.00 → 0.92** (harmful 0) |
+  | known_abbrev (공개·등록) | 0.61 → 0.94 | 0.89 → 0.80 |
+  | unseen_abbrev (공개·후보만) | 0.79 → 0.95 | 0.85 → **0.34** |
+
+  ① 모델이 알 수 없는 **사내 용어에서 KTRF는 대체 불가능**하다 —
+  0% → 92~100%, harmful flip 0. ② 모델이 이미 아는 공개 용어에서는 잘해야
+  본전이고, KTRF가 **확정 못 하고 후보만 제시하면 지시 준수형 모델은
+  기권**해 크게 손해다(gemma4 harmful 109건 중 106건이 `canonical: null`
+  기권, 같은 사례 무맥락 정답률 100%). ③ 대조군 B(검색 덤프)가 known에서
+  C보다 높은 것은 B가 "임의 확정 금지" 안전 계약을 지지 않기 때문이다
 - 테스트: 218 (traceability: 56/61 REQ 구현+매핑, 5 deferred 사유 명시)
 
 ## 무결성·평가 하드닝 (외부 코드 리뷰 반영)

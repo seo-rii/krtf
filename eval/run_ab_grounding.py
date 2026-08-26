@@ -544,19 +544,34 @@ def write_markdown(payload: dict, out_path: Path) -> None:
         " (Track 1). gold label은 silver/UE 규칙 기반 근사다."
         " 재현: `python -m eval.run_ab_grounding --model <name>`.",
         "",
-        "## 요약 (모델별 전체 accuracy)",
+        "**전체 평균을 인용하지 말 것.** 효과가 슬라이스별로 정반대이므로"
+        " 평균은 세 슬라이스의 구성비를 반영할 뿐이다. 슬라이스별로 읽는다:",
         "",
-        "| 모델 | A. LLM only | C. KTRF | D. gold | GBR | harmful flip |",
-        "|---|---:|---:|---:|---:|---:|",
+        "- `private_glossary` — 사전학습에 존재할 수 없는 사내 용어."
+        " **제품이 실제로 노리는 경우**이며, 여기서만 KTRF가 대체 불가능한"
+        " 정보를 제공한다.",
+        "- `known_abbrev` — 모델이 이미 아는 공개 기관 약칭이 glossary에도"
+        " 등록된 경우. context는 잘해야 본전이다.",
+        "- `unseen_abbrev` — 공개 기관이지만 binding을 숨겨 KTRF가 *후보만*"
+        " 제시할 수 있는 경우. 지시를 잘 따르는 모델은 후보 목록 앞에서"
+        " 기권하므로 오히려 손해가 날 수 있다.",
+        "",
+        "## 슬라이스별 요약 (A → C)",
+        "",
+        "| 모델 | 슬라이스 | A. LLM only | B. retrieval | C. KTRF | D. gold "
+        "| helpful | harmful | GBR |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for model, run in runs.items():
-        o = run["summary"]["overall"]
-        gbr = o.get("gold_benefit_recovery")
-        lines.append(
-            f"| {model} | {o['A_llm_only']['rate']}"
-            f" | **{o['C_ktrf']['rate']}** | {o['D_gold']['rate']}"
-            f" | {gbr if gbr is not None else 'N/A'}"
-            f" | {o['C_ktrf']['flips_vs_A']['harmful']} |")
+        for scope, b in sorted(run["summary"]["slices"].items()):
+            gbr = b.get("gold_benefit_recovery")
+            f = b["C_ktrf"]["flips_vs_A"]
+            lines.append(
+                f"| {model} | `{scope}` | {b['A_llm_only']['rate']}"
+                f" | {b['B_full_glossary']['rate']}"
+                f" | **{b['C_ktrf']['rate']}** | {b['D_gold']['rate']}"
+                f" | +{f['helpful']} | −{f['harmful']}"
+                f" | {gbr if gbr is not None else 'N/A'} |")
     lines.append("")
 
     for model, run in runs.items():
@@ -604,9 +619,21 @@ def write_markdown(payload: dict, out_path: Path) -> None:
         "- McNemar p는 **보조 지표**다. 사례가 alias family 단위로 군집되어"
         " 있는데 이 검정은 그걸 모델링하지 않으므로, 작은 p 하나로 효과를"
         " 주장하지 않는다 (cluster bootstrap은 ROADMAP 백로그).",
-        "- known 슬라이스는 LLM 세계지식만으로도 상당 부분 답할 수 있는"
-        " 영역(유명 기관 약칭), unseen 슬라이스는 glossary에 등록되지 않은"
-        " 약칭이라 KTRF도 Pass-2 후보로만 지원한다.",
+        "- **후보 제시의 억제 비용**: KTRF가 확정하지 못하고 후보만 제시하면,"
+        " 고정 정책의 '근거가 충분하지 않으면 임의로 확정하지 않는다'를"
+        " 충실히 따르는 모델은 기권(`canonical: null`)한다. 실측에서"
+        " gemma4:12b harmful flip 109건 중 106건이 기권이었고, 같은 사례를"
+        " 무맥락에서는 전부 맞혔다. 이 억제는 프롬프트 문구로 교정되지 않았고"
+        " (허용 문구 추가 시 1/14), 무관한 모호성 제거로 절반만 회복됐다."
+        " 단일 정답이 필요한 과제라면 host가"
+        " `PreparedContext.resolves_query`(확정 사실이 있을 때만 주입)를"
+        " 쓰는 편이 안전하다 — 다만 지시를 덜 따르는 모델에서는 후보 제시가"
+        " 이득이므로(qwen3 unseen 0.787→0.947) 라이브러리 기본값으로"
+        " 강제하지 않는다.",
+        "- **B(검색 덤프)가 known에서 C보다 높은 것**은 B가 이 안전 계약을"
+        " 지고 있지 않기 때문이다. 구조화·확정 분리·기권 유도를 뺀 평평한"
+        " 사전 덤프는 벤치마크 점수에는 유리하고, 잘못된 확정을 막는"
+        " 계약은 없다.",
         "- gold label은 규칙 기반 근사이며 사람 주석이 아니다. 표본 확대와"
         " human-gold 구축은 ROADMAP 백로그 참조.",
         "",

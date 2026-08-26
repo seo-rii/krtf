@@ -221,8 +221,18 @@ decisions and encyclopedia prose, silver recall and commit precision hold
 at 1.0 with zero fake-glossary commits in every encoder configuration; on
 on the unseen-abbreviation track (exact-span scoring) the dense channel
 recovers ~81% of held-out short forms against ~79% for the symbolic path
-alone, at roughly 8× the prediction-set size — and the same track shows
-sentence-level RAG retrieval capping general LLMs near 60%. See the
+alone, at roughly 8× the prediction-set size.
+
+The downstream A/B is worth reading by slice rather than in aggregate,
+because the effect reverses: on **private terminology no model can know**,
+KTRF context takes two open-weight models from 0% to 92–100% with zero
+harmful flips — the case the product exists for. On public organizations
+the model already knows, context is at best break-even, and when KTRF can
+only offer candidates rather than a resolved fact, an instruction-following
+model obeys the "don't guess" policy and abstains, costing accuracy. That
+trade-off is a property of terminology grounding in general, not a bug to
+hide: see [AB_GROUNDING.md](reports/AB_GROUNDING.md) for the numbers and
+the `resolves_query` knob for hosts that need the stricter rule. See the
 reports for exact numbers, sample sizes, and confidence intervals, and
 [docs/ROADMAP.md](docs/ROADMAP.md) for known gaps (the §5.2 95% unseen-
 surface target is currently **not met** at scale; closing it is the top
