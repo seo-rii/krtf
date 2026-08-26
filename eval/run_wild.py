@@ -102,6 +102,13 @@ def run_silver_and_tails(corpus: list[dict], encoder=None) -> dict:
     all_surfaces = set(alias_to_entity)
     total = detected = in_set = 0
     resolved = resolved_correct = 0
+    # global commit ledger: EVERY RESOLVED mention in the scanned
+    # sentences, not only those landing on a silver span. Counting only
+    # on-span commits makes precision structurally 1.0 — it cannot see the
+    # commits that would be wrong (REVIEW: silver-span-only precision must
+    # not be presented as system precision).
+    ledger_commits = ledger_on_silver = ledger_correct = 0
+    ledger_examples: list[dict] = []
     detection_only_hits = 0
     misses: list[dict] = []
     tail_total = tail_covered = 0
@@ -169,9 +176,22 @@ def run_silver_and_tails(corpus: list[dict], encoder=None) -> dict:
                 if not covered:
                     uncovered_tails[tail] += 1
 
+        gold_spans = {(s, e): alias_to_entity[a] for s, e, a in occs}
         for m in mentions:
             if m["surface"] in DETECTION_ONLY:
                 detection_only_hits += 1
+            if m.get("link_decision") == "RESOLVED":
+                cp = m["span"]["codepoint"]
+                ledger_commits += 1
+                expected = gold_spans.get((cp["start"], cp["end"]))
+                if expected is not None:
+                    ledger_on_silver += 1
+                    ledger_correct += int(
+                        m["resolved_entity"]["entity_id"] == expected)
+                elif len(ledger_examples) < 10:
+                    ledger_examples.append(
+                        {"text": text, "surface": m["surface"],
+                         "entity_id": m["resolved_entity"]["entity_id"]})
 
     latencies.sort()
     lo, hi = wilson_interval(in_set, total)
@@ -187,6 +207,17 @@ def run_silver_and_tails(corpus: list[dict], encoder=None) -> dict:
                      "precision_given_commit":
                          round(resolved_correct / resolved, 4) if resolved else None,
                      "coverage_of_silver": round(resolved / total, 4)},
+        "commit_ledger": {
+            "commits": ledger_commits,
+            "on_silver_span": ledger_on_silver,
+            "correct_on_silver": ledger_correct,
+            "off_silver_span": ledger_commits - ledger_on_silver,
+            "off_span_examples": ledger_examples,
+            "note": "off-span commits are unlabeled here: the silver "
+                    "scanner only labels registered unambiguous surfaces, "
+                    "so these are candidates for human adjudication, not "
+                    "confirmed false positives",
+        },
         "detection_only_mentions": detection_only_hits,
         "tail_distribution": {
             "attached_tails": tail_total,
@@ -276,12 +307,27 @@ def write_markdown(payload: dict, out_path: Path) -> None:
         f"- gold-in-prediction-set (E2E): **{s['gold_in_set_e2e']['rate']}**"
         f" ({s['gold_in_set_e2e']['hits']}/{s['gold_in_set_e2e']['total']},"
         f" CI95 {s['gold_in_set_e2e']['ci95']})",
-        f"- RESOLVED precision (|commit): **{s['resolved']['precision_given_commit']}**"
+        f"- RESOLVED precision (silver span 위 commit 한정):"
+        f" **{s['resolved']['precision_given_commit']}**"
         f" ({s['resolved']['count']} commits,"
-        f" silver 대비 coverage {s['resolved']['coverage_of_silver']})",
+        f" silver 대비 coverage {s['resolved']['coverage_of_silver']})"
+        f" — 아래 commit ledger를 함께 볼 것",
         f"- 짧은/다의 표면형(한전·한은·KT 등) 탐지 mention: "
         f"{s['detection_only_mentions']}건 (recall 분모 제외)",
         f"- latency p50/p95: {s['latency_ms']['p50']} / {s['latency_ms']['p95']} ms",
+        "",
+        "### 1.5 Commit ledger — 이 precision이 뜻하지 않는 것",
+        "",
+        f"위 precision은 **silver span 위에 떨어진 commit만**의 정확도다."
+        f" 같은 문장들에서 실제로 발생한 전체 RESOLVED는"
+        f" **{s['commit_ledger']['commits']}건**이고, 그중"
+        f" {s['commit_ledger']['off_silver_span']}건은 silver span 밖이다.",
+        "",
+        "silver 스캐너는 등록된 무모호 표면형만 라벨링하므로 span 밖 commit은"
+        " *오탐으로 확인된 것이 아니라 라벨이 없는 것*이다 (다른 등록 용어의"
+        " 정당한 확정일 수도 있다). 따라서 이 값은 시스템 전체 precision이"
+        " 아니며, 그렇게 인용해서도 안 된다 — 전체 precision을 주장하려면"
+        " exhaustive human annotation이 필요하다 (ROADMAP 백로그).",
         "",
         "## 2. 조사·어미 실분포 커버리지 (§5.2)",
         "",

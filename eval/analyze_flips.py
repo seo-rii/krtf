@@ -56,9 +56,14 @@ def analyze(model: str) -> dict:
     if model not in runs:
         raise SystemExit(f"no run for {model!r}; have {sorted(runs)}")
     records = runs[model]["case_records"]
+
+    def _correct(rec, cond) -> bool:
+        value = rec["results"].get(cond)
+        # newer runs store the full per-call record, older ones a bool
+        return bool(value["correct"] if isinstance(value, dict) else value)
+
     flipped = [i for i, r in enumerate(records)
-               if r["results"].get("A_llm_only")
-               and not r["results"].get("C_ktrf")]
+               if _correct(r, "A_llm_only") and not _correct(r, "C_ktrf")]
 
     corpus = load_corpus()
     glossary = load_glossary(str(ROOT / "examples" / "realorg_glossary.yaml"))

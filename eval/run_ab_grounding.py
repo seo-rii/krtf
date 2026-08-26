@@ -36,9 +36,13 @@ Writes eval/out/ab_grounding.json and reports/AB_GROUNDING.md.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import random
+import re
+import subprocess
 import time
+import unicodedata
 from pathlib import Path
 
 from ktrf.context import (CharTokenCounter, ContextPolicy,
@@ -116,19 +120,29 @@ def build_cases(corpus, glossary, n_per_slice: int) -> list[dict]:
 
 # -------------------------------------------------------------- contexts
 
-def _naive_glossary_dump(glossary, budget: int) -> str:
-    """Condition B: entity-id-ordered dump, cut at the shared budget."""
+def _retrieval_glossary_dump(glossary, retriever, text: str, query: str,
+                             budget: int) -> str:
+    """Condition B: a *retrieval* baseline, not an id-ordered prefix.
+
+    This is the honest competitor — what a normal RAG pipeline does: embed
+    the text, pull the top glossary entries, dump them under the same token
+    budget as condition C. The only difference from C is then the selection
+    and structure, not the retrieval opportunity.
+    """
     counter = CharTokenCounter()
-    lines = ["<glossary>"]
-    used = counter.count(lines[0]) + 12
     aliases: dict[str, list[str]] = {}
     for b in glossary.alias_bindings:
         aliases.setdefault(b.entity_id, []).append(b.surface)
-    for ent in sorted(glossary.entities, key=lambda e: e.entity_id):
-        al = ", ".join(s for s in aliases.get(ent.entity_id, [])
+    lines = ["<glossary>"]
+    used = counter.count(lines[0]) + 12
+    for entity_id in retriever.retrieve(f"{query}\n{text}"):
+        ent = glossary.entity(entity_id)
+        if ent is None:
+            continue
+        al = ", ".join(s for s in aliases.get(entity_id, [])
                        if s != ent.canonical)
-        desc = (ent.grounding or {}).get("short_definition") \
-            or ent.description[:80]
+        desc = ((ent.grounding or {}).get("short_definition")
+                or ent.description)[:80]
         line = (f'  <term canonical="{ent.canonical}" aliases="{al}">'
                 f"{desc}</term>")
         cost = counter.count(line)
@@ -184,31 +198,55 @@ def _ktrf_fragment(snapshot, case: dict, question: str) -> str:
 
 # ---------------------------------------------------------------- grading
 
+_PUNCT = re.compile(r"[\s·.,()\[\]{}'\"“”‘’\-–—/]+")
+
+
 def _norm(s: str) -> str:
-    return "".join((s or "").split()).lower()
+    return _PUNCT.sub("", unicodedata.normalize("NFC", s or "")).lower()
 
 
-def grade(answer_raw: str, answers: list[str]) -> bool:
+def grade(answer_raw: str, answers: list[str]) -> tuple[bool, str]:
+    """Strict grading: an accepted full name must appear IN the answer.
+
+    The earlier version accepted containment in either direction, so
+    "현대" scored as correct for 현대자동차 and "SK" for SK텔레콤 — a
+    prefix of an organization name is not that organization. Containment
+    one way is still allowed so that "금융감독원(금감원)" counts.
+    """
     try:
         obj = json.loads(answer_raw)
     except json.JSONDecodeError:
-        return False
-    cand = obj.get("canonical") if isinstance(obj, dict) else None
+        return False, "unparseable_json"
+    if not isinstance(obj, dict):
+        return False, "not_an_object"
+    cand = obj.get("canonical")
+    if cand is None:
+        return False, "abstained_null"
     if not isinstance(cand, str) or not cand.strip():
-        return False
+        return False, "empty_answer"
     n = _norm(cand)
     for gold in answers:
         g = _norm(gold)
-        if g and (g in n or n in g):
-            return True
-    return False
+        if not g:
+            continue
+        if n == g:
+            return True, "exact"
+        if g in n:
+            return True, "gold_contained_in_answer"
+    return False, "wrong_entity"
 
 
 # ------------------------------------------------------------------- run
 
 def run_condition(base: str, model: str, cases: list[dict],
                   fragments: dict[int, str]) -> list[dict]:
-    """fragments: case index -> terminology context ('' for condition A)."""
+    """fragments: case index -> terminology context ('' for condition A).
+
+    Every call's raw output, prompt size and grade reason is kept, so a
+    later grading change can be re-applied offline instead of costing
+    another full round of model calls (and so harmful flips are auditable).
+    """
+    counter = CharTokenCounter()
     out = []
     for i, case in enumerate(cases):
         question = QUESTION.format(surface=case["surface"])
@@ -217,12 +255,59 @@ def run_condition(base: str, model: str, cases: list[dict],
         if frag:
             parts += [TERMINOLOGY_POLICY, "", frag, ""]
         parts += ["[문장]", case["text"], "", question]
+        prompt = "\n".join(parts)
         t0 = time.perf_counter()
-        raw, _ = ollama_chat(base, model, SYSTEM_PROMPT, "\n".join(parts))
-        out.append({"correct": grade(raw, case["answers"]),
-                    "raw": raw[:200],
+        raw, _ = ollama_chat(base, model, SYSTEM_PROMPT, prompt)
+        correct, reason = grade(raw, case["answers"])
+        out.append({"correct": correct, "grade_reason": reason,
+                    "raw": raw[:400],
+                    "context_tokens": counter.count(frag) if frag else 0,
+                    "context_injected": bool(frag),
+                    "prompt_tokens": counter.count(prompt),
                     "latency_s": round(time.perf_counter() - t0, 2)})
     return out
+
+
+def mcnemar_exact(helpful: int, harmful: int) -> float | None:
+    """Two-sided exact McNemar (binomial on discordant pairs)."""
+    import math
+
+    n = helpful + harmful
+    if n == 0:
+        return None
+    k = min(helpful, harmful)
+    tail = sum(math.comb(n, i) for i in range(k + 1)) / (2 ** n)
+    return round(min(1.0, 2 * tail), 4)
+
+
+def corpus_manifest(corpus, glossary, model: str) -> dict:
+    """Provenance so a number can be traced to what produced it."""
+    text_hash = hashlib.sha256(
+        "\n".join(r["text"] for r in corpus).encode("utf-8")).hexdigest()
+    glossary_hash = hashlib.sha256(
+        json.dumps([(b.alias_id, b.surface, b.entity_id)
+                    for b in glossary.alias_bindings],
+                   ensure_ascii=False).encode()).hexdigest()
+    try:
+        commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT,
+                                capture_output=True, text=True,
+                                timeout=10).stdout.strip() or None
+    except (OSError, subprocess.SubprocessError):
+        commit = None
+    return {
+        "git_commit": commit,
+        "corpus_sentences": len(corpus),
+        "corpus_sha256": text_hash[:32],
+        "glossary_bindings": len(glossary.alias_bindings),
+        "glossary_sha256": glossary_hash[:32],
+        "prompt_sha256": hashlib.sha256(
+            (SYSTEM_PROMPT + QUESTION).encode()).hexdigest()[:16],
+        "policy_sha256": hashlib.sha256(
+            TERMINOLOGY_POLICY.encode()).hexdigest()[:16],
+        "model": model,
+        "seed": SEED,
+        "budget_tokens": BUDGET_TOKENS,
+    }
 
 
 def summarize(cases, results_by_cond) -> dict:
@@ -243,7 +328,12 @@ def summarize(cases, results_by_cond) -> dict:
         harmful = sum(1 for i in idxs
                       if base_rows[i]["correct"] and not rows[i]["correct"])
         return {"helpful": helpful, "harmful": harmful,
-                "harmful_rate": round(harmful / len(idxs), 4)}
+                "harmful_rate": round(harmful / len(idxs), 4),
+                # paired significance: discordant pairs only. Reported as a
+                # sensitivity check — cases cluster by alias family, which
+                # this test does not model, so a small p is not by itself
+                # evidence of a real effect.
+                "mcnemar_exact_p": mcnemar_exact(helpful, harmful)}
 
     for scope, idxs in ([("overall", list(range(len(cases))))]
                         + [(s, [i for i, c in enumerate(cases)
@@ -258,10 +348,20 @@ def summarize(cases, results_by_cond) -> dict:
         a = block["A_llm_only"]["rate"]
         c = block.get("C_ktrf", {}).get("rate")
         d = block.get("D_gold", {}).get("rate")
-        if None not in (a, c, d) and d - a > 0.005:
+        # GBR is only meaningful when the oracle actually beats the
+        # baseline by a real margin; below 5pp the ratio amplifies noise
+        if None not in (a, c, d) and d - a >= 0.05:
             block["gold_benefit_recovery"] = round((c - a) / (d - a), 4)
         else:
             block["gold_benefit_recovery"] = None
+        block["context_tokens_mean"] = {
+            cond: round(sum(results_by_cond[cond][i]["context_tokens"]
+                            for i in idxs) / len(idxs), 1)
+            for cond in conds} if idxs else {}
+        block["context_injection_rate"] = {
+            cond: round(sum(results_by_cond[cond][i]["context_injected"]
+                            for i in idxs) / len(idxs), 3)
+            for cond in conds} if idxs else {}
         target = summary["slices"] if scope != "overall" else summary
         if scope == "overall":
             summary["overall"] = block
@@ -292,14 +392,23 @@ def main():
     holdout_snap = compile_snapshot(holdout_glossary, encoder=encoder,
                                     run_conformance=False)
 
+    # condition B gets the same retrieval opportunity as a normal RAG
+    # pipeline, over the same glossary the condition's slice can see
+    from .run_llm_rag import HybridRetriever
+    retrievers = {"known_abbrev": HybridRetriever(glossary, encoder),
+                  "unseen_abbrev": HybridRetriever(holdout_glossary, encoder)}
+
     # precompute per-condition context fragments (CPU side, deterministic)
     frag_b, frag_c, frag_d = {}, {}, {}
-    naive = _naive_glossary_dump(glossary, BUDGET_TOKENS)
     for i, case in enumerate(cases):
         question = QUESTION.format(surface=case["surface"])
         snap = (full_snap if case["slice"] == "known_abbrev"
                 else holdout_snap)
-        frag_b[i] = naive
+        source = (glossary if case["slice"] == "known_abbrev"
+                  else holdout_glossary)
+        frag_b[i] = _retrieval_glossary_dump(
+            source, retrievers[case["slice"]], case["text"], question,
+            BUDGET_TOKENS)
         frag_c[i] = _ktrf_fragment(snap, case, question)
         frag_d[i] = _gold_pack_fragment(glossary, case)
     print("context fragments prepared")
@@ -324,10 +433,17 @@ def main():
         "budget_tokens": BUDGET_TOKENS,
         "cases": len(cases),
         "seed": SEED,
+        "manifest": corpus_manifest(corpus, glossary, args.model),
         "summary": summary,
+        # full per-case artifacts: raw outputs, grade reasons, context
+        # sizes — so grading can be revised offline and every flip audited
         "case_records": [
             {**{k: c[k] for k in ("slice", "surface", "entity_id")},
-             "results": {cond: results_by_cond[cond][i]["correct"]
+             "text": c["text"], "answers": c["answers"],
+             "context": {"B_full_glossary": frag_b[i][:4000],
+                         "C_ktrf": frag_c[i][:4000],
+                         "D_gold": frag_d[i][:4000]},
+             "results": {cond: results_by_cond[cond][i]
                          for cond in results_by_cond}}
             for i, c in enumerate(cases)],
     }
@@ -352,7 +468,7 @@ def main():
 def write_markdown(payload: dict, out_path: Path) -> None:
     runs = payload["runs"]
     conds = [("A_llm_only", "A. LLM only"),
-             ("B_full_glossary", "B. naive full glossary"),
+             ("B_full_glossary", "B. retrieval glossary (RAG)"),
              ("C_ktrf", "C. KTRF context pack"),
              ("D_gold", "D. gold context (oracle)")]
     any_run = next(iter(runs.values()))
@@ -386,33 +502,61 @@ def write_markdown(payload: dict, out_path: Path) -> None:
         for scope_name, block in [("전체", s["overall"])] + [
                 (k, v) for k, v in s["slices"].items()]:
             lines += [f"### {scope_name}", "",
-                      "| 조건 | accuracy | CI95 | helpful flip | harmful flip |",
-                      "|---|---:|---|---:|---:|"]
+                      "| 조건 | accuracy | CI95 | helpful | harmful "
+                      "| McNemar p | ctx tokens | 주입률 |",
+                      "|---|---:|---|---:|---:|---:|---:|---:|"]
             for key, label in conds:
                 b = block[key]
                 f = b.get("flips_vs_A")
+                toks = block.get("context_tokens_mean", {}).get(key, 0)
+                rate = block.get("context_injection_rate", {}).get(key, 0)
                 lines.append(
                     f"| {label} | {b['rate']} ({b['hits']}/{b['total']})"
                     f" | {b['ci95']}"
                     f" | {f['helpful'] if f else '—'}"
-                    f" | {f['harmful'] if f else '—'} |")
+                    f" | {f['harmful'] if f else '—'}"
+                    f" | {f.get('mcnemar_exact_p') if f else '—'}"
+                    f" | {toks} | {rate} |")
             gbr = block.get("gold_benefit_recovery")
             lines += ["",
                       f"**Gold Benefit Recovery: "
                       f"{gbr if gbr is not None else 'N/A'}**"
                       " — KTRF context가 이상적 context 효과의 몇 %를"
                       " 회수하는가 ((C−A)/(D−A); D−A가 미미하면 N/A).", ""]
+    manifest = any_run.get("manifest", {})
     lines += [
         "## 해석과 한계",
         "",
         "- paired 설계: 같은 사례에 네 조건을 적용해 flip을 직접 센다."
         " Harmful flip(원래 맞던 답을 context가 망친 사례)은 도입 결정의"
         " 핵심 지표다.",
+        "- **채점은 strict**다: 허용 정답(정식 명칭 또는 등록된 non-약칭"
+        " alias)이 모델 출력에 포함돼야 한다. 역방향 포함(`현대`→현대자동차)은"
+        " 인정하지 않는다.",
+        "- **조건 B는 검색 기반**(dense top-k ∪ 문장 내 alias literal hit)이며"
+        " C와 동일 token budget을 쓴다 — 검색 기회는 같고 선별·구조만 다르다.",
+        "- **주입률**은 C가 실제로 context를 넣은 비율이다. pack이 질문 대상을"
+        " grounding하지 못하면 주입하지 않는 계약(`should_inject`) 때문에"
+        " 1.0보다 작을 수 있으며, 그 사례에서 C는 A와 동일한 프롬프트를 쓴다.",
+        "- McNemar p는 **보조 지표**다. 사례가 alias family 단위로 군집되어"
+        " 있는데 이 검정은 그걸 모델링하지 않으므로, 작은 p 하나로 효과를"
+        " 주장하지 않는다 (cluster bootstrap은 ROADMAP 백로그).",
         "- known 슬라이스는 LLM 세계지식만으로도 상당 부분 답할 수 있는"
         " 영역(유명 기관 약칭), unseen 슬라이스는 glossary에 등록되지 않은"
         " 약칭이라 KTRF도 Pass-2 후보로만 지원한다.",
         "- gold label은 규칙 기반 근사이며 사람 주석이 아니다. 표본 확대와"
         " human-gold 구축은 ROADMAP 백로그 참조.",
+        "",
+        "## Provenance",
+        "",
+        f"- git commit: `{manifest.get('git_commit')}`",
+        f"- corpus: {manifest.get('corpus_sentences')}문장,"
+        f" sha256 `{manifest.get('corpus_sha256')}`",
+        f"- glossary: {manifest.get('glossary_bindings')} bindings,"
+        f" sha256 `{manifest.get('glossary_sha256')}`",
+        f"- prompt sha256 `{manifest.get('prompt_sha256')}`,"
+        f" policy sha256 `{manifest.get('policy_sha256')}`,"
+        f" seed {manifest.get('seed')}",
         "",
         "*generated by `python -m eval.run_ab_grounding`*",
     ]
