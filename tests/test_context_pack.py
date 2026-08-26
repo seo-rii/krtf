@@ -273,6 +273,29 @@ def test_should_inject_requires_query_coverage(snap):
     assert e.should_inject is False
 
 
+def test_unrelated_ambiguity_dropped_when_query_given(snap):
+    # IR is ambiguous, but the question is about 금감원 — unrelated
+    # ambiguity is noise that makes obedient models abstain
+    p = _prepare(snap, "금감원은 IR 자료를 검토했다.", query="금감원이 뭐야?")
+    assert p.context_pack["ambiguous_mentions"] == []
+    assert any(o["reason"] == "not_query_relevant"
+               for o in p.context_pack["omissions"])
+    # asking about IR keeps it
+    q = _prepare(snap, "금감원은 IR 자료를 검토했다.", query="IR이 뭐야?")
+    assert [a["surface"] for a in q.context_pack["ambiguous_mentions"]] == ["IR"]
+    # no query -> no filtering
+    r = _prepare(snap, "금감원은 IR 자료를 검토했다.")
+    assert r.context_pack["ambiguous_mentions"]
+
+
+def test_resolves_query_distinguishes_fact_from_candidates(snap):
+    resolved = _prepare(snap, "금감원은 조사에 착수했다.", query="금감원?")
+    assert resolved.resolves_query is True
+    candidates_only = _prepare(snap, "IR 자료 검토", query="IR이 뭐야?")
+    assert candidates_only.context_pack["coverage"]["query_grounded"] is True
+    assert candidates_only.resolves_query is False
+
+
 def test_json_render_round_trips(snap):
     pack = _prepare(snap, "금감원 발표").context_pack
     assert json.loads(render_context_pack(pack, "json")) == pack

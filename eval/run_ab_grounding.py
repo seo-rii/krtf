@@ -115,7 +115,65 @@ def build_cases(corpus, glossary, n_per_slice: int) -> list[dict]:
         })
     rng.shuffle(unseen)
     unseen = unseen[:n_per_slice]
-    return known + unseen, holdout_glossary
+
+    private, private_glossary = _private_slice(corpus, glossary, rng,
+                                               n_per_slice)
+    return known + unseen + private, holdout_glossary, private_glossary
+
+
+# Invented in-house terms: opaque codes with names no model can know.
+_PRIVATE_TERMS = [
+    ("KVQ", "케이브이큐 품질관리체계", "사내 품질 지표를 집계하는 내부 체계"),
+    ("ZTP", "제타파이프라인", "야간 배치 정산을 수행하는 사내 파이프라인"),
+    ("QRD", "큐알디 심사보드", "내부 리스크 심사를 담당하는 협의체"),
+    ("MLX7", "엠엘엑스세븐 관제", "설비 원격 관제 사내 시스템"),
+    ("BFN", "비에프엔 정산소", "가맹 정산을 처리하는 사내 조직"),
+    ("TQS", "티큐에스 통합창구", "고객 문의를 통합 접수하는 사내 창구"),
+]
+
+
+def _private_slice(corpus, glossary, rng, n: int):
+    """Terms the model CANNOT know: invented in-house names.
+
+    Every other slice uses public organizations, so it measures a case
+    where the model's own knowledge already suffices — exactly where
+    injected context can only break even or hurt. This slice measures the
+    case the product is actually for: private terminology that is not in
+    any pretraining corpus. Real sentences are reused with one registered
+    surface swapped for the invented code, so the text stays natural.
+    """
+    alias_to = {b.surface: b.entity_id for b in glossary.alias_bindings}
+    donors = [s for s, eid in alias_to.items() if len(s) >= 3]
+    hosts = []
+    for row in corpus:
+        occs = _silver_occurrences(row["text"], donors)
+        if occs:
+            s, e, a = occs[0]
+            hosts.append((row["text"], s, e))
+    rng.shuffle(hosts)
+
+    cases, terms = [], []
+    for i in range(min(n, len(hosts))):
+        text, s, e = hosts[i]
+        code, canonical, definition = _PRIVATE_TERMS[i % len(_PRIVATE_TERMS)]
+        cases.append({
+            "slice": "private_glossary",
+            "text": text[:s] + code + text[e:],
+            "surface": code,
+            "entity_id": f"private:{code.lower()}",
+            "answers": [canonical],
+        })
+    for code, canonical, definition in _PRIVATE_TERMS:
+        terms.append({"key": code.lower(), "canonical": canonical,
+                      "surfaces": [code], "short_definition": definition})
+    from ktrf.registry.simple_schema import compile_simple_terms
+    private_glossary = load_glossary(
+        compile_simple_terms({"schema_version": 1, "terms": terms},
+                             scope="private"))
+    # entity ids must line up with the cases above
+    for case in cases:
+        case["entity_id"] = f"private:{case['surface'].lower()}"
+    return cases, private_glossary
 
 
 # -------------------------------------------------------------- contexts
@@ -379,10 +437,10 @@ def main():
 
     corpus = load_corpus()
     glossary = load_glossary(str(ROOT / "examples" / "realorg_glossary.yaml"))
-    cases, holdout_glossary = build_cases(corpus, glossary, args.n_per_slice)
-    print(f"cases: {len(cases)} "
-          f"({sum(c['slice'] == 'known_abbrev' for c in cases)} known / "
-          f"{sum(c['slice'] == 'unseen_abbrev' for c in cases)} unseen)")
+    cases, holdout_glossary, private_glossary = build_cases(
+        corpus, glossary, args.n_per_slice)
+    from collections import Counter
+    print(f"cases: {len(cases)} {dict(Counter(c['slice'] for c in cases))}")
 
     from ktrf.encoders import HashEncoder, OnnxE5Encoder
     e5_dir = ROOT / "models" / "multilingual-e5-small"
@@ -391,26 +449,31 @@ def main():
                                  run_conformance=False)
     holdout_snap = compile_snapshot(holdout_glossary, encoder=encoder,
                                     run_conformance=False)
+    private_snap = compile_snapshot(private_glossary, encoder=encoder,
+                                    run_conformance=False)
+    snapshots = {"known_abbrev": full_snap, "unseen_abbrev": holdout_snap,
+                 "private_glossary": private_snap}
+    sources = {"known_abbrev": glossary, "unseen_abbrev": holdout_glossary,
+               "private_glossary": private_glossary}
 
     # condition B gets the same retrieval opportunity as a normal RAG
     # pipeline, over the same glossary the condition's slice can see
     from .run_llm_rag import HybridRetriever
-    retrievers = {"known_abbrev": HybridRetriever(glossary, encoder),
-                  "unseen_abbrev": HybridRetriever(holdout_glossary, encoder)}
+    retrievers = {k: HybridRetriever(g, encoder) for k, g in sources.items()}
 
     # precompute per-condition context fragments (CPU side, deterministic)
     frag_b, frag_c, frag_d = {}, {}, {}
     for i, case in enumerate(cases):
         question = QUESTION.format(surface=case["surface"])
-        snap = (full_snap if case["slice"] == "known_abbrev"
-                else holdout_snap)
-        source = (glossary if case["slice"] == "known_abbrev"
-                  else holdout_glossary)
+        snap = snapshots[case["slice"]]
+        source = sources[case["slice"]]
         frag_b[i] = _retrieval_glossary_dump(
             source, retrievers[case["slice"]], case["text"], question,
             BUDGET_TOKENS)
         frag_c[i] = _ktrf_fragment(snap, case, question)
-        frag_d[i] = _gold_pack_fragment(glossary, case)
+        frag_d[i] = _gold_pack_fragment(
+            private_glossary if case["slice"] == "private_glossary"
+            else glossary, case)
     print("context fragments prepared")
 
     results_by_cond = {}

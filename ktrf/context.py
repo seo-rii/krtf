@@ -90,6 +90,9 @@ class ContextPolicy:
     include_ambiguous: bool = True
     include_unknown_mentions: bool = False
     query_aware: bool = True
+    # "query": only show ambiguity about surfaces the question mentions;
+    # "all": show every ambiguous mention in the text
+    ambiguity_scope: str = "query"
     expose_entity_ids: bool = True
     include_numeric_probabilities: bool = False
     allow_degraded_resolved: bool = False
@@ -334,6 +337,21 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
     if policy.query_aware:
         ordered = sorted(resolved.values(), key=_card_score)
         ambiguous.sort(key=_amb_score)
+        if query and policy.ambiguity_scope == "query":
+            # Ambiguity about terms the question is not asking about is
+            # pure noise, and it is expensive noise: an instruction-
+            # following model told not to guess among candidates answers
+            # "unknown" instead of using what it knows. Measured on
+            # gemma4:12b, dropping unrelated ambiguity recovered half of
+            # the harmful flips on already-resolved queries.
+            keep, dropped = [], []
+            for a in ambiguous:
+                (keep if a["surface"] and a["surface"] in query
+                 else dropped).append(a)
+            ambiguous = keep
+            omissions.extend({"mention_id": a.get("mention_id"),
+                              "reason": "not_query_relevant"}
+                             for a in dropped)
     else:
         ordered = sorted(resolved.values(),
                          key=lambda c: (c.get("_first_pos", 0),
@@ -399,13 +417,16 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
     # not fix it (explicit "answer from your own knowledge" instructions
     # changed nothing); hosts must skip injection instead.
     if query:
-        grounded = [s for s in
-                    ([m["surface"] for c in pack["resolved_terms"]
-                      for m in c["mentions"]]
-                     + [a["surface"] for a in pack["ambiguous_mentions"]])
-                    if s and s in query]
-        pack["coverage"]["query_grounded"] = bool(grounded)
+        resolved_surfaces = [m["surface"] for c in pack["resolved_terms"]
+                             for m in c["mentions"]]
+        amb_surfaces = [a["surface"] for a in pack["ambiguous_mentions"]]
+        pack["coverage"]["query_resolved"] = any(
+            s and s in query for s in resolved_surfaces)
+        pack["coverage"]["query_grounded"] = (
+            pack["coverage"]["query_resolved"]
+            or any(s and s in query for s in amb_surfaces))
     else:
+        pack["coverage"]["query_resolved"] = None
         pack["coverage"]["query_grounded"] = None
     pack["pack_id"] = "ctx-" + hashlib.sha256(
         json.dumps(pack, sort_keys=True, ensure_ascii=False).encode()
@@ -595,6 +616,15 @@ class PreparedContext:
             return False
         grounded = self.context_pack["coverage"].get("query_grounded")
         return grounded is not False
+
+    @property
+    def resolves_query(self) -> bool | None:
+        """Whether the query's surface has a RESOLVED fact (not merely
+        candidates). Hosts running a task that needs one answer should
+        prefer this stricter test: offering an unresolved candidate list
+        under a "do not guess" policy makes obedient models abstain, which
+        on knowledge-heavy questions costs more than the pack adds."""
+        return self.context_pack["coverage"].get("query_resolved")
 
 
 def prepare_llm_context(snapshot: Snapshot, text: str,
