@@ -91,6 +91,24 @@ def test_duplicate_keys_rejected():
         compile_simple_terms(doc)
 
 
+def test_shipped_example_terms_yaml_compiles_and_resolves():
+    """The example is documentation users copy — keep it working."""
+    import yaml
+
+    from ktrf.resolver import resolve
+
+    doc = yaml.safe_load(
+        open("examples/terms.yaml", encoding="utf-8").read())
+    glossary = load_glossary(compile_simple_terms(doc, scope="project"))
+    snap = compile_snapshot(glossary, run_conformance=True)
+    resp = resolve(snap, "ABC 장애로 결재선 승인이 지연됐다.", mode="commit",
+                   options={"return_all_mentions": True})
+    resolved = {m["resolved_entity"]["entity_id"] for m in resp["mentions"]
+                if m.get("link_decision") == "RESOLVED"}
+    assert "project:advanced-billing-console" in resolved
+    assert "project:approval-line" in resolved
+
+
 # ------------------------------------------------------------- layers
 
 def test_higher_scope_shadows_lower_and_reports_conflict():

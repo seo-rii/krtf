@@ -1,0 +1,48 @@
+# Simple Terminology Schema — the format humans write.
+#
+# A host (editor extension, agent sidecar, CI job) compiles this into a full
+# KTRF glossary; ids, alias families, normalization profiles and boundary
+# rules are all derived, so nothing here needs internal knowledge:
+#
+#     from ktrf import compile_simple_terms, load_glossary, compile_snapshot
+#     glossary = load_glossary(compile_simple_terms(doc, scope="project"))
+#     snapshot = compile_snapshot(glossary)
+#
+# Conventionally this lives at <repo>/.pi/ktrf/terms.yaml for project scope
+# and ~/.pi/agent/ktrf/terms.yaml for a user's global terms.
+
+schema_version: 1
+
+terms:
+  - key: advanced-billing-console
+    canonical: Advanced Billing Console
+    surfaces:
+      - ABC
+      - 빌링 콘솔
+    short_definition: 사내 과금 정책과 청구 상태를 관리하는 운영 콘솔
+    type: internal_system
+    domains: [billing]
+    injection:
+      policy: auto        # auto | resolved_only | candidate_only | never
+      priority: 20        # tie-breaker when the token budget is tight
+    # This project uses ABC for its billing console even though a wider
+    # scope defines it as Activity Based Costing. Shadowing a wider-scope
+    # meaning is only allowed when it is declared:
+    override: true
+
+  - key: approval-line
+    canonical: 결재선
+    surfaces:
+      - 결재 라인
+    short_definition: 문서 승인이 거쳐야 하는 결재자 순서
+    type: workflow
+    domains: [workflow]
+
+  - key: incident-response
+    canonical: Incident Response
+    surfaces:
+      - IR
+    short_definition: 보안 사고 탐지부터 복구까지의 대응 절차
+    type: process
+    domains: [security]
+    classification: internal   # public | internal | restricted
