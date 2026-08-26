@@ -112,12 +112,15 @@ def _pipeline_recall(snapshot, queries, label) -> dict:
       span, which inflates recall on exactly the hard cases this
       benchmark exists to measure. Overlap is still reported separately
       as a diagnostic.
-    - commit precision counts EVERY resolved mention in the evaluated
-      sentences, not only those landing on a gold span. Extra commits
-      elsewhere are false positives and now enter the denominator.
+    - the commit ledger counts EVERY resolved mention in the evaluated
+      sentences and separates those on a labeled span from the rest. In
+      this track only the held-out abbreviation spans carry labels, so a
+      commit elsewhere (a full organization name in the same sentence) is
+      unlabeled, not wrong — precision is therefore reported over labeled
+      commits only, with the unlabeled count exposed beside it.
     """
     exact_hits = overlap_hits = 0
-    ledger_total = ledger_correct = 0
+    ledger_total = ledger_on_gold = ledger_correct = 0
     set_sizes: list[int] = []
     latencies = []
     misses = []
@@ -158,9 +161,10 @@ def _pipeline_recall(snapshot, queries, label) -> dict:
                 cp = m["span"]["codepoint"]
                 ledger_total += 1
                 expected = gold_by_span.get((cp["start"], cp["end"]))
-                if expected is not None and \
-                        m["resolved_entity"]["entity_id"] == expected:
-                    ledger_correct += 1
+                if expected is not None:
+                    ledger_on_gold += 1
+                    ledger_correct += int(
+                        m["resolved_entity"]["entity_id"] == expected)
         exact_hits += int(exact_found)
         overlap_hits += int(exact_found or overlap_found)
         per_family.setdefault(q["surface"], []).append(int(exact_found))
@@ -184,11 +188,15 @@ def _pipeline_recall(snapshot, queries, label) -> dict:
         "worst_family": (min(family_rates.items(), key=lambda kv: kv[1])
                          if family_rates else None),
         "commit_ledger": {
-            "commits": ledger_total, "correct": ledger_correct,
-            "precision": (round(ledger_correct / ledger_total, 4)
-                          if ledger_total else None),
-            "note": "all RESOLVED mentions in evaluated sentences; commits "
-                    "off the gold span count as false positives",
+            "commits": ledger_total,
+            "on_labeled_span": ledger_on_gold,
+            "correct_on_labeled_span": ledger_correct,
+            "unlabeled_span": ledger_total - ledger_on_gold,
+            "precision_on_labeled": (round(ledger_correct / ledger_on_gold, 4)
+                                     if ledger_on_gold else None),
+            "note": "only held-out abbreviation spans are labeled in this "
+                    "track, so commits elsewhere are unlabeled rather than "
+                    "wrong; precision covers labeled commits only",
         },
         "prediction_set_size": {
             "mean": round(sum(set_sizes) / len(set_sizes), 2)
@@ -265,7 +273,7 @@ def main():
         print(f'  {p["config"]:9} exact-core={p["gold_in_set_e2e"]["rate"]}'
               f' macro={p["family_macro"]}'
               f' overlap={p["gold_in_set_any_overlap_diagnostic"]}'
-              f' commit_prec={p["commit_ledger"]["precision"]}'
+              f' commit_prec={p["commit_ledger"]["precision_on_labeled"]}'
               f' p95={p["latency_p95_ms"]}ms')
     for r in results["retrieval_only"]:
         print(f'  retrieval {r["encoder"]:5} R@1={r["recall_at"]["1"]}'
@@ -306,19 +314,23 @@ def _write_md(r: dict, path: Path) -> None:
             f"| {p['latency_p50_ms']} / {p['latency_p95_ms']} ms |")
     lines += [
         "",
-        "### Commit ledger (모든 RESOLVED를 분모에)",
+        "### Commit ledger",
         "",
-        "평가 문장 안의 **모든** RESOLVED mention을 센다. gold span 밖의"
-        " 확정도 false positive로 분모에 들어간다 — gold span 위의 commit만"
-        " 세면 precision이 구조적으로 부풀려진다.",
+        "평가 문장 안의 **모든** RESOLVED mention을 센다. 다만 이 트랙에서"
+        " 라벨이 있는 span은 held-out 약칭 위치뿐이므로, 그 밖의 확정(같은"
+        " 문장의 정식 명칭 등)은 *오탐이 아니라 라벨이 없는 것*이다."
+        " precision은 라벨된 commit에 한해 계산하고 나머지는 별도로 노출한다.",
         "",
-        "| 구성 | commits | correct | precision |",
-        "|---|---:|---:|---:|",
+        "| 구성 | 전체 commits | 라벨 span 위 | 정답 | 라벨 없음 | precision(라벨 한정) |",
+        "|---|---:|---:|---:|---:|---:|",
     ]
     for p in r["pipeline"]:
         cl = p["commit_ledger"]
-        lines.append(f"| {p['config']} | {cl['commits']} | {cl['correct']} "
-                     f"| {cl['precision']} |")
+        lines.append(f"| {p['config']} | {cl['commits']} "
+                     f"| {cl['on_labeled_span']} "
+                     f"| {cl['correct_on_labeled_span']} "
+                     f"| {cl['unlabeled_span']} "
+                     f"| {cl['precision_on_labeled']} |")
     lines += [
         "",
         "## Retrieval-only (encoder 단독, 문맥 window -> entity 순위)",
@@ -343,6 +355,15 @@ def _write_md(r: dict, path: Path) -> None:
         "- symbolic 대비 dense의 증분이 bi-encoder의 실효 기여분이다. hash는"
         " 표면 유사(자모 n-gram) 기반의 lexical 하한선, e5는 의미 기반 검색의"
         " Role-2 경량 기준이다.",
+        "- **recall 증가의 비용을 함께 본다**: dense 구성은 exact-core recall을"
+        " 몇 %p 올리는 대신 prediction set 크기를 약 8배로 키운다(mean 1.06 →"
+        " 8.3). any-overlap 기준으로는 dense가 +9%p처럼 보이지만, span을"
+        " 정확히 요구하면 증분은 훨씬 작다 — 겹치기만 한 mention에 주던"
+        " 크레딧이 사라지기 때문이다.",
+        "- **이 트랙은 commit precision을 측정할 수 없다**: 라벨된 span 위"
+        " 확정이 0건이다. 약칭 binding이 제거된 상태에서 resolver가 해당"
+        " 위치를 확정하지 않는 것은 의도된 보수적 동작이며, 그 결과 이"
+        " 트랙에서 나오는 확정은 전부 라벨 밖(같은 문장의 정식 명칭 등)이다.",
         f"- **family macro**를 함께 본다: 이 트랙은 약칭"
         f" {r['holdout_abbreviations']}종뿐이고 occurrence 수가 종마다 크게"
         " 달라, micro 평균은 빈출 약칭이 지배한다. 최악 family: "

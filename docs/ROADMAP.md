@@ -50,9 +50,13 @@
   entity): silver gold-in-set **6,916/6,916**, RESOLVED precision 1.0
   (6,126 commits, coverage 88.6%), fake-glossary FP 0 (4.90M chars,
   symbolic/hash/e5 전 구성), tail 분포 커버리지 84.3% (1,969 tails)
-- Level B gate (UE 약칭, 실 텍스트 1,073질의): symbolic 79.7% → hash dense
-  89.5% → e5 dense 89.8% — 벤치마크 대형화(63→1,073질의)로 §5.2 목표(95%)
-  **미달**이 드러남; G2 본 학습(라벨 게이트)이 남은 격차를 메우는 경로
+- Level B gate (UE 약칭, 실 텍스트 **1,116 occurrence**, exact-core span):
+  symbolic **78.9%** → hash dense **80.7%** → e5 dense **80.4%**
+  (family macro 83.7 / 86.4 / 85.9). §5.2 목표(95%) **미달**.
+  M0 채점 수정으로 이전 수치(89.5/89.8)가 하향됐다 — 그 값은 any-overlap
+  기준이었고, span 정확도를 요구하면 **dense 증분은 +10%p가 아니라 +2%p**다.
+  게다가 그 증분의 대가로 prediction set이 8배 커진다(mean 1.06 → 8.3).
+  이 트랙은 라벨된 commit이 0건이라 commit precision을 측정할 수 없다.
 - vs 범용 LLM+RAG (동일 샘플, reports/LLM_RAG_COMPARE.md): silver track에서
   qwen3:8b·gemma4:12b/26b·gpt-oss:20b·qwen3.5:27b recall 0.98–1.0로 근접하나
   grounding 92–98%(환각 존재), latency 116×–570× 열세. **hard track(UE 미등록

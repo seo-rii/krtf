@@ -219,12 +219,10 @@ adversarial hard-gate violations at every tested scale; across 114k
 sentences of real Korean text spanning news, government petitions, court
 decisions and encyclopedia prose, silver recall and commit precision hold
 at 1.0 with zero fake-glossary commits in every encoder configuration; on
-the unseen-abbreviation track the dense channel recovers ~90% of held-out
-short forms where sentence-level RAG retrieval caps general LLMs near 60%;
-and in the downstream A/B, terminology context lifts an 8B model from 77%
-to 93% on term-interpretation questions (**71% Gold Benefit Recovery**)
-while a naive glossary dump at the same token budget *lowers* accuracy to
-68% — the gain comes from selection, not from having a glossary. See the
+on the unseen-abbreviation track (exact-span scoring) the dense channel
+recovers ~81% of held-out short forms against ~79% for the symbolic path
+alone, at roughly 8× the prediction-set size — and the same track shows
+sentence-level RAG retrieval capping general LLMs near 60%. See the
 reports for exact numbers, sample sizes, and confidence intervals, and
 [docs/ROADMAP.md](docs/ROADMAP.md) for known gaps (the §5.2 95% unseen-
 surface target is currently **not met** at scale; closing it is the top
