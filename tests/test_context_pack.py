@@ -255,6 +255,24 @@ def test_empty_pack_is_flagged_for_skipping(snap):
     assert q.is_empty is False
 
 
+def test_should_inject_requires_query_coverage(snap):
+    # pack grounds 금감원, but the question is about an unrelated term
+    p = _prepare(snap, "금감원은 조사에 착수했다.", query="PDAF가 뭐야?")
+    assert p.context_pack["coverage"]["query_grounded"] is False
+    assert p.should_inject is False
+    # question is about a grounded term -> inject
+    q = _prepare(snap, "금감원은 조사에 착수했다.", query="금감원이 뭐야?")
+    assert q.context_pack["coverage"]["query_grounded"] is True
+    assert q.should_inject is True
+    # no query supplied -> nothing to check against, inject if non-empty
+    r = _prepare(snap, "금감원은 조사에 착수했다.")
+    assert r.context_pack["coverage"]["query_grounded"] is None
+    assert r.should_inject is True
+    # empty pack is never injected
+    e = _prepare(snap, "오늘 날씨가 좋다.", query="금감원?")
+    assert e.should_inject is False
+
+
 def test_json_render_round_trips(snap):
     pack = _prepare(snap, "금감원 발표").context_pack
     assert json.loads(render_context_pack(pack, "json")) == pack

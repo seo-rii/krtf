@@ -391,6 +391,22 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
                                      or pack["ambiguous_mentions"]
                                      or pack["document_definitions"]
                                      or pack["unknown_mentions"])
+    # Does the pack ground anything the question is actually about? A pack
+    # that grounds *other* terms while missing the asked-about one is worse
+    # than no pack: measured on held-out abbreviations, one model dropped
+    # from 10/12 correct to 1/12, because a terminology block that omits a
+    # term reads as evidence the term has no meaning. Prompt wording does
+    # not fix it (explicit "answer from your own knowledge" instructions
+    # changed nothing); hosts must skip injection instead.
+    if query:
+        grounded = [s for s in
+                    ([m["surface"] for c in pack["resolved_terms"]
+                      for m in c["mentions"]]
+                     + [a["surface"] for a in pack["ambiguous_mentions"]])
+                    if s and s in query]
+        pack["coverage"]["query_grounded"] = bool(grounded)
+    else:
+        pack["coverage"]["query_grounded"] = None
     pack["pack_id"] = "ctx-" + hashlib.sha256(
         json.dumps(pack, sort_keys=True, ensure_ascii=False).encode()
     ).hexdigest()[:16]
@@ -566,6 +582,19 @@ class PreparedContext:
     def is_empty(self) -> bool:
         """True when the pack grounds nothing — inject neither fragment."""
         return bool(self.context_pack["coverage"].get("empty"))
+
+    @property
+    def should_inject(self) -> bool:
+        """Whether injecting this pack is expected to help.
+
+        False when the pack grounds nothing, or when a query was supplied
+        and none of the grounded surfaces appear in it. Injecting anyway
+        suppresses what the model already knows about the uncovered term.
+        """
+        if self.is_empty:
+            return False
+        grounded = self.context_pack["coverage"].get("query_grounded")
+        return grounded is not False
 
 
 def prepare_llm_context(snapshot: Snapshot, text: str,

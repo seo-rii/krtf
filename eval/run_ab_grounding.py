@@ -170,11 +170,14 @@ def _ktrf_fragment(snapshot, case: dict, question: str) -> str:
     pack = build_context_pack(
         snapshot, resp, query=question,
         policy=ContextPolicy(max_tokens=BUDGET_TOKENS))
-    if pack["coverage"].get("empty"):
-        # a pack that grounds nothing is not injected: an empty
-        # terminology block reads as authoritative absence and makes the
-        # model distrust knowledge it already had (measured: 13 of 17
-        # harmful flips in the first pilot came from empty packs)
+    cov = pack["coverage"]
+    if cov.get("empty") or cov.get("query_grounded") is False:
+        # Injection contract: a pack is only injected when it grounds
+        # something the question is about. An empty pack — or one that
+        # grounds other terms but not the asked-about one — reads as
+        # authoritative absence and suppresses knowledge the model has.
+        # Measured on held-out abbreviations with gemma4:12b: 10/12 correct
+        # without context, 1/12 with. Prompt wording did not mitigate it.
         return ""
     return render_context_pack(pack, "xml")
 

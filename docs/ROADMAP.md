@@ -115,19 +115,30 @@ clearance 필터·validator).
 
 **Context-pack 백로그:**
 
-1. **Downstream A/B 평가** — 파일럿 완료 (`eval/run_ab_grounding.py`,
-   4조건 paired 300사례, 위 실측 참조).
-   **harmful flip 원인 분석 결과 (17건):** 13건이 *빈 pack 주입* —
-   grounding할 내용이 없는데도 terminology 블록을 넣으면 모델이 그것을
-   "부재의 근거"로 받아들여 원래 알던 답을 뒤집는다. PLAN_PI 의사코드가
-   이미 `if (pack.isEmpty) return` 규칙을 규정했으므로 이를 계약으로
-   구현함(`coverage.empty` + `PreparedContext.is_empty`, A/B 하네스도
-   준수). 나머지: 잘못된 RESOLVED 2건(dense/fuzzy 오연결 — 잔여 위험),
-   후보로만 존재 2건. **개선 효과 재측정 필요.**
-   남은 확장: 모델 다변화(gemma4:12b 진행 중), 정식 규모 1,000+ 사례와
-   문서 단위 cluster bootstrap / McNemar, Track 2(문서 QA)·Track 3(요약),
-   counterfactual 오류 주입(잘못된 RESOLVED, gold 후보 제거,
-   irrelevant flood)
+1. **Downstream A/B 평가** — 파일럿 완료 (`eval/run_ab_grounding.py`).
+
+   **A/B가 찾아낸 설계 결함 — context 주입의 억제 비용:**
+   초기 계약(pack을 항상 주입)에서 qwen3:8b는 76.7%→93.3%로 개선됐지만
+   gemma4:12b는 **89.7%→49.0%로 급락**했다. harmful flip을
+   `eval/analyze_flips.py`로 분해한 결과 원인은 하나로 수렴한다 —
+   *질문 대상 용어를 담지 못한 pack을 주입하면 모델이 그것을 "그 용어에는
+   의미가 없다"는 근거로 읽고, 이미 알던 답을 철회한다.* 미등록 약칭
+   12건에서 gemma4는 무맥락 10/12 → 주입 시 1/12였다. 프롬프트 문구로는
+   교정되지 않았다("모르는 용어는 네 지식으로 답하라"는 명시 문구 추가 시
+   1/12, unknown_mentions 명시까지 더하면 0/12).
+
+   → 라이브러리 계약으로 대응: `coverage.empty`,
+   `coverage.query_grounded`, `PreparedContext.should_inject` —
+   **pack이 질문 대상을 grounding하지 못하면 주입하지 않는다.**
+   (호스트가 gold 없이 판단 가능한 규칙이며, PLAN_PI 의사코드의
+   `if (pack.isEmpty) return`을 일반화한 것.) 두 모델 재측정 진행 중.
+
+   나머지 harmful flip: 잘못된 RESOLVED 2건(dense/fuzzy 오연결 —
+   계속 감시할 잔여 위험), 후보로만 존재 2건.
+
+   남은 확장: 정식 규모 1,000+ 사례와 문서 단위 cluster bootstrap /
+   McNemar, Track 2(문서 QA)·Track 3(요약), counterfactual 오류 주입
+   (잘못된 RESOLVED, gold 후보 제거, irrelevant flood)
 2. relation 확장(allowlist·depth 1·entity당 2개 상한), semantic relevance
    (기존 encoder 재사용), multi-turn context delta, 2단계 캐시
    (resolve cache + pack cache)
