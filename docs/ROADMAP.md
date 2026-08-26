@@ -11,6 +11,7 @@
 | [MODEL_RECOMMEND.md](../MODEL_RECOMMEND.md) | 신경 모델 선정 근거 | 결정 기록 |
 | [docs/GPU_PLAN.md](GPU_PLAN.md) | GPU 실행 계획 (G1–G3) | 계획 |
 | [PLAN_PI.md](../PLAN_PI.md) | Pi Coding Agent Extension 통합 설계 (pi-ktrf) | 계획 |
+| [docs/VARIANTS_PLAN.md](VARIANTS_PLAN.md) | 변형 해석·미등록 약어 로드맵 (M0–M6) | 계획 |
 | [docs/traceability.yaml](traceability.yaml) | REQ ↔ 테스트 추적성 (CI 강제) | 계약 |
 | [reports/EVALUATION.md](../reports/EVALUATION.md) | 카탈로그 conformance + release gate | 생성 리포트 |
 | [reports/BENCHMARKS.md](../reports/BENCHMARKS.md) | 적대적 anti-overfitting 매트릭스 | 생성 리포트 |
@@ -146,6 +147,19 @@ clearance 필터·validator).
    내부 구현 의존 제거), document-local 정의 원문 span 추출
 4. 모델별 TokenCounter 주입 가이드, JSON Schema 파일 발행, prompt-injection
    A/B (raw vs escape vs pack+policy) 자동화
+
+## 변형 해석·미등록 약어 (docs/VARIANTS_PLAN.md, M0–M6)
+
+외부 기술 리뷰를 편입한 별도 로드맵. 핵심 판단은 **SLM 우선이 아니라
+측정 신뢰성 복구가 먼저**라는 것이다. M0 평가 코드 결함 수정은 완료했고
+(strict 채점, exact-core span, 전 occurrence, family macro, commit ledger,
+검색 기반 대조군, raw artifact 보존, provenance manifest — commit
+`8d6f427`), human-gold seed와 cluster bootstrap이 남아 있다. 상세와
+SLM 진입 게이트는 [VARIANTS_PLAN.md](VARIANTS_PLAN.md) 참조.
+
+주의: 이 수정으로 **기존 리포트 수치는 하향 조정된다**. 이전 값은
+관대한 채점(양방향 부분문자열)·any-overlap span·silver-span 한정
+precision에 기반했다.
 
 ## Pi Extension 통합 (PLAN_PI.md, 6단계)
 
