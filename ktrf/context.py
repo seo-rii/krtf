@@ -150,6 +150,16 @@ def _injection_policy(entity) -> str:
     return (entity.grounding or {}).get("injection_policy", "auto")
 
 
+def _shadowed_entities(glossary: Glossary, mention: dict) -> list[str]:
+    """Wider-scope meanings this surface outranks (layered glossaries)."""
+    surface = mention.get("surface", "")
+    out: list[str] = []
+    for b in glossary.alias_bindings:
+        if b.surface and b.surface in surface:
+            out.extend((b.provenance or {}).get("shadows", []))
+    return sorted(dict.fromkeys(out))
+
+
 # --------------------------------------------------------------------------
 # Builder
 # --------------------------------------------------------------------------
@@ -228,6 +238,11 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
                     "degraded": degraded,
                 },
                 "definition_source": "tenant_glossary",
+                # layered scopes (base/global/project/session/document):
+                # the model is told which scope a meaning comes from and
+                # what wider-scope meaning it shadows, never silently
+                "source_scope": (entity.provenance or {}).get("scope"),
+                "shadowed_entities": _shadowed_entities(glossary, m),
                 "_priority": (entity.grounding or {}).get("priority", 0),
                 "_first_pos": m.get("span", {}).get(
                     "codepoint", {}).get("start", 0),

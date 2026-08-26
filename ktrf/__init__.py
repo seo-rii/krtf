@@ -49,4 +49,15 @@ def __getattr__(name):
                 "TERMINOLOGY_POLICY"):
         from . import context as m
         return getattr(m, name)
+    if name in ("explain_resolution", "lookup_surface"):
+        from . import explain as m
+        return getattr(m, name)
+    if name in ("compile_simple_terms", "TermLayer", "load_term_layers",
+                "compile_layered_glossary", "TermProposalStore",
+                "TermAdmissionPolicy"):
+        from . import registry as m
+        return getattr(m, name)
+    if name == "compile_layered_snapshot":
+        from .registry.layers import compile_layered_snapshot
+        return compile_layered_snapshot
     raise AttributeError(name)

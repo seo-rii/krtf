@@ -138,21 +138,40 @@ KTRF를 Pi Coding Agent의 terminology grounding 레이어로 배포하는 계�
 
 | 단계 | 내용 | 상태 |
 |---|---|---|
-| 1. KTRF 기반 정비 | snapshot digest·ContextPack·safe renderer / layered glossary compiler·Simple Terminology Schema·explain API·stdio runtime | ◐ 전반부 완료 (무결성 하드닝 + `ktrf/context.py`); 후반부 미착수 |
+| 1. KTRF 기반 정비 | snapshot digest·ContextPack·safe renderer / layered glossary compiler·Simple Terminology Schema·explain API·stdio runtime | ✅ **완료** (아래 상세) |
 | 2. 수동 Pi Extension | Pi Package 스캐폴드, sidecar bridge, `/terms` 명령어, 계층 사전(global/project/session), project trust | 미착수 (별도 TS 패키지) |
 | 3. 자동 context injection | lifecycle hook (`before_agent_start`/`tool_result`/`context`), dedup, adaptive budget | 미착수 |
 | 4. LLM-assisted learning | `ktrf_propose_term`, proposal queue, `/terms review`, provisional term | 미착수 |
 | 5. 제한적 자동 등록 | 명시적 정의 session 자동 등록, 반복 evidence 기반 project 승격, shadow compile + conformance gate | 미착수 |
 | 6. 평가·배포 | Pi lifecycle E2E, scope/보안 테스트, A/B 평가, npm 배포 | 미착수 |
 
-선행 조건이던 "snapshot integrity 수정"(PLAN_PI §14)은 완료 상태다. KTRF
-저장소 쪽 다음 작업 단위는 1단계 후반부 4종: **layered glossary compiler**
-(Base→Global→Project→Session→Document 우선순위·shadow provenance),
-**Simple Terminology Schema** (`terms.yaml` → glossary compile),
-**explain API** (resolve 근거 노출), **stdio JSON-RPC runtime**
-(`ktrf/integrations/pi_stdio.py`, fail-open 계약). proposal 상태 모델
-(OBSERVED→PROPOSED→VALIDATED→PROVISIONAL→ACTIVE)과 `TermAdmissionPolicy`는
-correction workflow와 분리된 `TermProposalStore`로 구현한다.
+**1단계 구현 완료 (2026-08-26)** — KTRF 저장소 쪽 Pi 연동 기반:
+
+- `ktrf/registry/simple_schema.py` — Simple Terminology Schema
+  (`terms.yaml`) → glossary 컴파일. id·alias family·normalization profile
+  (표면형에서 추론)·boundary policy·grounding·provenance 자동 생성,
+  미지 키는 조용히 무시하지 않고 거부
+- `ktrf/registry/layers.py` — 5계층(base→global→project→session→document)
+  병합. 상위 scope가 이기되 하위 의미는 `shadows` provenance로 보존하고,
+  `override: true` 없는 shadowing은 conflict로 보고. untrusted scope는
+  로드 자체를 건너뜀(project trust 계약). `compile_layered_snapshot()`은
+  manifest 추가 후 snapshot_id를 재계산해 무결성 등식 유지
+- `ktrf/registry/proposals.py` — OBSERVED→PROPOSED→VALIDATED→
+  PROVISIONAL/ACTIVE 상태 모델, `TermAdmissionPolicy`, 결정적 검증
+  (evidence에 surface 실존, alias 충돌, 중복 entity, instructional·민감정보
+  거부, 길이·제어문자), session 명시적 정의만 자동 활성화, project는 신뢰·
+  증거·세션 수 전부 충족 시에만, **global 자동 등록은 정책상 불가**,
+  provisional TTL, per-session 제출 상한, audit log
+- `ktrf/explain.py` — `explain_resolution()` (채널·scope·후보·**미확정
+  사유**: threshold 미달/margin 부족/degraded 구분), `lookup_surface()`
+- `ktrf/integrations/pi_stdio.py` — JSONL JSON-RPC sidecar (13 method).
+  stdout은 프로토콜 전용·로그는 stderr, malformed 라인 격리, 요청 크기
+  상한, 모든 핸들러 오류를 error 응답으로 변환하는 fail-open 계약,
+  프로토콜 스트림 UTF-8 강제(호스트 로케일 무관)
+- ContextPack이 `source_scope`·`shadowed_entities`를 노출 — 모델이 어느
+  scope의 의미인지, 무엇을 가리고 있는지 알 수 있음
+- 테스트 36종(`tests/test_registry_and_sidecar.py`), 실제 서브프로세스
+  왕복 테스트 포함 (총 254)
 
 ## 다음 단계 (우선순위)
 

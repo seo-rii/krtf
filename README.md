@@ -151,6 +151,54 @@ can carry an optional `grounding:` block (`short_definition`,
 `disambiguation_hints`, `injection_policy`, `classification`) for
 prompt-ready definitions and clearance filtering.
 
+## Agent integration (layered terminology + sidecar)
+
+For editor/agent hosts, terminology usually arrives in scopes — a company
+base glossary, the user's own terms, a repository's `terms.yaml`, and terms
+defined only in this session or document. `ktrf.registry` compiles them
+together:
+
+```python
+from ktrf import TermLayer, compile_layered_snapshot
+
+snapshot, report = compile_layered_snapshot([
+    TermLayer("global", global_terms_doc),
+    TermLayer("project", project_terms_doc),   # from .../terms.yaml
+])
+report.shadowed     # surfaces where a narrower scope outranks a wider one
+report.conflicts    # shadowing that did not declare `override: true`
+```
+
+Authors write the compact Simple Terminology Schema, not the full glossary
+format — the compiler derives ids, alias families, normalization profiles,
+and boundary policies:
+
+```yaml
+schema_version: 1
+terms:
+  - key: advanced-billing-console
+    canonical: Advanced Billing Console
+    surfaces: [ABC, 빌링 콘솔]
+    short_definition: 사내 과금 정책과 청구 상태를 관리하는 운영 콘솔
+    override: true          # required to shadow a wider-scope meaning
+```
+
+New terms discovered mid-conversation go through a proposal lifecycle
+(`ktrf.registry.proposals`) rather than straight into a dictionary: a model
+may *propose*, deterministic validation checks it (surface actually present
+in cited evidence, no alias collision, no instructional or sensitive
+content), and an admission policy decides. Session-scoped explicit user
+definitions can auto-activate; project scope requires trust plus repeated
+evidence; **global scope always requires human approval**.
+
+`python -m ktrf.integrations.pi_stdio` runs the whole thing as a
+line-delimited JSON-RPC sidecar (resolve, context packs, lookup, explain,
+proposals) with a fail-open contract: protocol JSON on stdout, diagnostics
+on stderr, malformed input isolated, and every handler error returned as a
+response so a host that loses terminology never loses the user's request.
+`ktrf.explain_resolution()` reports why a mention resolved — or which
+threshold it failed to clear.
+
 ## Evaluation
 
 KTRF is evaluated in layers, each targeting a failure mode the previous
