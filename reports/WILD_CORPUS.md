@@ -5,18 +5,36 @@
 소스 구성: `klue:ynat:train` 45634, `korean-petitions:default:train` 12000, `korean_law_open_data_precedents:default:train` 12000, `klue:sts:train` 11652, `klue:ynat:validation` 9096, `wikipedia:20231101.ko:train` 8000, `squad_kor_v1:squad_kor_v1:train` 6670, `klue:nli:train` 5036, `kobest_v1:boolq:train` 3000, `klue:nli:validation` 1000, `klue:sts:validation` 517
 
 > [!WARNING]
-> **이 리포트의 수치는 commit `8d6f427` 시점에 측정되었고, 이후 resolver가
-> 바뀌었다 (M1 공유 segmentation, commit 이후).** 전체 재생성은 114,605문장
-> ×6 pass로 약 6시간이 걸려 아직 돌리지 않았다. 그 사이의 회귀 확인은
-> 20,000문장 표본 쌍 비교(`python -m eval.run_wild_regression`)로 대신했고,
-> silver recall·commit precision·tail coverage는 변화 없음, 비용만 증가로
-> 나왔다 — [SEGMENTATION_AB.md](SEGMENTATION_AB.md) 참조.
+> **아래 수치는 commit `8d6f427` 시점 측정이며, 이후 resolver가 바뀌었다**
+> (M1 공유 segmentation, `decfb3d`). 전체 재생성은 114,605문장 ×6 pass로
+> 약 6시간이라 아직 돌리지 않았다.
 >
-> 또한 §3의 fake-glossary 필터에 결함이 있었다: 표면형 부재를 **대소문자
+> 대신 **20,000문장 표본으로 두 동작을 한 프로세스에서 쌍 비교**했다
+> (`python -m eval.run_wild_regression`, `max_segmentation_paths` 1 vs 4).
+> 품질 지표는 **전부 동일**했다:
+>
+> | 지표 | 변경 전 | 변경 후 |
+> |---|---:|---:|
+> | silver mentions | 1176 | 1176 |
+> | core 탐지 / gold-in-set | 1.0 / 1.0 | 1.0 / 1.0 |
+> | RESOLVED commits | 1045 | 1045 |
+> | commit precision | 1.0 | 1.0 |
+> | commit ledger (전체 / silver 위 / 밖) | 1513 / 1045 / 468 | 1513 / 1045 / 468 |
+> | tail coverage | 0.8576 | 0.8576 |
+> | **fake-glossary RESOLVED FP** | **0** | **0** |
+> | 지연 p50 / p95 (ms) | 31.67 / 174.86 | 33.00 / 226.39 |
+> | candidate mentions /1k chars | 2.943 | 5.044 |
+>
+> 후보 밀도는 1.7배로 늘었는데 commit은 **한 건도 늘지 않았다** — ledger의
+> off-span commit이 468로 동일하다. 늘어난 후보가 확정까지 가지 않았다는
+> 뜻이며, 이것이 `ResolutionGuard`가 실제로 하는 일이다.
+>
+> 참고: §3의 fake-glossary 필터에 결함이 있었다. 표면형 부재를 **대소문자
 > 구분 부분문자열**로 검사했는데 matcher는 case-fold하므로, corpus에 `GB`만
-> 있어도 `gb`가 "부재"로 남아 matcher가 맞춘다. 아래의 `RESOLVED FP 0`은
-> 따라서 운이었을 수 있다. 필터는 정규화 공간에서 검사하도록 고쳤고
-> (`eval/synthetic.py::absent_bindings_only`), 재생성 시 반영된다.
+> 있어도 `gb`가 "부재"로 남아 matcher가 맞춘다. 아래 표의 `FP 0`은 그 결함이
+> 있는 필터로 얻은 값이다. 필터는 정규화 공간에서 검사하도록 고쳤고
+> (`eval/synthetic.py::absent_bindings_only`), **고친 필터로도 20,000문장에서
+> FP 0**임을 위 표에서 재확인했다.
 
 
 ## 1. Silver recall — 실존 조직 표면형 (E2E, commit mode)

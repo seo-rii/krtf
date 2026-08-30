@@ -231,10 +231,12 @@ decisions and encyclopedia prose, silver recall and commit precision hold
 at 1.0 in every encoder configuration; on the unseen-abbreviation track
 (exact-span scoring) the dense channel recovers ~81% of held-out short
 forms against ~79% for the symbolic path alone, at roughly 8× the
-prediction-set size. The wild report's structural-false-positive figure is
-currently marked stale: its fake-glossary construction had a case-folding
-defect (since fixed), so that particular zero is not yet re-established at
-full corpus scale — the report says so at the top.
+prediction-set size. The wild report's numbers predate the shared segmenter
+and say so at the top; a 20,000-sentence paired regression check found every
+quality metric identical across the change — silver recall, commit count,
+commit precision, the full commit ledger and tail coverage all unmoved —
+with structural false positives at zero under the corrected fake-glossary
+construction.
 
 The shared segmenter is the clearest single result. Read by formation
 rather than in aggregate: inflected and suffixed surfaces were already at
