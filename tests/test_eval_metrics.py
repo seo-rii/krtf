@@ -41,3 +41,58 @@ def test_report_includes_ci():
     m = r.add_metric("recall", "E2E", 99, 100)
     d = m.to_dict()
     assert "ci95" in d and d["ci95"][0] < d["value"] <= d["ci95"][1]
+
+
+# ---------------------------------------------------------------------------
+# Evaluation-construction defects found while measuring M1
+# ---------------------------------------------------------------------------
+
+
+def test_fake_glossary_absence_is_checked_in_the_matcher_space():
+    """A case-sensitive absence test scores a construction error as an FP.
+
+    The resolver matches through a case-folding normalized channel, so a
+    surface like `gb` is reachable in a corpus that only ever writes `GB`.
+    Keeping it makes the resolver commit on it, and the fake-glossary suite
+    reports a product false positive that the product did not cause.
+    """
+    from eval.synthetic import absent_bindings_only, build_synthetic_glossary
+
+    g_dict, _ = build_synthetic_glossary(400, seed=5)
+    acronym = next(b["surface"] for b in g_dict["alias_bindings"]
+                   if b["surface"].isascii() and b["surface"].isalpha())
+
+    # the corpus writes it in the *other* case only
+    kept, removed = absent_bindings_only(
+        dict(g_dict), [f"오늘 {acronym.lower()} 단위로 저장했다."])
+    assert removed >= 1
+    assert acronym not in {b["surface"] for b in kept["alias_bindings"]}
+
+
+def test_absence_filter_keeps_genuinely_absent_surfaces():
+    from eval.synthetic import absent_bindings_only, build_synthetic_glossary
+
+    g_dict, _ = build_synthetic_glossary(50, seed=7)
+    before = len(g_dict["alias_bindings"])
+    kept, removed = absent_bindings_only(dict(g_dict), ["아무 관련 없는 문장."])
+    assert removed == 0
+    assert len(kept["alias_bindings"]) == before
+
+
+def test_coverage_verdict_is_three_valued():
+    """A point estimate inside the CI is not a pass (VARIANTS_PLAN M0 item 4)."""
+    from eval.run_benchmarks import run_calibration_holdout
+
+    res = run_calibration_holdout()["results"]
+    for key, v in res.items():
+        assert v["verdict"] in ("PASS", "FAIL", "INSUFFICIENT_DATA")
+        lo, hi = v["ci95"]
+        assert lo <= v["pooled_coverage"] <= hi
+        if v["verdict"] == "PASS":
+            assert lo >= v["target"]
+        elif v["verdict"] == "FAIL":
+            assert hi < v["target"]
+        else:  # the sample cannot decide, and must not be reported as a pass
+            assert lo < v["target"] <= hi
+        # pooled over trials, not a single draw that seed noise can swing
+        assert v["trials"] >= 4 and v["n_holdout_pooled"] > 1000

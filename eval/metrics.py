@@ -93,3 +93,32 @@ class EvalReport:
             "slices": {k: [m.to_dict() for m in v]
                        for k, v in self.slices.items()},
         }
+
+
+def git_commit(repo_root=None) -> str | None:
+    """Short HEAD SHA, or None outside a repo.
+
+    Every generated report stamps this. Without it a report and the code that
+    produced it drift silently: a resolver change makes the committed numbers
+    unreproducible, and nothing in the file says so.
+    """
+    import subprocess
+
+    try:
+        out = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
+                             cwd=str(repo_root) if repo_root else None,
+                             capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return out.stdout.strip() or None
+
+
+def provenance_line(repo_root=None, extra: str = "") -> str:
+    """Markdown footer naming the code and date a report was measured at."""
+    import time
+
+    commit = git_commit(repo_root) or "unknown"
+    stamp = time.strftime("%Y-%m-%d")
+    tail = f" · {extra}" if extra else ""
+    return (f"*측정 시점: commit `{commit}`, {stamp}{tail}. "
+            "리포트와 코드가 어긋나면 코드가 맞다 — 재생성해서 확인할 것.*")

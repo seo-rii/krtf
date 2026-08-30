@@ -3,6 +3,11 @@
 Runs after the boundary check (§15.5 execution order): takes surviving exact
 matches and produces mention proposals with full tail decomposition.
 
+The tail enumeration itself lives in :mod:`ktrf.segmentation` so the exact
+path and the Level B channels cannot drift apart (VARIANTS_PLAN M1); this
+module keeps the exact-match-specific work of mapping a decomposition back
+onto canonical-unit spans.
+
 Homograph collisions (§16.5, REQ-TAIL-003) are preserved by keeping *all*
 tail analyses per proposal (and all overlapping matches, which the matcher
 already yields); the parser never hard-selects between a particle reading and
@@ -13,24 +18,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .hangul import is_syllable
 from .matcher import RawExactMatch, _right_run, _script
-from .morphology import ParticleFST, analyze_residual, match_latin_tail, match_prefix_modifier
+from .morphology import ParticleFST, match_latin_tail, match_prefix_modifier
 from .normalization import CanonicalStream
+from .segmentation import MAX_TAIL_LEN, TailAnalysis, enumerate_tails
 
-MAX_TAIL_LEN = 12
-
-
-@dataclass
-class TailAnalysis:
-    residual: str
-    residual_kind: str  # "" | SUFFIX | SUFFIX_WITH_MODIFIER | UNKNOWN
-    residual_parts: tuple[str, ...]
-    particles: tuple[str, ...]
-    grammatical: bool
-    latin_tail: str = ""
-    latin_tail_kind: str = ""
-    score: float = 1.0
+__all__ = ["TailAnalysis", "MentionProposal", "analyze_tail", "parse_matches"]
 
 
 @dataclass
@@ -56,46 +49,14 @@ class MentionProposal:
         return self.tail_analyses[0] if self.tail_analyses else None
 
 
-_RESIDUAL_BASE = {"": 1.0, "SUFFIX": 0.9, "SUFFIX_WITH_MODIFIER": 0.75, "UNKNOWN": 0.3}
+def analyze_tail(right: str, prev_char: str,
+                 fst: ParticleFST) -> list[TailAnalysis]:
+    """Deprecated alias for :func:`ktrf.segmentation.enumerate_tails`.
 
-
-def analyze_tail(right: str, prev_char: str, fst: ParticleFST) -> list[TailAnalysis]:
-    """Enumerate [residual][particle-chain] decompositions of the right run.
-
-    All analyses are preserved (REQ-TAIL-003); callers rank, never prune.
+    Kept so existing callers (and the wild-tail evaluation) import one
+    implementation rather than a copy of it.
     """
-    if not right:
-        return [TailAnalysis("", "", (), (), True, score=1.0)]
-    analyses: list[TailAnalysis] = []
-    n = min(len(right), MAX_TAIL_LEN)
-    right = right[:n]
-    for cut in range(0, n + 1):
-        residual, particle_part = right[:cut], right[cut:]
-        prev = residual[-1] if residual else prev_char
-        if residual and not all(is_syllable(c) for c in residual):
-            continue  # residuals are Hangul chunks; Latin tails handled below
-        if cut == n:
-            # residual-only reading (no particles)
-            r = analyze_residual(residual)
-            analyses.append(
-                TailAnalysis(residual, r.kind if residual else "", r.parts if residual else (),
-                             (), True, score=_RESIDUAL_BASE.get(r.kind if residual else "", 0.3))
-            )
-            continue
-        for parse in fst.parse_full(particle_part, prev):
-            r = analyze_residual(residual)
-            base = _RESIDUAL_BASE.get(r.kind if residual else "", 0.3)
-            factor = 1.0 if parse.grammatical else 0.7
-            analyses.append(
-                TailAnalysis(
-                    residual, r.kind if residual else "", r.parts if residual else (),
-                    parse.particles, parse.grammatical, score=base * factor,
-                )
-            )
-    if not analyses:
-        analyses.append(TailAnalysis(right, "UNKNOWN", (right,), (), True, score=0.3))
-    analyses.sort(key=lambda a: (-a.score, len(a.particles)))
-    return analyses
+    return enumerate_tails(right, prev_char, fst)
 
 
 def parse_matches(

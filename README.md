@@ -31,9 +31,17 @@ KTRF models each of these explicitly:
   channels, boundary policies, a particle FST with batchim constraints and
   depth-3 chaining, suffix/prefix catalogs, and a conformance suite that must
   pass 100% for a snapshot to activate.
+- **One decomposition, every channel** — exact matching, fuzzy recovery and
+  abbreviation alignment all read the *same* typed segmentation of a token
+  (prefix / core / residual / particle chain), so `한국전려에서도` reaches
+  the recovery index as `한국전려` and every channel reports the same core
+  span. Cross-channel decomposition drift is the failure this design exists
+  to prevent.
 - **Recovery channels** — jamo-level weighted edit distance, dubeolsik
   keyboard-mapping recovery, document-local alias detection, and
-  abbreviation alignment for unseen short forms.
+  abbreviation alignment for unseen short forms, each guarded by explicit
+  Level B invariants that can withhold a commit without removing a
+  candidate.
 - **Optional neural layer** — bi-encoder dense retrieval (ONNX
   `multilingual-e5-small` reference backend, pure-Python hash-encoder
   fallback), conditional cross-encoder reranking, learned score fusion, and
@@ -213,15 +221,31 @@ layer cannot see. All reports are regenerated from code — the files under
 | `python -m eval.run_neural_eval` | unseen-abbreviation generalization: held-out short forms queried through real sentences, symbolic vs dense configs | [NEURAL_EVAL.md](reports/NEURAL_EVAL.md) |
 | `python -m eval.run_llm_rag` | baseline comparison against open-weight LLMs with retrieval-augmented prompting (recall, grounding, hallucination, speed) | [LLM_RAG_COMPARE.md](reports/LLM_RAG_COMPARE.md) |
 | `python -m eval.run_ab_grounding` | downstream A/B: does KTRF context actually improve LLM answers? four paired conditions, Helpful/Harmful Flips, Gold Benefit Recovery | [AB_GROUNDING.md](reports/AB_GROUNDING.md) |
+| `python -m eval.run_segmentation_ab` | paired A/B for the shared segmenter, by variant formation: recall, exact-span rate, latency, structural false positives | [SEGMENTATION_AB.md](reports/SEGMENTATION_AB.md) |
+| `python -m eval.run_wild_regression` | fast paired regression check of a resolver change against the real-text suites (a sample, not a replacement for the full wild run) | — |
 
 Highlights from the current reports: zero conformance failures and zero
 adversarial hard-gate violations at every tested scale; across 114k
 sentences of real Korean text spanning news, government petitions, court
 decisions and encyclopedia prose, silver recall and commit precision hold
-at 1.0 with zero fake-glossary commits in every encoder configuration; on
-on the unseen-abbreviation track (exact-span scoring) the dense channel
-recovers ~81% of held-out short forms against ~79% for the symbolic path
-alone, at roughly 8× the prediction-set size.
+at 1.0 in every encoder configuration; on the unseen-abbreviation track
+(exact-span scoring) the dense channel recovers ~81% of held-out short
+forms against ~79% for the symbolic path alone, at roughly 8× the
+prediction-set size. The wild report's structural-false-positive figure is
+currently marked stale: its fake-glossary construction had a case-folding
+defect (since fixed), so that particular zero is not yet re-established at
+full corpus scale — the report says so at the top.
+
+The shared segmenter is the clearest single result. Read by formation
+rather than in aggregate: inflected and suffixed surfaces were already at
+1.00 (the exact path handles them, and it is unchanged), but a **typo
+carrying a particle** went from 0.10 to 0.69 core recall and from 0.00 to
+0.63 exact-span, with structural false positives unchanged at zero. A typo
+alone was always recoverable at 0.68; adding a particle collapsed it to
+0.10 — not because typos are hard, but because each channel was reading the
+input differently. Commit behaviour did not loosen: fuzzy-only evidence
+still never confirms, in either arm. The cost is 1.36× p95 latency, which
+`max_segmentation_paths` dials back to exactly the old behaviour.
 
 The downstream A/B is worth reading by slice rather than in aggregate,
 because the effect reverses: on **private terminology no model can know**,
@@ -266,3 +290,10 @@ the evaluation (silver labels are rule-derived approximations, not human
 gold; sample sizes gate how tight the CI floors can be) and deferred
 operational hardening (latency SLO gates, deep snapshot immutability,
 concurrency load tests).
+
+Reports carry the commit they were measured at. Where a report has not been
+regenerated since a resolver change, it says so at the top rather than
+presenting stale numbers as current — the full wild-corpus run is ~6 hours,
+so a sampled paired regression check stands in between full runs. Where a
+sample cannot decide whether a target is met, the report says
+`INSUFFICIENT_DATA` instead of reporting a pass.

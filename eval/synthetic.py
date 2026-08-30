@@ -150,3 +150,40 @@ def collision_stats(meta: SynthMeta) -> dict:
         "near_miss_pairs": len(meta.near_miss_pairs),
         "nested_pairs": len(meta.nested_pairs),
     }
+
+
+def absent_bindings_only(g_dict: dict, texts) -> tuple[dict, int]:
+    """Keep only bindings whose surface truly cannot occur in ``texts``.
+
+    A plain ``surface not in text`` check is wrong here: the resolver matches
+    through a *normalized* channel (case folding, width folding, punctuation
+    and spacing rules), so a case-sensitive filter lets `gb` survive a corpus
+    containing `GB`, the resolver then matches it, and a construction error
+    gets scored as a product false positive. The absence claim has to be made
+    in the same space the matcher searches, under every default profile,
+    because a surface only has to be reachable through one of them.
+    """
+    from ktrf.glossary import DEFAULT_PROFILES
+    from ktrf.normalization import (build_canonical_stream, build_channel,
+                                    normalize_alias)
+
+    joined = chr(10).join(texts)
+    stream = build_canonical_stream(joined)
+    haystacks = {name: build_channel(stream, profile).chars
+                 for name, profile in DEFAULT_PROFILES.items()}
+
+    def reachable(surface: str) -> bool:
+        if surface in joined:
+            return True
+        return any(
+            (key := normalize_alias(surface, DEFAULT_PROFILES[name])) and key in hay
+            for name, hay in haystacks.items()
+        )
+
+    kept = [b for b in g_dict["alias_bindings"] if not reachable(b["surface"])]
+    removed = len(g_dict["alias_bindings"]) - len(kept)
+    kept_fids = {b["family_id"] for b in kept}
+    g_dict["alias_bindings"] = kept
+    g_dict["alias_families"] = [f for f in g_dict["alias_families"]
+                                if f["family_id"] in kept_fids]
+    return g_dict, removed

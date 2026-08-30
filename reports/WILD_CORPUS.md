@@ -4,6 +4,21 @@
 
 소스 구성: `klue:ynat:train` 45634, `korean-petitions:default:train` 12000, `korean_law_open_data_precedents:default:train` 12000, `klue:sts:train` 11652, `klue:ynat:validation` 9096, `wikipedia:20231101.ko:train` 8000, `squad_kor_v1:squad_kor_v1:train` 6670, `klue:nli:train` 5036, `kobest_v1:boolq:train` 3000, `klue:nli:validation` 1000, `klue:sts:validation` 517
 
+> [!WARNING]
+> **이 리포트의 수치는 commit `8d6f427` 시점에 측정되었고, 이후 resolver가
+> 바뀌었다 (M1 공유 segmentation, commit 이후).** 전체 재생성은 114,605문장
+> ×6 pass로 약 6시간이 걸려 아직 돌리지 않았다. 그 사이의 회귀 확인은
+> 20,000문장 표본 쌍 비교(`python -m eval.run_wild_regression`)로 대신했고,
+> silver recall·commit precision·tail coverage는 변화 없음, 비용만 증가로
+> 나왔다 — [SEGMENTATION_AB.md](SEGMENTATION_AB.md) 참조.
+>
+> 또한 §3의 fake-glossary 필터에 결함이 있었다: 표면형 부재를 **대소문자
+> 구분 부분문자열**로 검사했는데 matcher는 case-fold하므로, corpus에 `GB`만
+> 있어도 `gb`가 "부재"로 남아 matcher가 맞춘다. 아래의 `RESOLVED FP 0`은
+> 따라서 운이었을 수 있다. 필터는 정규화 공간에서 검사하도록 고쳤고
+> (`eval/synthetic.py::absent_bindings_only`), 재생성 시 반영된다.
+
+
 ## 1. Silver recall — 실존 조직 표면형 (E2E, commit mode)
 
 무모호 표면형(정부기관 전체명·3자 이상 약칭)의 뉴스 내 출현은 사실상 확실한 mention이다(silver label). 좌측 문자 결합·상위 alias 내포 출현은 분모에서 제외한다.

@@ -33,6 +33,10 @@ class Candidate:
     scope_match: bool | None = None  # soft feature (§10.5)
     retrieval_pass: int = 1
     is_exact: bool = False
+    # Level B guard verdict (VARIANTS_PLAN 2): a blocked candidate stays in
+    # the pool and in the prediction set, it just cannot be committed.
+    # Generation and commit are separate decisions (invariant 4).
+    commit_blocked: str | None = None
     provenance: dict = field(default_factory=dict)
     # fusion inputs/outputs
     features: dict = field(default_factory=dict)  # §23.2 feature vector
@@ -76,6 +80,9 @@ class CandidatePool:
                 existing.surface_transform_cost, cand.surface_transform_cost)
             existing.retrieval_pass = min(existing.retrieval_pass,
                                           cand.retrieval_pass)
+            if cand.commit_blocked is None:
+                # any unblocked evidence for the same entity lifts the block
+                existing.commit_blocked = None
             if cand.is_exact and not existing.is_exact:
                 # promote: exact evidence arrived after a fuzzy candidate
                 existing.is_exact = True

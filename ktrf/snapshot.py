@@ -26,6 +26,7 @@ from .fuzzy import FuzzyIndex
 from .glossary import (Glossary, GlossaryError, glossary_to_dict, has_errors,
                        validate_glossary)
 from .matcher import ExactIndex
+from .segmentation import ResolutionGuard
 from .morphology import DEFAULT_CHAIN_DEPTH, PARTICLES, PREFIXES, SUFFIXES, ParticleFST
 
 COMPATIBILITY_ID = "ktrf-py-v1"
@@ -36,7 +37,11 @@ NORMALIZER_VERSION = "nrm-1"
 class RuntimePolicy:
     sync_max_input_bytes: int = 65536  # §27.2, REQ-API-003
     max_total_mention_proposals: int = 512
-    max_fuzzy_windows: int = 64
+    max_fuzzy_windows: int = 96  # counts core queries, not raw tokens
+    # typed decompositions considered per token (VARIANTS_PLAN M1). 1 keeps
+    # the pre-M1 behaviour of querying the raw token only, and is the A/B
+    # control; higher values trade Pass-1 latency for variant recall.
+    max_segmentation_paths: int = 4
     tau_dense: float = 0.75  # Pass 2 trigger threshold (§21.6)
     max_dense_queries_per_request: int = 16  # §31.1
     dense_top_k: int = 8
@@ -60,6 +65,7 @@ class Snapshot:
     doclocal: DocLocalDetector
     fst: ParticleFST
     policy: RuntimePolicy
+    guard: ResolutionGuard
     manifest: dict
     diagnostics: list = field(default_factory=list)
     calibrator: object | None = None  # TunedCalibrator once finetuned (§48.3)
@@ -99,6 +105,10 @@ def compute_snapshot_id(manifest: dict) -> str:
     ).hexdigest()[:32]
 
 
+def _guard_hash(guard: ResolutionGuard) -> str:
+    return _hash(dataclasses.asdict(guard))
+
+
 def _morphology_hash() -> str:
     return _hash({"particles": sorted(PARTICLES), "suffixes": sorted(SUFFIXES),
                   "prefixes": sorted(PREFIXES), "depth": DEFAULT_CHAIN_DEPTH})
@@ -112,6 +122,7 @@ def compile_snapshot(
     run_conformance: bool = True,
     encoder=None,
     reranker=None,
+    guard: ResolutionGuard | None = None,
 ) -> Snapshot:
     """Compile a glossary into an immutable snapshot (§11.4 steps 1-5).
 
@@ -126,6 +137,7 @@ def compile_snapshot(
         )
 
     policy = policy or RuntimePolicy()
+    guard = guard or ResolutionGuard()
     fst = ParticleFST()
     exact_index = ExactIndex(glossary, fst)
     snapshot = Snapshot(
@@ -138,6 +150,7 @@ def compile_snapshot(
         doclocal=DocLocalDetector(exact_index),
         fst=fst,
         policy=policy,
+        guard=guard,
         manifest={},
         diagnostics=diagnostics,
     )
@@ -155,6 +168,9 @@ def compile_snapshot(
         "compatibility_id": COMPATIBILITY_ID,
         "normalizer_hash": _hash(NORMALIZER_VERSION),
         "morphology_rules_hash": _morphology_hash(),
+        # invariant 6: a guard change changes resolution, so it changes
+        # snapshot identity too
+        "segmentation_guard_hash": _guard_hash(guard),
         "entities_hash": glossary_hash,
         "policy_hash": policy_hash,
         "calibrator_hash": None,

@@ -62,6 +62,15 @@ def _blocking_reason(mention: dict, policy) -> dict | None:
                 "detail": "no registered sense cleared the context bar"}
     if not members:
         return {"reason": "no_candidates", "detail": "no sense survived"}
+    if members[0].get("commit_blocked"):
+        # a Level B guard withheld the commit even though the score cleared
+        # the thresholds (VARIANTS_PLAN 2); say which invariant, because the
+        # fix is a catalog edit, not a threshold change
+        return {"reason": "guard_blocked",
+                "guard": members[0]["commit_blocked"],
+                "top_probability": top_p,
+                "detail": "the top sense is supported only by evidence a "
+                          "Level B invariant refuses to commit on"}
     if (top_p or 0) < policy.resolve_threshold:
         return {"reason": "below_resolve_threshold",
                 "top_probability": top_p,

@@ -1,6 +1,6 @@
 # 변형 해석·미등록 약어 로드맵
 
-**기준일:** 2026-08-26 · 본 문서는 계획 문서이며 규범(spec)이 아니다.
+**기준일:** 2026-08-30 · 본 문서는 계획 문서이며 규범(spec)이 아니다.
 근거 수치의 단일 출처는 `reports/`의 생성 리포트다.
 
 외부 기술 리뷰(변형 커버리지·미등록 약어·SLM 도입 조건)를 실행 계획으로
@@ -23,7 +23,7 @@
 |---|---:|---|---|
 | composed transform | 1,350/1,350 | 정의된 변형·조합 구현이 안정적 | 현실 변형 분포를 설명한다 |
 | wild tail coverage | 84.3% | 실문장 tail의 16%가 카탈로그로 설명 안 됨 | 나머지를 suffix로 추가하면 된다 |
-| fuzzy recovery | 96.3% | 고립된 near-miss 복구가 강함 | fuzzy+조사·prefix 조합도 강하다 |
+| fuzzy recovery | 96.3% | 고립된 near-miss 복구가 강함 | ~~fuzzy+조사·prefix 조합도 강하다~~ → M1에서 측정함: 조합 시 **0.10**이었고, 수정 후 0.69 |
 | UE holdout | ~90% | **binding holdout**에서 복구된다 | 신규 formation 일반화가 검증됐다 |
 | A/B known | 큰 개선 | 등록 약칭 ContextPack은 유익 | unseen에도 같은 효용이 있다 |
 | A/B unseen | 순효과 작음 | 추가 검증 필요 | unseen 개선이 입증됐다 |
@@ -52,7 +52,7 @@ alias family·formation·entity가 모두 새로운 경우는 측정하지 않�
 | 단계 | 내용 | 상태 |
 |---|---|---|
 | **M0** | 측정 신뢰성 복구 | ◐ 코드 수정 완료, human-gold seed 미착수 |
-| M1 | 공유 segmentation + typed path (`StructuralPath`/`MatchEvidence`/`ResolutionGuard`) | 미착수 |
+| M1 | 공유 segmentation + typed path (`StructuralPath`/`MatchEvidence`/`ResolutionGuard`) | ✅ 완료 |
 | M2 | 의미 안전성: `core_link`/`full_surface` 분리, typed tail, `COMPOSES_TO` 후보 연결 | 미착수 |
 | M3 | 현실 커버리지: wild tail 수동 taxonomy, punctuation class, OCR opt-in, confusion table, abbreviation signature index | 미착수 |
 | M4 | 미등록 variant mining + 승인 루프 | 미착수 (PLAN_PI proposal 상태 모델 재사용) |
@@ -86,8 +86,87 @@ alias family·formation·entity가 모두 새로운 경우는 측정하지 않�
 1. human-gold seed set (variant taxonomy 라벨 포함), locked test 봉인
 2. alias-family/document cluster bootstrap을 primary 통계로 (현재 Wilson은
    독립 표본 가정)
-3. resolver eval-only trace: pre-threshold rank·후보 수·truncation 노출
-4. `INSUFFICIENT_DATA` 표기 규칙 (formation slice당 최소 200 mention)
+3. ~~resolver eval-only trace: pre-threshold rank·후보 수·truncation 노출~~
+   → 완료 (M1과 함께, `return_eval_trace` 옵션)
+4. `INSUFFICIENT_DATA` 표기 규칙 — ◐ 부분 완료. calibration coverage에는
+   적용했다(CI 하한≥목표면 PASS, 상한<목표면 FAIL, 사이는
+   `INSUFFICIENT_DATA`). formation slice당 최소 200 mention 규칙을 나머지
+   리포트에 퍼뜨리는 것은 미완
+
+### M1 공유 segmentation (2026-08-30) — 완료
+
+**문제의 실체.** 변경 전 exact 채널만 `CanonicalStream` → boundary
+→ tail parser로 조사·suffix를 분해했고, Level B 채널(jamo·keyboard·
+abbrev)은 **원시 토큰 전체**를 인덱스에 넣었다. abbrev에만
+별도의 조사 절단 루프가 있었으나 다른 채널은 쓰지 않았다. 결과:
+
+| 입력 | 변경 전 | 변경 후 |
+|---|---|---|
+| `한국전려` | AMBIGUOUS (ORG_KEPCO 후보) | 동일 |
+| `한국전려에서도` | **mention 없음** | AMBIGUOUS, core span (0,4) |
+| `국토교퉁부가` (오타) | span이 조사 `가`까지 포함 | core에서 멈춤 |
+
+두 번째는 recall 문제가 아니라 **offset 계약 위반**이다. exact
+경로는 core span이 조사를 포함하지 않는다고 보장하는데 fuzzy 경로는
+그렇지 않았고, 하위 소비자(하이라이트·치환·ContextPack)는 그 차이를
+구분할 수 없었다.
+
+**구현.** `ktrf/segmentation.py` 하나로 통합했다.
+
+- `segment_token(token, span, fst)` → `StructuralPath` 목록.
+  BARE·PARTICLE·SUFFIX·SUFFIX_PARTICLE·UNKNOWN_TAIL·LATIN_TAIL로
+  **타입화**되며, 하나로 가지치기 하지 않고 전부 돌려준다
+  (REQ-TAIL-003). bare 읽기는 항상 최상위이므로 `paths[0]`만 보는
+  호출자는 기존 동작을 그대로 유지한다.
+- `core_span`은 토큰 상대가 아니라 **문서 절대 좌표**라, Level B
+  채널이 exact 경로와 동일한 span 규율을 갖는다 (INV-012).
+- `tailparser.analyze_tail`은 `enumerate_tails`의 alias가 되었다 —
+  exact 경로와 Level B가 **같은 구현**을 공유한다(복사본 없음).
+- `MatchEvidence`: 후보가 어떤 채널·어떤 분해에서 나왔는지를 타입으로
+  기록. provenance·explain·eval trace가 같은 레코드를 읽는다.
+- `ResolutionGuard`: §2 불변조건을 Level B 증거에만 적용. **Level A는
+  거치지 않는다** — 결정적 카탈로그 보장이 Level B 튜닝에
+  의존하면 안 되기 때문이다. 후보를 **제거하지 않고** commit만
+  보류한다(불변조건 ④ 후보/확정 분리).
+
+| 규칙 | 효과 | 근거 |
+|---|---|---|
+| `short_core` | commit 차단 | 식별력 없는 core (불변조건 ①) |
+| `unknown_residual_derivative` | commit 차단 + 0.60 | `한전노조`류 관련 파생 (②) |
+| `ungrammatical_particle` | 0.80 | 받침 제약 위반은 soft 신호 (§16.2) |
+| `inferred_tail` | 0.92 | 관측한 tail이 아니라 추론한 tail |
+
+- guard 설정은 `segmentation_guard_hash`로 manifest에 들어가 **snapshot ID를
+  바꿔 다른 아티팩트가 된다** (불변조건 ⑥).
+- `RuntimePolicy.max_segmentation_paths` — 토큰당 분해 예산. **1이면 M1
+  이전 동작**과 정확히 같으므로 A/B 대조군이 된다.
+- `resolve(..., options={"return_eval_trace": True})` — threshold 이전
+  순위·후보 수·truncation 노출 (M0 잔여 항목 3). 진단 전용이며
+  어떤 결정에도 입력되지 않는다.
+
+**측정.** `python -m eval.run_segmentation_ab` — 동일 표본을 `paths=1`(변경
+전)과 `paths=4`로 두 번 돌려 쌍으로 비교한다. formation당 400건,
+실문장 6,000개.
+
+| formation | core recall | 정확 span | RESOLVED |
+|---|---|---|---|
+| `particle` | 1.00 → 1.00 | 1.00 → 1.00 | 1.00 → 1.00 |
+| `suffix_particle` | 1.00 → 1.00 | 1.00 → 1.00 | 0.03 → 0.03 |
+| `typo` | 0.68 → 0.69 | 0.66 → 0.66 | 0.00 → 0.00 |
+| **`typo_particle`** | **0.10 → 0.69** | **0.00 → 0.63** | 0.00 → 0.00 |
+
+구조적 FP(fake glossary) 0 → 0, 지연 p95 1.36배. `particle` 계열이
+양쪽 1.00인 것은 **Level A를 건드리지 않았다는 증거**고, RESOLVED가
+양쪽 0.00인 것은 **확정 기준을 느슨하게 하지 않았다는 증거**다.
+전체는 [reports/SEGMENTATION_AB.md](../reports/SEGMENTATION_AB.md).
+
+실텍스트 회귀는 `python -m eval.run_wild_regression`(20,000문장 표본 쌍
+비교). `WILD_CORPUS.md` 전체 재생성은 6시간이라 별도 과제로 남겨둔다.
+
+**남은 것(M1 범위 밖).** typed tail 문법과 `COMPOSES_TO` 후보 연결,
+`core_link`/`full_surface` 분리는 M2이다. 현재는 UNKNOWN residual을
+commit 차단으로만 다루며, `한전노조` 같은 파생을 별도 관계로
+모델링하지는 않는다.
 
 ## 4. SLM 진입 조건 (요약)
 

@@ -27,6 +27,8 @@ from .candidates import Candidate, CandidatePool
 from .errors import KtrfApiError
 from .offsets import OffsetMap, check_span_invariant
 from .normalization import build_canonical_stream
+from .segmentation import (BARE, MatchEvidence, distinct_cores,
+                           segment_token)
 from .snapshot import Snapshot
 from .tailparser import MentionProposal, parse_matches
 
@@ -60,6 +62,7 @@ _OPTION_SCHEMA = {
     "return_all_mentions": (bool, None),
     "return_features": (bool, None),
     "return_trace": (bool, None),
+    "return_eval_trace": (bool, None),
     "detect_unregistered_mentions": (bool, None),
     "max_prediction_set": (int, lambda v: 1 <= v <= 500),
 }
@@ -186,10 +189,9 @@ def resolve(
     if mode != "fast":
         trace["channels"].extend(["jamo", "keyboard"])
         windows = 0
+        budget_hit = False
         for m in _TOKEN_RE.finditer(text):
-            if windows >= policy.max_fuzzy_windows:
-                degraded = True
-                trace["drops"].append("fuzzy_window_budget")
+            if budget_hit:
                 break
             span = m.span()
             token = m.group()
@@ -197,11 +199,33 @@ def resolve(
                 continue
             if any(span[0] < e and s < span[1] for s, e in exact_spans):
                 continue
-            windows += 1
-            for fc in snapshot.fuzzy_index.query_jamo(token, span):
-                _add_fuzzy(node_for(span), fc)
-            for fc in snapshot.fuzzy_index.query_keyboard(token, span):
-                _add_fuzzy(node_for(span), fc)
+            # M1: the Level B channels read the same decomposition the exact
+            # path uses, so a typo carrying a particle reaches the index as
+            # its core and the mention span stops at that core rather than
+            # swallowing a tail nothing ever analysed (INV-012).
+            for path in distinct_cores(
+                    _paths_for(snapshot, text, token, span))[
+                    :policy.max_segmentation_paths]:
+                # A 2-syllable core can only be reached by inferring a tail,
+                # and §10.6 disables generic fuzzy for aliases that short, so
+                # such a query costs a shortlist scan and can never match.
+                if len(path.core) < (2 if path.kind == BARE else 3):
+                    continue
+                if windows >= policy.max_fuzzy_windows:
+                    degraded = True
+                    trace["drops"].append("fuzzy_window_budget")
+                    budget_hit = True
+                    break
+                windows += 1
+                for fc in snapshot.fuzzy_index.query_jamo(path.core,
+                                                          path.core_span):
+                    _add_fuzzy(node_for(path.core_span), fc,
+                               snapshot.guard, path)
+                for fc in snapshot.fuzzy_index.query_keyboard(path.core,
+                                                              path.core_span):
+                    _add_fuzzy(node_for(path.core_span), fc,
+                               snapshot.guard, path)
+        trace["fuzzy_windows"] = windows
         # drop nodes that gained no candidates
         nodes = {k: n for k, n in nodes.items() if n.pool.all_candidates()}
 
@@ -281,30 +305,36 @@ def resolve(
                 continue
             if any(span[0] < e and s < span[1] for s, e in covered):
                 continue
-            # try the token itself, then particle-stripped cores
-            # (과기정통부에서 -> 과기정통부)
-            cores = [(token, span)]
-            for cut in range(len(token) - 1, 1, -1):
-                if snapshot.fst.parse_full(token[cut:], token[cut - 1]):
-                    cores.append((token[:cut], (span[0], span[0] + cut)))
+            # the same segmentation every other channel uses; this was a
+            # private particle-strip loop that no other channel shared
+            paths = distinct_cores(
+                _paths_for(snapshot, text, token, span))[
+                :policy.max_segmentation_paths]
             hit_span = None
-            for core, core_span in cores:
-                cands = snapshot.abbrev.align_token(core, core_span)
+            for path in paths:
+                cands = snapshot.abbrev.align_token(path.core, path.core_span)
                 if not cands:
                     continue
-                n = node_for(core_span)
+                n = node_for(path.core_span)
                 n.sources.add("abbrev")
                 for ac in cands:
+                    ev = MatchEvidence.from_path("abbrev", path,
+                                                 transform_cost=1 - ac.score)
+                    verdict = snapshot.guard.evaluate(ev)
                     n.pool.add(Candidate(
                         entity_id=ac.entity_id, alias_id=None, family_id=None,
                         generation_channels={"abbrev"},
-                        channel_scores={"abbrev": _CHANNEL_BASE["abbrev"]
-                                        + 0.3 * ac.score},
+                        channel_scores={"abbrev": (_CHANNEL_BASE["abbrev"]
+                                                   + 0.3 * ac.score)
+                                        * verdict.score_factor},
                         is_exact=False, retrieval_pass=2,
+                        commit_blocked=verdict.blocked_reason,
+                        provenance={"evidence": ev.as_dict(),
+                                    "guard": list(verdict.reasons)},
                     ))
                 pass2 = True
                 n.pass2_applied = True
-                hit_span = core_span
+                hit_span = path.core_span
                 break
             if hit_span is not None:
                 # union of Pass-2 channels on the same proposal (§21.6)
@@ -313,7 +343,7 @@ def resolve(
                     and any("가" <= c <= "힣" for c in token):
                 # open-world span proposals are Level C and stay behind the
                 # feature flag (§19.1 default off; §6: 범용 명사 인식은 비목표)
-                core_span = cores[-1][1]
+                core_span = paths[-1].core_span
                 dense_enrich(core_span,
                              _context_window(text, core_span, 30))
         if pass2:
@@ -341,7 +371,8 @@ def resolve(
                 if return_all or n.core_span in primary_spans]
     for i, n in enumerate(included):
         m = _mention_response(n, i, snapshot, omap, text, mode, max_set,
-                              return_features)
+                              return_features,
+                              options.get("return_eval_trace", False))
         m["primary"] = n.core_span in primary_spans
         if n.pool.truncated or n.pool.exact_overflow:
             degraded = True
@@ -409,18 +440,36 @@ def _rerank(nodes, snapshot: Snapshot, text: str, context: dict, mode: str,
     return degraded
 
 
-def _add_fuzzy(node: MentionNode, fc) -> None:
+def _paths_for(snapshot: Snapshot, text: str, token: str,
+               span: tuple[int, int]):
+    """The shared typed decomposition of one raw token (VARIANTS_PLAN M1)."""
+    return segment_token(token, span, snapshot.fst,
+                         left_context=text[max(0, span[0] - 6):span[0]])
+
+
+def _add_fuzzy(node: MentionNode, fc, guard, path) -> None:
     node.sources.add(fc.channel)
     base = _CHANNEL_BASE[fc.channel]
+    prov = {"fuzzy_cost": fc.cost}
+    blocked = None
+    factor = 1.0
+    if path is not None:
+        ev = MatchEvidence.from_path(fc.channel, path, transform_cost=fc.cost)
+        verdict = guard.evaluate(ev)
+        blocked, factor = verdict.blocked_reason, verdict.score_factor
+        prov["evidence"] = ev.as_dict()
+        if verdict.reasons:
+            prov["guard"] = list(verdict.reasons)
     node.pool.add(Candidate(
         entity_id=fc.binding.entity_id,
         alias_id=fc.binding.alias_id,
         family_id=fc.binding.family_id,
         generation_channels={fc.channel},
-        channel_scores={fc.channel: max(0.1, base - fc.cost)},
+        channel_scores={fc.channel: max(0.1, base - fc.cost) * factor},
         surface_transform_cost=fc.cost,
         is_exact=False,
-        provenance={"fuzzy_cost": fc.cost},
+        commit_blocked=blocked,
+        provenance=prov,
     ))
 
 
@@ -579,9 +628,47 @@ def _top_probability(node: MentionNode) -> float | None:
 # ---------------------------------------------------------------------------
 
 
+def _eval_trace(node: MentionNode, ranked: list, members: list,
+                set_truncated: bool) -> dict:
+    """Pre-threshold view of one mention, for evaluation only (M0 item 3).
+
+    Reporting only what survived thresholding hides the two failures that
+    matter most when a number moves: a gold candidate that was generated but
+    ranked below the cut, and a pool that was truncated before ranking ever
+    ran. Neither is visible in ``prediction_set``. This is diagnostic output,
+    never an input to any decision.
+    """
+    member_ids = {c.entity_id for c in members}
+    return {
+        "pool": {
+            "exact": len(node.pool.exact),
+            "non_exact": len(node.pool.non_exact),
+            "truncated": node.pool.truncated,
+            "non_exact_dropped": node.pool.stats.non_exact_truncated,
+            "exact_overflow": node.pool.exact_overflow,
+        },
+        "prediction_set_truncated": set_truncated,
+        "sources": sorted(node.sources),
+        # every candidate in rank order, including those the thresholds cut:
+        # rank is pre-threshold, so a gold entity at rank 3 is distinguishable
+        # from a gold entity that was never generated at all
+        "ranked": [
+            {"rank": i, "entity_id": c.entity_id,
+             "calibrated_probability": c.calibrated_probability,
+             "ranking_score": c.ranking_score,
+             "channels": sorted(c.generation_channels),
+             "in_prediction_set": c.entity_id in member_ids,
+             "commit_blocked": c.commit_blocked,
+             "evidence": c.provenance.get("evidence")}
+            for i, c in enumerate(ranked)
+        ],
+    }
+
+
 def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
                       omap: OffsetMap, text: str, mode: str,
-                      max_set: int, return_features: bool = False) -> dict:
+                      max_set: int, return_features: bool = False,
+                      return_eval_trace: bool = False) -> dict:
     s, e = node.core_span
     check_span_invariant(text, s, e, node.surface)  # INV-002
     cands = node.pool.all_candidates()
@@ -687,6 +774,8 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
                   "ranking_score": c.ranking_score,
                   "generation_channels": sorted(c.generation_channels),
                   "retrieval_pass": c.retrieval_pass}
+        if c.commit_blocked:
+            member["commit_blocked"] = c.commit_blocked
         if return_features:
             member["features"] = dict(c.features)  # fusion training export
         set_members.append(member)
@@ -708,6 +797,7 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
         mention_decision == "TERM"  # INV-016/REQ-TRM-001
         and not node_degraded  # §27.8/REQ-API-005
         and top is not None
+        and top.commit_blocked is None  # VARIANTS_PLAN §2 ①②
         and (top_p or 0) >= policy.resolve_threshold
         and (len(set_members) == 1 or (top_p or 0) - second_p >= policy.margin_threshold)
         and not kb_member
@@ -741,6 +831,8 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
         m["prediction_set"]["calibration_fallback"] = True
     if node_degraded:
         m["degraded"] = True
+    if return_eval_trace:
+        m["eval_trace"] = _eval_trace(node, ranked, members, set_truncated)
     return m
 
 
@@ -758,6 +850,10 @@ def _select_primary(ordered: list[MentionNode]) -> set[tuple[int, int]]:
         ordered,
         key=lambda n: (
             0 if n.pool.exact else 1,  # full exact binding first
+            # among Level B nodes a better-supported core beats a longer one,
+            # so an under-stripped span cannot shadow the analysed core. The
+            # term is constant for exact nodes, whose order is unchanged.
+            0.0 if n.pool.exact else -(_top_probability(n) or 0.0),
             -(n.core_span[1] - n.core_span[0]),  # longer core span
             n.core_span[0],  # earlier start
             min_alias(n),  # alias_id lexicographic

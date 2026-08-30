@@ -38,7 +38,7 @@ from .adversarial import (
     run_ooc_tails,
 )
 from .fuzzing import run_pathological, run_unicode_fuzz
-from .metrics import wilson_interval
+from .metrics import wilson_interval, provenance_line
 from .synthetic import build_synthetic_glossary, collision_stats
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -49,8 +49,13 @@ QUICK_SIZES = [200]
 QUICK_SEEDS = [1]
 
 
-def run_calibration_holdout(rng: random.Random) -> dict:
-    """Fit/holdout split coverage across alphas and skewed group sizes."""
+CALIBRATION_SEEDS = (42, 43, 44, 45, 46, 47, 48, 49)
+CALIBRATION_SCALE = 4  # pool multiplier; see the n-power note below
+
+
+def _holdout_trial(seed: int, alpha: float, scale: int) -> tuple[int, int, dict]:
+    rng = random.Random(seed)
+
     def make(n, group, pos_mu, neg_mu, spread):
         out = []
         for _ in range(n):
@@ -60,33 +65,81 @@ def run_calibration_holdout(rng: random.Random) -> dict:
                 neg_mu + spread * (rng.random() - 0.5), group, 0))
         return out
 
-    pool = (make(400, "exact|multi", 1.0, 0.55, 0.5)
-            + make(150, "fuzzy|multi", 0.8, 0.45, 0.6)
-            + make(20, "dense|multi", 0.6, 0.35, 0.6))
+    pool = (make(400 * scale, "exact|multi", 1.0, 0.55, 0.5)
+            + make(150 * scale, "fuzzy|multi", 0.8, 0.45, 0.6)
+            + make(20 * scale, "dense|multi", 0.6, 0.35, 0.6))
     rng.shuffle(pool)
     cut = int(len(pool) * 0.7)
-    fit_set, holdout = pool[:cut], pool[cut:]
+    cal = fit_calibrator(pool[:cut], alpha=alpha, n_min=80)
+    per_group: dict[str, list[int]] = {}
+    for e in pool[cut:]:
+        if e.label != 1:
+            continue
+        inc, _ = cal.in_prediction_set(
+            cal.calibrate_marginal(e.ranking_score), e.group)
+        per_group.setdefault(e.group, []).append(int(inc))
+    covered = sum(sum(l) for l in per_group.values())
+    total = sum(len(l) for l in per_group.values())
+    return covered, total, {g: (sum(l), len(l)) for g, l in per_group.items()}
+
+
+def run_calibration_holdout(rng: random.Random | None = None) -> dict:
+    """Fit/holdout split coverage, pooled over seeds with a CI.
+
+    Split conformal guarantees coverage *in expectation over draws*, so a
+    single holdout at n=171 says almost nothing: across seeds that estimator
+    ranges 0.92-0.97 purely from sampling. Reporting one draw as "the
+    coverage" produced a report that moved whenever the seed or the fit code
+    moved, and read as a regression either way. This pools several
+    independent trials at a sample size with power and gates on the Wilson
+    lower bound, matching the release gate's CI-floor convention.
+    """
     results = {}
     for alpha in (0.05, 0.1):
-        cal = fit_calibrator(fit_set, alpha=alpha, n_min=80)
-        per_group: dict[str, list[int]] = {}
-        for e in holdout:
-            if e.label != 1:
-                continue
-            inc, _ = cal.in_prediction_set(
-                cal.calibrate_marginal(e.ranking_score), e.group)
-            per_group.setdefault(e.group, []).append(int(inc))
-        overall = [x for lst in per_group.values() for x in lst]
+        per_seed: list[float] = []
+        covered = total = 0
+        groups: dict[str, list[int]] = {}
+        for seed in CALIBRATION_SEEDS:
+            c, t, g = _holdout_trial(seed, alpha, CALIBRATION_SCALE)
+            per_seed.append(round(c / t, 4))
+            covered += c
+            total += t
+            for name, (gc, gt) in g.items():
+                acc = groups.setdefault(name, [0, 0])
+                acc[0] += gc
+                acc[1] += gt
+        lo, hi = wilson_interval(covered, total)
+        target = 1 - alpha
+        # Three-valued on purpose (VARIANTS_PLAN M0 item 4): a point estimate
+        # a few tenths of a point under target neither proves undercoverage
+        # nor clears the guarantee. Calling that a PASS with a hand-picked
+        # tolerance, or a FAIL on the point estimate, would both be claims
+        # the sample cannot support.
+        if lo >= target:
+            verdict = "PASS"
+        elif hi < target:
+            verdict = "FAIL"
+        else:
+            verdict = "INSUFFICIENT_DATA"
         results[f"alpha_{alpha}"] = {
-            "target": 1 - alpha,
-            "holdout_coverage": round(sum(overall) / len(overall), 4),
-            "n_holdout": len(overall),
-            "per_group": {g: round(sum(l) / len(l), 3)
-                          for g, l in sorted(per_group.items())},
+            "target": round(target, 4),
+            "pooled_coverage": round(covered / total, 4),
+            "ci95": [round(lo, 4), round(hi, 4)],
+            "verdict": verdict,
+            "n_holdout_pooled": total,
+            "trials": len(CALIBRATION_SEEDS),
+            "per_seed_coverage": per_seed,
+            "per_group": {g: round(v[0] / v[1], 3)
+                          for g, v in sorted(groups.items())},
         }
     return {"name": "calibration_holdout", "results": results,
-            "interpretation": "held-out coverage must be ≥ ~target (1-α); "
-                              "fit and holdout are disjoint"}
+            "interpretation": "pooled held-out coverage over "
+                              f"{len(CALIBRATION_SEEDS)} independent trials. "
+                              "PASS requires the Wilson lower bound to clear "
+                              "the target; FAIL requires the upper bound to "
+                              "miss it; in between the sample cannot decide "
+                              "and the result is INSUFFICIENT_DATA, not a "
+                              "pass"}
 
 
 def run_one(n_entities: int, seed: int, quick: bool, dense: bool = False) -> dict:
@@ -291,11 +344,22 @@ def write_markdown(payload: dict, out_path: Path) -> None:
                      f"/1k chars")
     cal = payload["calibration_holdout"]["results"]
     lines += ["", "## Calibration holdout coverage (fit/holdout 분리)", "",
-              "| α | 목표 | holdout coverage | n | 그룹별 |", "|---|---|---|---:|---|"]
+              "단일 holdout 한 번은 split conformal의 보장을 검증하지 못한다 —"
+              " n=171에서 시드만 바꿔도 coverage가 0.92~0.97로 움직인다."
+              " 아래는 독립 시행을 pooling한 값이며, 판정은 점추정치가 아니라"
+              " **CI로** 한다: 하한이 목표 이상이면 ✅ PASS, 상한이 목표 미달이면"
+              " ❌ FAIL, 그 사이는 ◐ **INSUFFICIENT_DATA**다 — 표본이 판단할 수"
+              " 없는 구간을 통과로 적지 않는다.",
+              "",
+              "| α | 목표 | pooled coverage | CI95 | 판정 | n | 시드별 | 그룹별 |",
+              "|---|---|---:|---|---|---:|---|---|"]
     for k, v in cal.items():
+        mark = {"PASS": "✅", "FAIL": "❌"}.get(v["verdict"], "◐")
         lines.append(f"| {k.split('_')[1]} | {v['target']} "
-                     f"| {v['holdout_coverage']} | {v['n_holdout']} "
-                     f"| {v['per_group']} |")
+                     f"| {mark} {v['pooled_coverage']} "
+                     f"| [{v['ci95'][0]}, {v['ci95'][1]}] "
+                     f"| {v['verdict']} | {v['n_holdout_pooled']} "
+                     f"| {v['per_seed_coverage']} | {v['per_group']} |")
     lines += [
         "",
         "## 해석",
@@ -308,8 +372,9 @@ def write_markdown(payload: dict, out_path: Path) -> None:
         "- 합성 corpus는 실제 조직 문서 분포가 아니다. §3.5의 분포 커버리지 주장은"
         " 여전히 실 데이터 golden set(§48.6) 축적 이후에만 가능하다.",
         "",
-        f"*총 소요: {payload['elapsed_seconds']}s — generated by "
-        "`python -m eval.run_benchmarks`*",
+        provenance_line(ROOT, f"총 소요 {payload['elapsed_seconds']}s"),
+        "",
+        "*generated by `python -m eval.run_benchmarks`*",
     ]
     out_path.write_text("\n".join(lines), encoding="utf-8")
 
@@ -336,7 +401,7 @@ def main():
         "aggregate": aggregate(runs),
         "dense_runs": dense_runs,
         "dense_aggregate": aggregate(dense_runs),
-        "calibration_holdout": run_calibration_holdout(random.Random(42)),
+        "calibration_holdout": run_calibration_holdout(),
         "elapsed_seconds": round(time.perf_counter() - t0, 1),
     }
     out = ROOT / "eval" / "out"

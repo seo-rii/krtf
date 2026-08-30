@@ -16,7 +16,11 @@ implemented:
     tests: [tests/test_offsets.py::test_reference_example_byte_spans]
   - req: REQ-OFF-002
     tests: [tests/test_offsets.py::test_invariant_checker_raises_on_mismatch,
-            tests/test_resolver_api.py::test_reference_sentence_spans]
+            tests/test_resolver_api.py::test_reference_sentence_spans,
+            # shared segmentation (VARIANTS_PLAN M1): a Level B mention span
+            # must not cover a tail no channel analysed
+            tests/test_segmentation.py::test_fuzzy_span_never_swallows_the_particle,
+            tests/test_segmentation.py::test_core_span_is_absolute_not_token_relative]
   - req: REQ-OFF-003
     tests: [tests/test_offsets.py::test_roundtrip_mixed_content]
   - req: REQ-OFF-004
@@ -49,7 +53,8 @@ implemented:
   - req: REQ-TAIL-001
     tests: [tests/test_morphology.py::test_chain_composition_not_enumeration]
   - req: REQ-TAIL-003
-    tests: [tests/test_matcher.py::test_homograph_collision_both_kept]
+    tests: [tests/test_matcher.py::test_homograph_collision_both_kept,
+            tests/test_segmentation.py::test_tail_enumeration_has_one_implementation]
   - req: REQ-TAIL-004
     tests: [tests/test_matcher.py::test_parse_full_pipeline]
   - req: REQ-TAIL-005
@@ -61,7 +66,9 @@ implemented:
   - req: REQ-FUZ-001
     tests: [tests/test_fuzzy_doclocal_abbrev.py::test_min_cost_single_application]
   - req: REQ-FUZ-002
-    tests: [tests/test_fuzzy_doclocal_abbrev.py::test_short_alias_fuzzy_disabled]
+    tests: [tests/test_fuzzy_doclocal_abbrev.py::test_short_alias_fuzzy_disabled,
+            tests/test_segmentation.py::test_guard_blocks_a_core_too_short_to_carry_identity]
+
   # --- doc-local ---
   - req: REQ-LOC-001
     tests: [tests/test_fuzzy_doclocal_abbrev.py::test_doclocal_no_global_overwrite,

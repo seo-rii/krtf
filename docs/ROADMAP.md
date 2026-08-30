@@ -1,6 +1,6 @@
 # KTRF Roadmap & Status
 
-**기준일:** 2026-08-25 · **스펙:** PLAN.md v0.3 · 본 문서는 계획/현황 문서이며 규범이 아니다.
+**기준일:** 2026-08-30 · **스펙:** PLAN.md v0.3 · 본 문서는 계획/현황 문서이며 규범이 아니다.
 수치의 단일 출처는 `reports/`의 생성 리포트다 — 본 문서와 리포트가 어긋나면 리포트가 맞다.
 
 ## 문서 지도
@@ -19,6 +19,7 @@
 | [reports/NEURAL_EVAL.md](../reports/NEURAL_EVAL.md) | Level B gate (UE splits, dense) | 생성 리포트 |
 | [reports/GPU_BENCH.md](../reports/GPU_BENCH.md) | GPU vs CPU 인코더 벤치마크 (G1) | 생성 리포트 |
 | [reports/LLM_RAG_COMPARE.md](../reports/LLM_RAG_COMPARE.md) | KTRF vs 범용 LLM+RAG (Ollama) | 생성 리포트 |
+| [reports/SEGMENTATION_AB.md](../reports/SEGMENTATION_AB.md) | 공유 segmentation 쌍 표본 A/B (M1) | 생성 리포트 |
 
 리포트 재생성: `python -m eval.run_eval` / `run_benchmarks` / `run_wild` / `run_neural_eval`.
 
@@ -101,8 +102,30 @@
 - runtime options 스키마 검증 (`max_prediction_set` 범위, 미지 옵션 거부,
   일관된 `INVALID_REQUEST` 오류)
 
+**추가 반영 (2026-08-30) — 리포트 신뢰성:**
+
+M1 작업 중 드러난 세 가지는 resolver가 아니라 **평가 쪽 결함**이었다.
+
+- 리포트가 코드와 조용히 어긋나 있었다. `BENCHMARKS.md`의 conformal
+  coverage 0.9532는 **split-conformal 전제를 위반하던 코드**(Platt 학습과
+  quantile을 같은 데이터로)가 생성한 값이며, 그 결함을 고친 뒤
+  재생성되지 않았다. → 모든 리포트 footer에 측정 commit을 박는
+  `provenance_line()` 추가
+- 그 coverage 지표는 애초에 **게이트가 아니었다**: 단일 시드 n=171로,
+  시드만 바꿔도 0.92~0.97로 움직인다. → 8회 시행 pooling(n=5,518) +
+  Wilson CI + **3값 판정**(PASS / FAIL / `INSUFFICIENT_DATA`). 현재
+  α=0.05에서 0.9458 [0.9395, 0.9515] → `INSUFFICIENT_DATA` — 목표가
+  구간 안에 있으므로 통과로도 위반으로도 적지 않는다
+- fake-glossary 부재 필터가 **대소문자 구분 부분문자열** 검사였다. matcher는
+  case-fold하므로 corpus에 `GB`만 있어도 `gb`가 "부재"로 남아 실제로
+  매칭된다 — 제품 오타가 아닌 **구성 오류가 FP로 집계**되던 것.
+  → 정규화 공간에서 검사하도록 수정(`eval/synthetic.py::absent_bindings_only`)
+
 **남은 백로그 (우선순위순):**
 
+0. `WILD_CORPUS.md` 전체 재생성 (114,605문장 ×6 pass ≈ 6시간). 현재는
+   20,000문장 표본 쌍 비교(`eval.run_wild_regression`)로 대체했고
+   리포트 상단에 경고를 붙였다
 1. snapshot 중첩 구조의 깊은 불변화 (frozen dataclass / read-only mapping)
 2. human-gold 평가셋: 문서 단위 exhaustive annotation, 2인 주석 + adjudication,
    slice당 n≥200 — silver 근사와 분리 보고
@@ -163,15 +186,32 @@ clearance 필터·validator).
 ## 변형 해석·미등록 약어 (docs/VARIANTS_PLAN.md, M0–M6)
 
 외부 기술 리뷰를 편입한 별도 로드맵. 핵심 판단은 **SLM 우선이 아니라
-측정 신뢰성 복구가 먼저**라는 것이다. M0 평가 코드 결함 수정은 완료했고
-(strict 채점, exact-core span, 전 occurrence, family macro, commit ledger,
-검색 기반 대조군, raw artifact 보존, provenance manifest — commit
-`8d6f427`), human-gold seed와 cluster bootstrap이 남아 있다. 상세와
-SLM 진입 게이트는 [VARIANTS_PLAN.md](VARIANTS_PLAN.md) 참조.
+측정 신뢰성 복구가 먼저**라는 것이다.
+
+**M0 (측정 신뢰성)** — 평가 코드 결함 수정 완료(strict 채점, exact-core
+span, 전 occurrence, family macro, commit ledger, 검색 기반 대조군, raw
+artifact 보존, provenance manifest — commit `8d6f427`) + eval-only trace
+(`return_eval_trace`). human-gold seed와 cluster bootstrap은 남아 있다.
 
 주의: 이 수정으로 **기존 리포트 수치는 하향 조정된다**. 이전 값은
 관대한 채점(양방향 부분문자열)·any-overlap span·silver-span 한정
 precision에 기반했다.
+
+**M1 (공유 segmentation)** — ✅ 완료. exact 채널만 조사를 분해하고 Level B
+채널(jamo·keyboard·abbrev)은 원시 토큰을 인덱스에 넣던 구조를
+`ktrf/segmentation.py` 하나로 통합했다. 두 가지가 동시에 고쳐졌다:
+
+1. `한국전려에서도`처럼 **오타+조사** 결합은 mention 자체가 안 나왔다.
+   `한국전려`는 되는데 조사가 붙으면 안 되는 것은 모델 용량이 아니라
+   채널 간 분해 불일치였다.
+2. fuzzy mention span이 분석된 적 없는 조사까지 덮었다 — exact 경로가
+   지키는 offset 계약(INV-012) 위반이며, 하이라이트·치환 같은 하위
+   소비자가 구분할 수 없는 종류의 결함이다.
+
+`StructuralPath`(타입화된 분해) / `MatchEvidence`(후보의 출처) /
+`ResolutionGuard`(§2 불변조건, **Level B 전용**)로 구성된다. guard는
+후보를 제거하지 않고 commit만 보류하며, 설정은 snapshot ID에 반영된다.
+수치는 [SEGMENTATION_AB.md](../reports/SEGMENTATION_AB.md).
 
 ## Pi Extension 통합 (PLAN_PI.md, 6단계)
 
