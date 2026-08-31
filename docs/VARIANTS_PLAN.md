@@ -53,7 +53,7 @@ alias family·formation·entity가 모두 새로운 경우는 측정하지 않�
 |---|---|---|
 | **M0** | 측정 신뢰성 복구 | ◐ 코드 수정 완료, human-gold seed 미착수 |
 | M1 | 공유 segmentation + typed path (`StructuralPath`/`MatchEvidence`/`ResolutionGuard`) | ✅ 완료 |
-| M2 | 의미 안전성: `core_link`/`full_surface` 분리, typed tail, `COMPOSES_TO` 후보 연결 | 미착수 |
+| M2 | 의미 안전성: `core_link`/`full_surface` 분리, typed tail, `COMPOSES_TO` 후보 연결 | ✅ 완료 |
 | M3 | 현실 커버리지: wild tail 수동 taxonomy, punctuation class, OCR opt-in, confusion table, abbreviation signature index | 미착수 |
 | M4 | 미등록 variant mining + 승인 루프 | 미착수 (PLAN_PI proposal 상태 모델 재사용) |
 | M5 | 약어 SLM shadow 실험 | 게이트 대기 |
@@ -164,9 +164,121 @@ abbrev)은 **원시 토큰 전체**를 인덱스에 넣었다. abbrev에만
 비교). `WILD_CORPUS.md` 전체 재생성은 6시간이라 별도 과제로 남겨둔다.
 
 **남은 것(M1 범위 밖).** typed tail 문법과 `COMPOSES_TO` 후보 연결,
-`core_link`/`full_surface` 분리는 M2이다. 현재는 UNKNOWN residual을
-commit 차단으로만 다루며, `한전노조` 같은 파생을 별도 관계로
-모델링하지는 않는다.
+`core_link`/`full_surface` 분리는 M2이며, 아래에서 다룬다.
+
+### M2 의미 안전성 (2026-08-31) — 완료
+
+**문제의 실체.** M1까지 suffix 카탈로그는 **평평한 집합**이었다. `부`,
+`본부`, `장`, `노조`가 전부 같은 `SUFFIX` 한 종류였고, 응답은 core span
+(`span`)과 원시 토큰 span(`full_span`)만 내보냈다. 그래서 다음 세 문장이
+API 상으로 구분되지 않았다.
+
+| 표면형 | 전체가 가리키는 것 | M1 응답 |
+|---|---|---|
+| `한국전력공사` | 같은 기관 | core + full_span |
+| `금감원장` | **사람** | core + full_span |
+| `한전노조` | **다른 조직** | core + full_span |
+
+`full_span`을 하이라이트하거나 치환하는 소비자는 `금감원장`을 통째로
+금융감독원으로 만든다. 이것이 불변조건 ②(parent full-span overcommit
+금지)가 금지하는 바로 그 동작인데, M1까지는 **응답에 그것을 말할 자리가
+없었다**.
+
+**구현.**
+
+- `SUFFIX_CLASSES` — suffix를 `NAME_PART` / `ORG_UNIT` / `ROLE` /
+  `AFFILIATE` / `DERIVED_ORG` / `REFERENTIAL` / `ARTIFACT`로 **타입화**했다.
+  `ResidualAnalysis`가 `full_identity`(SAME / DISTINCT / UNKNOWN)와
+  `relation`(IDENTITY / PART_OF / ROLE_OF / DERIVED_FROM / AFFILIATE_OF /
+  REFERS_TO / ARTIFACT_OF / NAMED_VARIANT)을 계산한다. 판정은 **맨 오른쪽
+  DISTINCT part**가 지배한다 — 한 part라도 "core가 아니다"라고 하면 뒤따르는
+  part가 그것을 되돌리지 못한다(`본부장`은 본부가 아니라 사람이다). 수식어가
+  앞에 붙으면(`서울본부`) head가 `NAME_PART`여도 전체는 DISTINCT다.
+- `core_link` / `full_surface` — 응답이 두 개를 **분리해서** 내보낸다.
+  `full_surface.span`은 `full_span`과 다르다: 조사는 이름의 일부가 아니므로
+  제외한다(`한전노조가` → core (0,2), surface (0,4), token (0,5)).
+  core가 곧 전체일 때는 두 키가 **아예 없다** — 구분할 것이 없기 때문이다.
+  표면형이 넓어진 이유가 §16.6 prefix 수식어뿐일 때는(`전 한전`) `prefix_kind`
+  를 실어 **무엇이 넓혔는지**를 말한다. §2 표가 base modifier를 "조건부"로
+  두므로, 그냥 동일하다고 단정하지 않는다. 시간 범위 자체를 모델링하는 것은
+  여전히 범위 밖이다.
+- `COMPOSES_TO` — `EntityRelation`은 스키마에 있었지만 **resolve 시점에
+  아무도 읽지 않았다**(REQ-TAIL-002가 deferred였던 이유). 이제
+  `(source_entity, surface_suffix)` 인덱스를 스냅샷이 들고 있고, 선언된
+  관계가 있으면 전체 표면형의 답을 **선언에서** 가져온다. 부모 entity는
+  어느 쪽이든 전체 span을 갖지 않는다.
+- guard 규칙 `unknown_residual_derivative` → `derivative_full_surface`.
+  이제 UNKNOWN residual만이 아니라 **타입이 밝혀진 파생**(`typed_derivative`)
+  도 Level B commit을 보류한다. `노조`를 카탈로그에 넣는 것이 오히려 규칙을
+  느슨하게 만들 뻔했고, 판정 기준을 `residual_kind`에서 `full_identity`로
+  옮겨서 막았다.
+- ContextPack과 렌더러 — 카드는 occurrence를 `observed_as`로 합치므로
+  파생이 사라지던 자리다. `appears_inside`(+`same_entity="false"`)를
+  붙여 XML·text 렌더까지 살아남게 했다. LLM이 실제로 보는 경로가 여기다.
+- suffix **분류**가 `morphology_rules_hash`에 들어간다. 표면형만이 아니라
+  class를 해싱하므로, `노조`를 재분류하면 snapshot ID가 바뀐다(불변조건 ⑥).
+
+**같이 고친 결함.** Pass-2 abbreviation alignment가 guard를 **전혀 거치지
+않고** 후보를 추가하고 있었다. `CandidatePool`은 같은 entity에 대해
+차단되지 않은 증거가 하나라도 오면 `commit_blocked`를 해제하므로(Level A
+에게는 옳은 규칙), 이 채널이 다른 채널의 차단을 조용히 되돌렸다. M1에서도
+있던 구멍이며 M2에서 두 번째 사례가 생기면서 드러났다.
+
+**측정.** `python -m eval.run_composition_audit` — 실문장 표본에서 core보다
+넓은 표면형의 빈도·종류·차단 사유를 센다. 대조군은 M2 이전 체크아웃(`f121ecf`)
+에서 **같은 스크립트**를 돌린 것이다(같은 seed·같은 10,000문장 표본).
+
+| 지표 | M1 | M2 |
+|---|---:|---:|
+| mention | 3,867 | 3,867 |
+| RESOLVED 확정 | 770 | 771 |
+| core보다 넓은 표면형 | 0 (표현 불가) | **479** (12.4%) |
+| commit 보류된 후보 슬롯 | 27 | 763 |
+
+읽는 법: **탐지도 확정도 움직이지 않았는데 차단만 27 → 763이 됐다.** 늘어난
+차단이 확정을 깎지 않았다는 것은 그 후보들이 이미 threshold 아래였다는
+뜻이고, 그래서 의미가 있다 — `금감원장`류가 지금까지 확정되지 않은 것은
+*확률이 낮아서*였지 규칙 때문이 아니었다. 이제는 calibration이 어떻게
+움직여도 막힌다. 실문장 mention의 **12.4%**가 core보다 넓은 표면형을 갖는데,
+M1은 그 사실을 응답에 담을 자리가 없었다.
+
+전체는 [reports/COMPOSITION_AUDIT.md](../reports/COMPOSITION_AUDIT.md).
+
+**실텍스트 회귀.** `run_wild`의 silver·fake-glossary 스위트를 두 체크아웃에서
+같은 표본(10,000문장)으로 돌린 결과다.
+
+| 지표 | M1 | M2 |
+|---|---:|---:|
+| silver mention / 탐지 / gold-in-set | 609 / 1.0 / 1.0 | 609 / 1.0 / 1.0 |
+| RESOLVED 확정 | 538 | **540** |
+| commit precision | 1.0 | 1.0 |
+| silver 커버리지 | 0.8834 | **0.8867** |
+| ledger silver 밖 확정 | 204 | 204 |
+| tail 커버리지 | 0.8400 | **0.8514** |
+| fake-glossary FP | 0 | 0 |
+| 후보 밀도 /1k chars | 5.114 | 5.114 |
+| 지연 p50 / p95 (ms) | 34.57 / 260.8 | 34.94 / 259.6 |
+
+M1은 재현율을 얻는 대신 p95를 1.36배 치렀다. **M2는 측정 가능한 비용이
+없다**: 후보 밀도와 지연이 그대로고, 확정이 2건 늘었는데 그 2건이 전부
+silver span 위에 떨어졌다(silver 밖 확정은 204로 동일). tail 커버리지
++1.1%p는 `노조`·`노동조합`을 카탈로그에 넣은 직접 효과다.
+
+**감사가 잡아낸 결함.** 첫 실행의 예시에 `KEB하나은행장과`가
+`SAME_AS_CORE`로 찍혔다. `장과`가 `장`+`과`로 쪼개지고 head-final 규칙이 맨
+오른쪽 `과`(NAME_PART)를 head로 잡았기 때문인데, 중간의 `장`이 이미 사람으로
+만든 뒤다. 판정과 관계 라벨 모두를 **"가장 오른쪽 DISTINCT part가
+이긴다"**로 고쳤다. 합성 케이스로는 나오지 않았을 종류이며, 실문장 감사를
+붙인 값이 여기 있다.
+
+이 수정은 카탈로그가 아니라 **규칙 코드**를 바꾼 것이라 `SUFFIX_CLASSES`
+해시로는 잡히지 않는다. `NORMALIZER_VERSION`과 같은 방식으로
+`TAIL_GRAMMAR_VERSION`을 만들어 `morphology_rules_hash`에 넣었다.
+
+**남은 것(M2 범위 밖).** suffix 카탈로그 확장 자체는 M3이다. 지금 카탈로그는
+기존 항목을 **재분류**했고 `노조`/`노동조합`만 추가했다 — wild tail 16%를
+채우는 것은 수동 taxonomy 작업이며 §5("검토 없이 전역 SUFFIXES에 추가")를
+따른다. 미등록 파생을 `COMPOSES_TO` 후보로 **자동 제안**하는 것은 M4다.
 
 ## 4. SLM 진입 조건 (요약)
 

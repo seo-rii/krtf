@@ -27,6 +27,9 @@ from functools import lru_cache
 
 from .hangul import is_syllable
 from .morphology import (
+    DISTINCT,
+    SAME,
+    UNRESOLVED,
     ParticleFST,
     analyze_residual,
     match_latin_tail,
@@ -66,6 +69,12 @@ class TailAnalysis:
     latin_tail: str = ""
     latin_tail_kind: str = ""
     score: float = 1.0
+    # M2 typed tail: what core+residual denotes relative to the core alone.
+    # SAME (한국전력 + 공사), DISTINCT (금감원 + 장 is a person), UNKNOWN.
+    residual_classes: tuple[str, ...] = ()
+    governing_class: str = ""
+    full_identity: str = SAME
+    relation: str = "IDENTITY"
 
     @property
     def length(self) -> int:
@@ -110,7 +119,10 @@ def enumerate_tails(right: str, prev_char: str,
             kind = r.kind if residual else ""
             analyses.append(TailAnalysis(
                 residual, kind, r.parts if residual else (), (), True,
-                score=_RESIDUAL_BASE.get(kind, 0.3)))
+                score=_RESIDUAL_BASE.get(kind, 0.3),
+                residual_classes=r.classes if residual else (),
+                governing_class=r.governing_class if residual else "",
+                full_identity=r.full_identity, relation=r.relation))
             continue
         prev = residual[-1] if residual else prev_char
         for parse in fst.parse_full(particle_part, prev):
@@ -120,10 +132,15 @@ def enumerate_tails(right: str, prev_char: str,
             analyses.append(TailAnalysis(
                 residual, kind, r.parts if residual else (),
                 parse.particles, parse.grammatical,
-                score=base * (1.0 if parse.grammatical else 0.7)))
+                score=base * (1.0 if parse.grammatical else 0.7),
+                residual_classes=r.classes if residual else (),
+                governing_class=r.governing_class if residual else "",
+                full_identity=r.full_identity, relation=r.relation))
     if not analyses:
-        analyses.append(TailAnalysis(right, "UNKNOWN", (right,), (), True,
-                                     score=0.3))
+        analyses.append(TailAnalysis(
+            right, "UNKNOWN", (right,), (), True, score=0.3,
+            residual_classes=("UNKNOWN",), governing_class="UNKNOWN",
+            full_identity=UNRESOLVED, relation="UNKNOWN"))
     analyses.sort(key=lambda a: (-a.score, len(a.particles)))
     return analyses
 
@@ -153,6 +170,10 @@ class StructuralPath:
     residual: str = ""
     residual_kind: str = ""
     residual_parts: tuple[str, ...] = ()
+    residual_classes: tuple[str, ...] = ()
+    governing_class: str = ""
+    full_identity: str = SAME
+    relation: str = "IDENTITY"
     particles: tuple[str, ...] = ()
     latin_tail: str = ""
     latin_tail_kind: str = ""
@@ -166,11 +187,24 @@ class StructuralPath:
 
     @property
     def full_span(self) -> tuple[int, int]:
+        """The whole token: prefix, core, residual, particles, Latin tail."""
         start = self.prefix_span[0] if self.prefix_span else self.core_span[0]
         tail_len = (len(self.residual)
                     + sum(len(p) for p in self.particles)
                     + len(self.latin_tail))
         return (start, self.core_span[1] + tail_len)
+
+    @property
+    def surface_span(self) -> tuple[int, int]:
+        """The *nominal* extent: prefix + core + residual, no particles.
+
+        ``full_span`` answers "which characters did this token occupy";
+        this answers "which characters spell a name". A 조사 is grammar, not
+        part of a name, so the two differ for `한전은` and agree for
+        `한전노조`. Consumers that highlight or substitute want this one.
+        """
+        start = self.prefix_span[0] if self.prefix_span else self.core_span[0]
+        return (start, self.core_span[1] + len(self.residual))
 
     def as_dict(self) -> dict:
         d = {"kind": self.kind, "core": self.core,
@@ -181,6 +215,9 @@ class StructuralPath:
         if self.residual:
             d["residual"] = self.residual
             d["residual_kind"] = self.residual_kind
+            d["residual_classes"] = list(self.residual_classes)
+            d["full_identity"] = self.full_identity
+            d["relation"] = self.relation
         if self.particles:
             d["particles"] = list(self.particles)
             d["grammatical"] = self.grammatical
@@ -282,7 +319,11 @@ def segment_token(
             kind=tail.kind, prefix=prefix, prefix_kind=prefix_kind,
             prefix_span=prefix_span,
             residual=tail.residual, residual_kind=tail.residual_kind,
-            residual_parts=tail.residual_parts, particles=tail.particles,
+            residual_parts=tail.residual_parts,
+            residual_classes=tail.residual_classes,
+            governing_class=tail.governing_class,
+            full_identity=tail.full_identity, relation=tail.relation,
+            particles=tail.particles,
             latin_tail=tail.latin_tail, latin_tail_kind=tail.latin_tail_kind,
             grammatical=tail.grammatical, score=score,
         )
@@ -325,6 +366,8 @@ class MatchEvidence:
     full_span: tuple[int, int]
     transform_cost: float = 0.0
     residual_kind: str = ""
+    full_identity: str = SAME
+    relation: str = "IDENTITY"
     particles: tuple[str, ...] = ()
     grammatical: bool = True
     tail_stripped: bool = False
@@ -338,6 +381,7 @@ class MatchEvidence:
             channel=channel, path_kind=path.kind, core_surface=path.core,
             core_span=path.core_span, full_span=path.full_span,
             transform_cost=transform_cost, residual_kind=path.residual_kind,
+            full_identity=path.full_identity, relation=path.relation,
             particles=path.particles, grammatical=path.grammatical,
             tail_stripped=path.strips_tail, notes=notes,
         )
@@ -355,6 +399,9 @@ class MatchEvidence:
             d["particles"] = list(self.particles)
         if self.residual_kind:
             d["residual_kind"] = self.residual_kind
+        if self.full_identity != SAME:
+            d["full_identity"] = self.full_identity
+            d["relation"] = self.relation
         if not self.grammatical:
             d["grammatical"] = False
         if self.notes:
@@ -392,7 +439,7 @@ class ResolutionGuard:
     derivative_factor: float = 0.60
     min_core_syllables: int = MIN_CORE_SYLLABLES
     rules: list[str] = field(default_factory=lambda: [
-        "short_core", "unknown_residual_derivative",
+        "short_core", "derivative_full_surface",
         "ungrammatical_particle", "inferred_tail",
     ])
 
@@ -409,13 +456,24 @@ class ResolutionGuard:
             commit = False
             reasons.append("short_core")
 
-        # invariant ②: an unanalysable remainder may be a related derivative
-        # (한전노조), so the parent entity must not take the full span
-        if ("unknown_residual_derivative" in self.rules
-                and evidence.residual_kind == "UNKNOWN"):
-            commit = False
-            factor *= self.derivative_factor
-            reasons.append("unknown_residual_derivative")
+        # invariant ②: when the tail says core+residual is not the core
+        # entity — an unanalysable remainder, or a typed derivative such as
+        # 한전+노조 (another organisation) or 금감원+장 (a person) — the parent
+        # must not take the full surface. A registered COMPOSES_TO relation
+        # does not lift this: it names the *derivative's* own entity, which
+        # is a different answer, not a reason to let the parent through.
+        if "derivative_full_surface" in self.rules:
+            # an unanalysed remainder can never be "the same thing", however
+            # the evidence was built — check the kind as well as the verdict
+            if (evidence.full_identity == UNRESOLVED
+                    or evidence.residual_kind == "UNKNOWN"):
+                commit = False
+                factor *= self.derivative_factor
+                reasons.append("unknown_residual_derivative")
+            elif evidence.full_identity == DISTINCT:
+                commit = False
+                factor *= self.derivative_factor
+                reasons.append("typed_derivative")
 
         # §16.2: ungrammatical attachment is a soft signal, not a rejection
         if "ungrammatical_particle" in self.rules and not evidence.grammatical:

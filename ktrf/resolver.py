@@ -27,8 +27,9 @@ from .candidates import Candidate, CandidatePool
 from .errors import KtrfApiError
 from .offsets import OffsetMap, check_span_invariant
 from .normalization import build_canonical_stream
-from .segmentation import (BARE, MatchEvidence, distinct_cores,
-                           segment_token)
+from .morphology import DISTINCT, SAME
+from .segmentation import (BARE, GuardVerdict, MatchEvidence,
+                           StructuralPath, distinct_cores, segment_token)
 from .snapshot import Snapshot
 from .tailparser import MentionProposal, parse_matches
 
@@ -52,6 +53,7 @@ class MentionNode:
     surface: str
     pool: CandidatePool
     proposal: MentionProposal | None = None  # best exact proposal, if any
+    path: StructuralPath | None = None  # accepted by a Level B channel
     doc_local_entities: set[str] = field(default_factory=set)
     sources: set[str] = field(default_factory=set)
     pass2_applied: bool = False
@@ -284,12 +286,19 @@ def resolve(
             top = _top_probability(n)
             if top is not None and top < policy.tau_dense:
                 for ac in snapshot.abbrev.align_token(n.surface, n.core_span):
+                    # this channel must face the same guard as every other
+                    # Level B channel: an unguarded candidate for an entity
+                    # another channel had blocked *lifts* that block when the
+                    # pool merges the two, quietly undoing invariant ②
+                    verdict = _guard_for(snapshot, n, "abbrev", 1 - ac.score)
                     n.pool.add(Candidate(
                         entity_id=ac.entity_id, alias_id=None, family_id=None,
                         generation_channels={"abbrev"},
-                        channel_scores={"abbrev": _CHANNEL_BASE["abbrev"]
-                                        + 0.3 * ac.score},
+                        channel_scores={"abbrev": (_CHANNEL_BASE["abbrev"]
+                                        + 0.3 * ac.score)
+                                        * verdict.score_factor},
                         is_exact=False, retrieval_pass=2,
+                        commit_blocked=verdict.blocked_reason,
                     ))
                     pass2 = True
                     n.pass2_applied = True
@@ -317,6 +326,8 @@ def resolve(
                     continue
                 n = node_for(path.core_span)
                 n.sources.add("abbrev")
+                if n.path is None:
+                    n.path = path
                 for ac in cands:
                     ev = MatchEvidence.from_path("abbrev", path,
                                                  transform_cost=1 - ac.score)
@@ -447,8 +458,24 @@ def _paths_for(snapshot: Snapshot, text: str, token: str,
                          left_context=text[max(0, span[0] - 6):span[0]])
 
 
+def _guard_for(snapshot, node, channel: str, transform_cost: float):
+    """Guard verdict for evidence a channel produced on ``node``'s core span.
+
+    Channels that do not carry a :class:`StructuralPath` of their own still
+    have to answer for the decomposition the node was built from, or they
+    become a way around the guard.
+    """
+    if node.path is None:
+        return GuardVerdict()
+    ev = MatchEvidence.from_path(channel, node.path,
+                                 transform_cost=transform_cost)
+    return snapshot.guard.evaluate(ev)
+
+
 def _add_fuzzy(node: MentionNode, fc, guard, path) -> None:
     node.sources.add(fc.channel)
+    if path is not None and node.path is None:
+        node.path = path
     base = _CHANNEL_BASE[fc.channel]
     prov = {"fuzzy_cost": fc.cost}
     blocked = None
@@ -665,6 +692,88 @@ def _eval_trace(node: MentionNode, ranked: list, members: list,
     }
 
 
+_IDENTITY_LABEL = {SAME: "SAME_AS_CORE", DISTINCT: "DISTINCT_FROM_CORE",
+                   "UNKNOWN": "UNKNOWN"}
+
+
+def _tail_of(node: MentionNode):
+    """The typed tail this mention was read with, from either channel.
+
+    The exact path records it on its proposal, a Level B channel on the
+    structural path it accepted. Both are the same :mod:`ktrf.segmentation`
+    analysis, so one reader serves both (M1).
+    """
+    if node.proposal is not None:
+        best = node.proposal.best_tail
+        prefix = node.proposal.prefix
+        pfx = ((prefix["span"][0], prefix.get("kind", "")) if prefix
+               else (None, ""))
+        if best is not None:
+            return (best.residual, best.governing_class, best.full_identity,
+                    best.relation, *pfx)
+    if node.path is not None:
+        pth = node.path
+        pfx = ((pth.prefix_span[0], pth.prefix_kind) if pth.prefix_span
+               else (None, ""))
+        return (pth.residual, pth.governing_class, pth.full_identity,
+                pth.relation, *pfx)
+    return None
+
+
+def _surface_record(node: MentionNode, snapshot: Snapshot, omap: OffsetMap,
+                    text: str, entity_ids: list[str]) -> dict | None:
+    """Separate what the core links to from what the whole surface denotes.
+
+    Returns ``None`` when the core *is* the whole surface — the common case,
+    where there is nothing to separate. Otherwise the caller gets both spans
+    and an explicit verdict, so ``full_span`` can no longer be mistaken for
+    the entity's extent (VARIANTS_PLAN §2 invariant ②).
+    """
+    tail = _tail_of(node)
+    if tail is None:
+        return None
+    (residual, governing_class, identity, relation, prefix_start,
+     prefix_kind) = tail
+    cs, ce = node.core_span
+    start = prefix_start if prefix_start is not None else cs
+    end = ce + len(residual)
+    if (start, end) == (cs, ce):
+        return None  # core and surface coincide
+
+    core_link = {"span": omap.span_dict(cs, ce), "surface": text[cs:ce],
+                 "relation": relation}
+    full = {"span": omap.span_dict(start, end), "surface": text[start:end],
+            "identity": _IDENTITY_LABEL.get(identity, "UNKNOWN")}
+    if prefix_kind:
+        # §16.6: `전 한전` denotes 한전 at another time, and VARIANTS_PLAN §2
+        # calls identifying the whole with the core *conditional* here. Say
+        # which modifier widened the surface rather than assert bare identity.
+        full["prefix_kind"] = prefix_kind
+    if governing_class:
+        # the class the verdict came from, not merely the last one: a
+        # response whose tail_class and identity disagree is worse than
+        # one that omits it (`장과` heads on NAME_PART but means a person)
+        full["tail_class"] = governing_class
+
+    # invariant ③: a *registered* relation outranks anything we infer. When
+    # the glossary declares 한전 + 노조 -> ORG_KEPCO_UNION, that target is the
+    # answer for the full surface; the parent stays out of it either way.
+    if residual and snapshot.compositions:
+        for eid in entity_ids:
+            comp = snapshot.compositions.get((eid, residual))
+            if comp is None:
+                continue
+            ent = snapshot.glossary.entity(comp.target_entity_id)
+            full["composes_to"] = {
+                "entity_id": comp.target_entity_id,
+                "canonical": ent.canonical if ent else None,
+                "from_entity_id": eid,
+                "relation_id": comp.relation_id,
+            }
+            break
+    return {"core_link": core_link, "full_surface": full}
+
+
 def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
                       omap: OffsetMap, text: str, mode: str,
                       max_set: int, return_features: bool = False,
@@ -699,6 +808,19 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
         if len(p.matched_segments) > 1:
             m["matched_segments"] = [
                 omap.span_dict(a, b)["codepoint"] for a, b in p.matched_segments]
+
+    # M2: `span` is the core, `full_span` the raw token. Neither says whether
+    # the whole surface means the same thing as the core, and a consumer that
+    # highlights `full_span` on 금감원장 overcommits the organisation onto a
+    # person. This record answers that question explicitly.
+    rec = _surface_record(
+        node, snapshot, omap, text,
+        [c.entity_id for c in sorted(
+            cands, key=lambda c: (-(c.calibrated_probability or 0.0),
+                                  c.entity_id))],
+    )
+    if rec:
+        m.update(rec)
 
     if mode == "fast":
         # §26.1: deterministic only, no calibration, no ranking

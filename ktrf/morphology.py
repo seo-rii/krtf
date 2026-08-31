@@ -55,19 +55,63 @@ PARTICLES: dict[str, str] = {
     "엔": ANY, "에선": ANY, "껜": ANY,
 }
 
-# §16.3 기관·역할 suffix catalog (초기)
-SUFFIXES: set[str] = {
-    "부", "처", "청", "원", "국", "실", "과", "팀",
-    "본부", "지사", "센터", "사무국",
-    "연구원", "연구소", "위원회",
-    "병원", "대학", "재단", "협회", "공단",
-    "담당자", "직원", "측", "규정", "시스템",
-    # 직책 suffix — wild-corpus 실측으로 추가 (금감원장, 기상청장, 교육부 장관류)
-    "장", "장관", "차관", "청장", "원장", "위원장", "총장",
-    "사장", "회장", "이사장", "대표",
-    # 기업 계열 suffix — wild-corpus 실측으로 추가 (현대차그룹, ○○증권)
-    "그룹", "증권", "카드", "생명", "전자", "건설",
+# §16.3 기관·역할 suffix catalog (초기), typed by what the *full* surface denotes.
+#
+# VARIANTS_PLAN §2: a suffix is not just a boundary marker. `금감원` + `장` is a
+# person, `한전` + `노조` is a different organisation, `한국전력` + `공사` is the
+# same organisation. Collapsing all three into one SUFFIX class is what lets a
+# consumer read the whole token as the core entity (invariant ②).
+NAME_PART = "NAME_PART"      # tail syllables of the org's own name
+ORG_UNIT = "ORG_UNIT"        # an internal unit of the core org
+ROLE = "ROLE"                # the office holder — a person, not the org
+AFFILIATE = "AFFILIATE"      # a separate org sharing the core's name
+DERIVED_ORG = "DERIVED_ORG"  # a related but independent organisation
+REFERENTIAL = "REFERENTIAL"  # a proxy reference *to* the core org
+ARTIFACT = "ARTIFACT"        # a document/system belonging to the core org
+MODIFIER = "MODIFIER"        # §16.3 leading modifier inside a residual
+UNKNOWN_CLASS = "UNKNOWN"
+
+# class -> (does the full surface denote the core entity?, core→full relation)
+SAME, DISTINCT, UNRESOLVED = "SAME", "DISTINCT", "UNKNOWN"
+TAIL_CLASSES: dict[str, tuple[str, str]] = {
+    NAME_PART: (SAME, "IDENTITY"),
+    REFERENTIAL: (SAME, "REFERS_TO"),
+    ORG_UNIT: (DISTINCT, "PART_OF"),
+    ROLE: (DISTINCT, "ROLE_OF"),
+    AFFILIATE: (DISTINCT, "AFFILIATE_OF"),
+    DERIVED_ORG: (DISTINCT, "DERIVED_FROM"),
+    ARTIFACT: (DISTINCT, "ARTIFACT_OF"),
+    MODIFIER: (DISTINCT, "NAMED_VARIANT"),
+    UNKNOWN_CLASS: (UNRESOLVED, "UNKNOWN"),
 }
+
+SUFFIX_CLASSES: dict[str, str] = {
+    # 기관명 자체의 끝음절 — 같은 기관을 가리킨다
+    "부": NAME_PART, "처": NAME_PART, "청": NAME_PART, "원": NAME_PART,
+    "국": NAME_PART, "실": NAME_PART, "과": NAME_PART, "팀": NAME_PART,
+    "위원회": NAME_PART,
+    # 내부 조직 — 부분이지 전체가 아니다
+    "본부": ORG_UNIT, "지사": ORG_UNIT, "센터": ORG_UNIT,
+    "사무국": ORG_UNIT, "연구원": ORG_UNIT, "연구소": ORG_UNIT,
+    # 직책 — 사람이다 (wild-corpus 실측으로 추가된 항목)
+    "장": ROLE, "장관": ROLE, "차관": ROLE, "청장": ROLE,
+    "원장": ROLE, "위원장": ROLE, "총장": ROLE,
+    "사장": ROLE, "회장": ROLE, "이사장": ROLE, "대표": ROLE,
+    "담당자": ROLE, "직원": ROLE,
+    # 계열·동명 기관 — 이름을 공유하는 별도 조직
+    "그룹": AFFILIATE, "증권": AFFILIATE, "카드": AFFILIATE,
+    "생명": AFFILIATE, "전자": AFFILIATE, "건설": AFFILIATE,
+    "병원": AFFILIATE, "대학": AFFILIATE, "재단": AFFILIATE,
+    "협회": AFFILIATE, "공단": AFFILIATE,
+    # 관련 파생 조직 — VARIANTS_PLAN §2의 `한전노조` 사례
+    "노조": DERIVED_ORG, "노동조합": DERIVED_ORG,
+    # 지시적 — 여전히 그 기관을 가리킨다
+    "측": REFERENTIAL,
+    # 산물 — 기관이 아니라 기관의 것
+    "규정": ARTIFACT, "시스템": ARTIFACT,
+}
+
+SUFFIXES: frozenset[str] = frozenset(SUFFIX_CLASSES)
 
 # §16.6 prefix modifier catalog (초기)
 PREFIXES: dict[str, str] = {
@@ -184,9 +228,68 @@ class ParticleFST:
 
 @dataclass(frozen=True)
 class ResidualAnalysis:
+    """A classified post-core chunk: what it is made of and what it implies.
+
+    ``kind`` answers "did the catalog explain this chunk"; ``classes`` and
+    :attr:`full_identity` answer the semantic question the resolver actually
+    needs — whether ``core + residual`` still denotes the core entity.
+    """
+
     text: str
     kind: str  # SUFFIX | SUFFIX_WITH_MODIFIER | UNKNOWN
     parts: tuple[str, ...] = ()
+    classes: tuple[str, ...] = ()
+
+    @property
+    def head_class(self) -> str:
+        """Class of the rightmost part — Korean compounds are head-final."""
+        return self.classes[-1] if self.classes else NAME_PART
+
+    @property
+    def governing_class(self) -> str:
+        """The part that decides identity: the rightmost *distinct* one.
+
+        Head-final governs the relation, but not the verdict. `은행장과`
+        decomposes as 장 + 과 and its head 과 is a NAME_PART, so a head-only
+        rule calls the whole thing the bank — while the 장 in the middle
+        already made it a person. Once any part says "not the core", no
+        later part can take that back.
+        """
+        for cls in reversed(self.classes):
+            if TAIL_CLASSES.get(cls, (SAME, ""))[0] == DISTINCT:
+                return cls
+        return self.head_class
+
+    @property
+    def full_identity(self) -> str:
+        """SAME | DISTINCT | UNKNOWN for ``core + residual`` vs the core.
+
+        A leading modifier always makes the whole a distinct name
+        (``서울본부``), even when the head alone would be a name part.
+        """
+        if not self.text:
+            return SAME
+        if self.kind == "UNKNOWN":
+            return UNRESOLVED
+        if self.kind == "SUFFIX_WITH_MODIFIER":
+            return DISTINCT
+        return TAIL_CLASSES.get(self.governing_class, (UNRESOLVED, ""))[0]
+
+    @property
+    def relation(self) -> str:
+        """How the full surface relates to the core entity."""
+        if not self.text:
+            return "IDENTITY"
+        if self.kind == "UNKNOWN":
+            return "UNKNOWN"
+        if self.kind == "SUFFIX_WITH_MODIFIER":
+            return "NAMED_VARIANT"
+        return TAIL_CLASSES.get(self.governing_class, ("", "UNKNOWN"))[1]
+
+
+def classify_suffix(part: str) -> str:
+    """Semantic class of one catalog suffix (MODIFIER when uncatalogued)."""
+    return SUFFIX_CLASSES.get(part, MODIFIER)
 
 
 def analyze_residual(chunk: str) -> ResidualAnalysis:
@@ -196,20 +299,26 @@ def analyze_residual(chunk: str) -> ResidualAnalysis:
     - ends with a catalog suffix after a short modifier -> SUFFIX_WITH_MODIFIER
       (예: 서울본부 = 서울 + 본부)
     - otherwise UNKNOWN (kept at low confidence, §16.5)
+
+    Every part carries its :data:`SUFFIX_CLASSES` class so callers read the
+    semantics off the analysis instead of re-deriving them from the surface.
     """
     if not chunk:
-        return ResidualAnalysis("", "SUFFIX", ())
+        return ResidualAnalysis("", "SUFFIX", (), ())
     parts = _suffix_decompose(chunk)
     if parts is not None:
-        return ResidualAnalysis(chunk, "SUFFIX", tuple(parts))
+        return ResidualAnalysis(chunk, "SUFFIX", tuple(parts),
+                                tuple(classify_suffix(p) for p in parts))
     # longest catalog suffix at the end, with a short leading modifier
     for cut in range(1, len(chunk)):
         tail_parts = _suffix_decompose(chunk[cut:])
         if tail_parts is not None and cut <= 4:
+            all_parts = (chunk[:cut], *tail_parts)
             return ResidualAnalysis(
-                chunk, "SUFFIX_WITH_MODIFIER", (chunk[:cut], *tail_parts)
+                chunk, "SUFFIX_WITH_MODIFIER", all_parts,
+                (MODIFIER, *(classify_suffix(p) for p in tail_parts)),
             )
-    return ResidualAnalysis(chunk, "UNKNOWN", (chunk,))
+    return ResidualAnalysis(chunk, "UNKNOWN", (chunk,), (UNKNOWN_CLASS,))
 
 
 def _suffix_decompose(chunk: str) -> list[str] | None:
@@ -218,7 +327,7 @@ def _suffix_decompose(chunk: str) -> list[str] | None:
         return []
     for length in range(min(len(chunk), 4), 0, -1):
         head = chunk[:length]
-        if head in SUFFIXES:
+        if head in SUFFIX_CLASSES:
             rest = _suffix_decompose(chunk[length:])
             if rest is not None:
                 return [head, *rest]

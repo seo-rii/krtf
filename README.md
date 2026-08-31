@@ -37,6 +37,13 @@ KTRF models each of these explicitly:
   the recovery index as `한국전려` and every channel reports the same core
   span. Cross-channel decomposition drift is the failure this design exists
   to prevent.
+- **A core link is not a full-surface claim** — `금감원장` contains 금감원 but
+  denotes a person; `한전노조` contains 한전 but denotes another organization.
+  The suffix catalog is typed (`NAME_PART`, `ORG_UNIT`, `ROLE`, `AFFILIATE`,
+  `DERIVED_ORG`, `REFERENTIAL`), so a response says in its own fields whether
+  the whole surface still means what the core means — and a glossary can
+  register `COMPOSES_TO` to name the derivative outright rather than leave it
+  to inference.
 - **Recovery channels** — jamo-level weighted edit distance, dubeolsik
   keyboard-mapping recovery, document-local alias detection, and
   abbreviation alignment for unseen short forms, each guarded by explicit

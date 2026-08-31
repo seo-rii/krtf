@@ -5,11 +5,30 @@
 소스 구성: `klue:ynat:train` 45634, `korean-petitions:default:train` 12000, `korean_law_open_data_precedents:default:train` 12000, `klue:sts:train` 11652, `klue:ynat:validation` 9096, `wikipedia:20231101.ko:train` 8000, `squad_kor_v1:squad_kor_v1:train` 6670, `klue:nli:train` 5036, `kobest_v1:boolq:train` 3000, `klue:nli:validation` 1000, `klue:sts:validation` 517
 
 > [!WARNING]
-> **아래 수치는 commit `8d6f427` 시점 측정이며, 이후 resolver가 바뀌었다**
-> (M1 공유 segmentation, `decfb3d`). 전체 재생성은 114,605문장 ×6 pass로
-> 약 6시간이라 아직 돌리지 않았다.
+> **아래 수치는 commit `8d6f427` 시점 측정이며, 이후 resolver가 두 번
+> 바뀌었다** — M1 공유 segmentation(`decfb3d`)과 M2 typed tail. 전체
+> 재생성은 114,605문장 ×6 pass로 약 6시간이라 아직 돌리지 않았다. 대신
+> 각 변경을 표본으로 쌍 비교했다.
 >
-> 대신 **20,000문장 표본으로 두 동작을 한 프로세스에서 쌍 비교**했다
+> **M2 (typed tail / core_link·full_surface)** — 10,000문장, 두 체크아웃에서
+> `run_wild`의 같은 스위트:
+>
+> | 지표 | M1 | M2 |
+> |---|---:|---:|
+> | silver mentions / 탐지 / gold-in-set | 609 / 1.0 / 1.0 | 609 / 1.0 / 1.0 |
+> | RESOLVED commits | 538 | **540** |
+> | commit precision | 1.0 | 1.0 |
+> | commit ledger (silver 위 / 밖) | 538 / 204 | 540 / **204** |
+> | tail coverage | 0.8400 | **0.8514** |
+> | **fake-glossary RESOLVED FP** | **0** | **0** |
+> | 지연 p50 / p95 (ms) | 34.57 / 260.8 | 34.94 / 259.6 |
+> | candidate mentions /1k chars | 5.114 | 5.114 |
+>
+> 확정이 2건 늘었고 **그 2건이 전부 silver span 위에 떨어졌다**(silver 밖
+> 확정은 204로 동일). 후보 밀도와 지연은 움직이지 않았다 — M2는 측정
+> 가능한 비용이 없다.
+>
+> **M1 (공유 segmentation)** — 20,000문장, 한 프로세스에서 두 동작
 > (`python -m eval.run_wild_regression`, `max_segmentation_paths` 1 vs 4).
 > 품질 지표는 **전부 동일**했다:
 >

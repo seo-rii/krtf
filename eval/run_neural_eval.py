@@ -346,6 +346,28 @@ def _write_md(r: dict, path: Path) -> None:
             f"| {ra['1']} | {ra['5']} | {ra['10']} | {ra['20']} | {ra['50']} "
             f"| {x['query_encode_p50_ms']} ms | {x['index_build_seconds']} s |")
     worst = [(p["config"], p["worst_family"]) for p in r["pipeline"]]
+    # derive the cost-of-recall sentence from this run: hardcoding it is how
+    # a report keeps quoting a delta its own table no longer shows
+    by_cfg = {p["config"]: p for p in r["pipeline"]}
+    base = by_cfg.get("symbolic")
+    dense = max((p for c, p in by_cfg.items() if c != "symbolic"),
+                key=lambda p: p["gold_in_set_e2e"]["rate"], default=None)
+    if base and dense:
+        d_exact = dense["gold_in_set_e2e"]["rate"] - base["gold_in_set_e2e"]["rate"]
+        d_overlap = (dense["gold_in_set_any_overlap_diagnostic"]
+                     - base["gold_in_set_any_overlap_diagnostic"])
+        b_set = base["prediction_set_size"]["mean"]
+        d_set = dense["prediction_set_size"]["mean"]
+        cost_bullet = (
+            f"- **recall 증가의 비용을 함께 본다**: dense 최고 구성"
+            f" ({dense['config']})은 symbolic 대비 exact-core recall을"
+            f" {d_exact * 100:+.1f}%p 움직이는 대신 prediction set 크기를"
+            f" {d_set / b_set:.1f}배로 키운다(mean {b_set} → {d_set})."
+            f" any-overlap 기준으로는 그 차이가 {d_overlap * 100:+.1f}%p로"
+            f" 보이지만, span을 정확히 요구하면 증분은 훨씬 작다 — 겹치기만"
+            f" 한 mention에 주던 크레딧이 사라지기 때문이다.")
+    else:
+        cost_bullet = ""
     lines += [
         "",
         "## 해석과 한계",
@@ -355,11 +377,7 @@ def _write_md(r: dict, path: Path) -> None:
         "- symbolic 대비 dense의 증분이 bi-encoder의 실효 기여분이다. hash는"
         " 표면 유사(자모 n-gram) 기반의 lexical 하한선, e5는 의미 기반 검색의"
         " Role-2 경량 기준이다.",
-        "- **recall 증가의 비용을 함께 본다**: dense 구성은 exact-core recall을"
-        " 몇 %p 올리는 대신 prediction set 크기를 약 8배로 키운다(mean 1.06 →"
-        " 8.3). any-overlap 기준으로는 dense가 +9%p처럼 보이지만, span을"
-        " 정확히 요구하면 증분은 훨씬 작다 — 겹치기만 한 mention에 주던"
-        " 크레딧이 사라지기 때문이다.",
+        cost_bullet,
         "- **이 트랙은 commit precision을 측정할 수 없다**: 라벨된 span 위"
         " 확정이 0건이다. 약칭 binding이 제거된 상태에서 resolver가 해당"
         " 위치를 확정하지 않는 것은 의도된 보수적 동작이며, 그 결과 이"

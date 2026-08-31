@@ -12,6 +12,9 @@ entities:
   - entity_id: ORG_KEPCO_KDN
     canonical: 한전KDN
     description: 전력 ICT 서비스 기업
+  - entity_id: ORG_KEPCO_UNION
+    canonical: 전국전력노동조합
+    description: 한국전력공사의 노동조합
   - entity_id: NETWORK_ACCESS_POINT
     canonical: Access Point
     description: 무선 단말을 유선 네트워크에 연결하는 네트워크 장비
@@ -117,3 +120,14 @@ alias_bindings:
     surface: Kubernetes
     kind: name
     boundary_policy: {left: latin_token_boundary, right: particle_or_token_boundary}
+
+# 등록된 파생 관계 (§2 불변조건 ③). `한전노조`는 별도 alias로 등록돼 있지
+# 않지만, core `한전` 뒤에 오는 `노조`가 무엇을 가리키는지는 여기서 선언된다.
+# 이 선언이 없으면 resolver는 전체 표면형을 미상으로 두고 확정을 보류한다 —
+# 추론으로 메우지 않는다.
+entity_relations:
+  - relation_id: REL_KEPCO_UNION
+    source_entity_id: ORG_KEPCO
+    relation_type: COMPOSES_TO
+    target_entity_id: ORG_KEPCO_UNION
+    surface_suffix: 노조

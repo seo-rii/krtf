@@ -75,10 +75,37 @@ def test_suffix_and_particle_decompose_together():
 
 
 def test_unanalysable_remainder_is_not_a_segmentation():
-    # 노조 is not a catalog suffix and 조 is not a particle: `한전노조` must
-    # not silently become the core `한전` plus junk (invariant 2)
-    paths = seg("한전노조")
-    assert cores(paths) == ["한전노조"]
+    # 읭읭 is in no catalog and 읭 is not a particle: `한전읭읭` must not
+    # silently become the core `한전` plus junk (invariant 2)
+    paths = seg("한전읭읭")
+    assert cores(paths) == ["한전읭읭"]
+
+
+def test_a_typed_derivative_segments_but_denies_full_identity():
+    # M2: 노조 *is* a catalog suffix, so `한전노조` does decompose — the
+    # safety is no longer "refuse to segment" but "segment and say the whole
+    # is a different organisation" (invariant 2)
+    p = next(p for p in seg("한전노조") if p.core == "한전")
+    assert p.residual == "노조"
+    assert p.full_identity == "DISTINCT"
+    assert p.relation == "DERIVED_FROM"
+    assert p.residual_classes == ("DERIVED_ORG",)
+
+
+def test_a_referential_tail_keeps_full_identity():
+    # `한전측` still refers to 한전 — a REFERENTIAL tail must not be swept
+    # into the derivative rule with 노조 and 장
+    p = next(p for p in seg("한전측") if p.core == "한전")
+    assert p.full_identity == "SAME"
+    assert p.relation == "REFERS_TO"
+
+
+def test_surface_span_excludes_particles_but_keeps_the_residual():
+    # a 조사 is grammar, not part of a name: `금감원장이` spells 금감원장
+    p = next(p for p in seg("금감원장이") if p.core == "금감원")
+    assert p.core_span == (0, 3)
+    assert p.surface_span == (0, 4)   # 금감원장
+    assert p.full_span == (0, 5)      # 금감원장이
 
 
 def test_a_core_reached_past_an_unanalysed_tail_must_be_identifying():
@@ -164,7 +191,7 @@ def test_guard_blocks_a_core_too_short_to_carry_identity():
 def test_guard_blocks_commit_on_an_unanalysable_remainder():
     v = ResolutionGuard().evaluate(MatchEvidence.from_path(
         "abbrev", _path(core="한국전력", core_span=(0, 4),
-                        residual="노조", residual_kind="UNKNOWN")))
+                        residual="읭읭", residual_kind="UNKNOWN")))
     assert v.commit_allowed is False
     assert v.blocked_reason == "unknown_residual_derivative"
     assert v.score_factor < 1.0

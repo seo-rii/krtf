@@ -189,9 +189,25 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
     restricted_removed = False
 
     def _mention_ref(m: dict) -> dict:
-        return {"mention_id": m.get("mention_id"),
-                "surface": _clean(m.get("surface")),
-                "span": m.get("span", {}).get("codepoint")}
+        ref = {"mention_id": m.get("mention_id"),
+               "surface": _clean(m.get("surface")),
+               "span": m.get("span", {}).get("codepoint")}
+        # a card says "한전 = 한국전력공사"; if the surface actually read
+        # 한전노조, a reader can carry the identity onto the derivative. The
+        # resolver knows it is a different thing, so the pack has to say so
+        # here rather than leave the inference to the model (invariant 2).
+        fs = m.get("full_surface")
+        if fs and fs.get("identity") == "DISTINCT_FROM_CORE":
+            ref["appears_inside"] = {
+                "surface": _clean(fs.get("surface")),
+                "relation": m.get("core_link", {}).get("relation"),
+                "is_the_same_entity": False,
+            }
+            comp = fs.get("composes_to")
+            if comp:
+                note = ref["appears_inside"]
+                note["refers_to_entity_id"] = comp.get("entity_id")
+        return ref
 
     def _allowed(entity, as_fact: bool) -> bool:
         nonlocal restricted_removed
@@ -513,6 +529,21 @@ def _attr(value) -> str:
     return quoteattr(_clean("" if value is None else value))
 
 
+def _compounds(mentions: list[dict]) -> list[dict]:
+    """Distinct `appears_inside` notes across a card's mentions.
+
+    A card aggregates occurrences into ``observed_as``, which is exactly
+    where the derivative disappears: 한국전력공사 observed_as "한전" reads as
+    a plain occurrence even when the text said 한전노조.
+    """
+    out: list[dict] = []
+    for m in mentions:
+        note = m.get("appears_inside")
+        if note and note not in out:
+            out.append(note)
+    return out
+
+
 def _render_xml(pack: dict) -> str:
     snap = pack.get("snapshot", {})
     header = f"{snap.get('glossary_id')}:{snap.get('glossary_version')}"
@@ -537,12 +568,21 @@ def _render_xml(pack: dict) -> str:
                          + "</definition>")
             for h in c.get("disambiguation_hints", []):
                 lines.append("      <hint>" + escape(_clean(h)) + "</hint>")
+            for note in _compounds(c["mentions"]):
+                lines.append(
+                    f"      <appears_inside surface={_attr(note['surface'])}"
+                    f" relation={_attr(note.get('relation'))}"
+                    f" same_entity=\"false\" />")
             lines.append("    </term>")
         lines.append("  </resolved_terms>")
     if pack["ambiguous_mentions"]:
         lines.append("  <ambiguous_mentions>")
         for a in pack["ambiguous_mentions"]:
-            lines.append(f"    <mention surface={_attr(a['surface'])}>")
+            note = a.get("appears_inside")
+            extra = (f" appears_inside={_attr(note['surface'])}"
+                     f" same_entity=\"false\"" if note else "")
+            lines.append(
+                f"    <mention surface={_attr(a['surface'])}{extra}>")
             for cand in a["candidates"]:
                 attrs = [f"entity_id={_attr(cand['entity_id'])}",
                          f"canonical={_attr(cand['canonical'])}"]
@@ -578,12 +618,20 @@ def _render_text(pack: dict) -> str:
     for c in pack["resolved_terms"]:
         observed = ", ".join(dict.fromkeys(
             m["surface"] for m in c["mentions"]))
-        out.append(f"- {c['canonical']} ({observed}): "
-                   f"{c['short_definition']}")
+        line = f"- {c['canonical']} ({observed}): {c['short_definition']}"
+        notes = _compounds(c["mentions"])
+        if notes:
+            inside = ", ".join(n["surface"] for n in notes)
+            line += f" [주의: {inside} 안에 나타남 — 같은 대상이 아님]"
+        out.append(line)
     for a in pack["ambiguous_mentions"]:
         cands = " | ".join(f"{c['canonical']}: {c['short_definition']}"
                            for c in a["candidates"])
-        out.append(f"- {a['surface']} (미확정 후보): {cands}")
+        line = f"- {a['surface']} (미확정 후보): {cands}"
+        note = a.get("appears_inside")
+        if note:
+            line += f" [주의: {note['surface']} 안에 나타남 — 같은 대상이 아님]"
+        out.append(line)
     return "\n".join(out)
 
 

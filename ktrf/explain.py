@@ -121,6 +121,10 @@ def explain_resolution(snapshot: Snapshot, text: str,
                 "dense_retrieval": "dense" in channels,
                 "abbreviation_alignment": "abbrev" in channels,
                 "tail": m.get("tail"),
+                # why a commit was withheld is often "the surface is wider
+                # than the core", so the explanation has to show that pair
+                "core_link": m.get("core_link"),
+                "full_surface": m.get("full_surface"),
                 "calibration_fallback": bool(
                     m.get("prediction_set", {}).get("calibration_fallback")),
                 "prediction_set_truncated": bool(

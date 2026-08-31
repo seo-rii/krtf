@@ -23,14 +23,20 @@ from .candidates import CandidateBudget
 from .doclocal import DocLocalDetector
 from .errors import KtrfApiError
 from .fuzzy import FuzzyIndex
-from .glossary import (Glossary, GlossaryError, glossary_to_dict, has_errors,
-                       validate_glossary)
+from .glossary import (Glossary, GlossaryError, composition_index,
+                       glossary_to_dict, has_errors, validate_glossary)
 from .matcher import ExactIndex
 from .segmentation import ResolutionGuard
-from .morphology import DEFAULT_CHAIN_DEPTH, PARTICLES, PREFIXES, SUFFIXES, ParticleFST
+from .morphology import (DEFAULT_CHAIN_DEPTH, PARTICLES, PREFIXES,
+                         SUFFIX_CLASSES, ParticleFST)
 
 COMPATIBILITY_ID = "ktrf-py-v1"
 NORMALIZER_VERSION = "nrm-1"
+# The tail *grammar* — how catalog classes combine into an identity
+# verdict — is code, not a catalog, so hashing SUFFIX_CLASSES alone would
+# miss a change to the rule itself (M2 moved the verdict from "head-final
+# only" to "any distinct part wins"). Bump this when that rule changes.
+TAIL_GRAMMAR_VERSION = "tail-2"
 
 
 @dataclass
@@ -66,6 +72,7 @@ class Snapshot:
     fst: ParticleFST
     policy: RuntimePolicy
     guard: ResolutionGuard
+    compositions: dict
     manifest: dict
     diagnostics: list = field(default_factory=list)
     calibrator: object | None = None  # TunedCalibrator once finetuned (§48.3)
@@ -110,8 +117,13 @@ def _guard_hash(guard: ResolutionGuard) -> str:
 
 
 def _morphology_hash() -> str:
-    return _hash({"particles": sorted(PARTICLES), "suffixes": sorted(SUFFIXES),
-                  "prefixes": sorted(PREFIXES), "depth": DEFAULT_CHAIN_DEPTH})
+    # the suffix *classes* are hashed, not just the surfaces: reclassifying
+    # 노조 from UNKNOWN to DERIVED_ORG changes what the resolver commits, so
+    # it has to change the snapshot id too (VARIANTS_PLAN §2 invariant ⑥)
+    return _hash({"particles": sorted(PARTICLES),
+                  "suffixes": dict(sorted(SUFFIX_CLASSES.items())),
+                  "prefixes": sorted(PREFIXES), "depth": DEFAULT_CHAIN_DEPTH,
+                  "tail_grammar": TAIL_GRAMMAR_VERSION})
 
 
 def compile_snapshot(
@@ -151,6 +163,7 @@ def compile_snapshot(
         fst=fst,
         policy=policy,
         guard=guard,
+        compositions=composition_index(glossary),
         manifest={},
         diagnostics=diagnostics,
     )

@@ -20,6 +20,7 @@
 | [reports/GPU_BENCH.md](../reports/GPU_BENCH.md) | GPU vs CPU 인코더 벤치마크 (G1) | 생성 리포트 |
 | [reports/LLM_RAG_COMPARE.md](../reports/LLM_RAG_COMPARE.md) | KTRF vs 범용 LLM+RAG (Ollama) | 생성 리포트 |
 | [reports/SEGMENTATION_AB.md](../reports/SEGMENTATION_AB.md) | 공유 segmentation 쌍 표본 A/B (M1) | 생성 리포트 |
+| [reports/COMPOSITION_AUDIT.md](../reports/COMPOSITION_AUDIT.md) | core_link/full_surface 표면형 합성 감사 (M2) | 생성 리포트 |
 
 리포트 재생성: `python -m eval.run_eval` / `run_benchmarks` / `run_wild` / `run_neural_eval`.
 
@@ -52,12 +53,21 @@
   (6,126 commits, coverage 88.6%), fake-glossary FP 0 (4.90M chars,
   symbolic/hash/e5 전 구성), tail 분포 커버리지 84.3% (1,969 tails)
 - Level B gate (UE 약칭, 실 텍스트 **1,116 occurrence**, exact-core span):
-  symbolic **78.9%** → hash dense **80.7%** → e5 dense **80.4%**
-  (family macro 83.7 / 86.4 / 85.9). §5.2 목표(95%) **미달**.
-  M0 채점 수정으로 이전 수치(89.5/89.8)가 하향됐다 — 그 값은 any-overlap
-  기준이었고, span 정확도를 요구하면 **dense 증분은 +10%p가 아니라 +2%p**다.
-  게다가 그 증분의 대가로 prediction set이 8배 커진다(mean 1.06 → 8.3).
+  symbolic **85.3%** → hash dense **87.2%** → e5 dense **86.8%**
+  (family macro 89.2 / 91.9 / 91.4). §5.2 목표(95%) **미달**.
+  세 구성이 M1 이전 대비 **일제히 +6.5%p** 올랐다 — 인코더를 바꾼 게 아니라
+  공유 segmentation이 mention 탐지 단계를 고친 결과이고, 이 트랙은 M1의
+  자체 A/B가 다루지 않던 표본이다. 채점 코드는 그 사이 바뀌지 않았다.
+  dense 증분은 exact-core 기준 **+1.9%p**이며(any-overlap 기준 +3.8%p),
+  그 대가로 prediction set이 약 8배 커진다(mean 1.08 → 8.31).
   이 트랙은 라벨된 commit이 0건이라 commit precision을 측정할 수 없다.
+- 표면형 합성 (reports/COMPOSITION_AUDIT.md, 실문장 10,000 쌍 비교):
+  mention의 **12.4%**(479/3,867)가 core보다 넓은 표면형을 갖는다 — `산업부장관`
+  (사람), `우리카드`(다른 회사), `KBS노조`(다른 조직). M2 전에는 응답에 그
+  구분이 없었다. 확정 수는 770 → 771로 사실상 그대로인데 commit 보류는
+  27 → 763이다: 늘어난 차단은 이미 threshold 아래였던 후보이며, 그래서
+  이 규칙은 **오늘 recall을 깎지 않으면서** 확정 여부가 확률 우연에 기대던
+  것을 끝낸다
 - vs 범용 LLM+RAG (동일 샘플, reports/LLM_RAG_COMPARE.md): silver track에서
   qwen3:8b·gemma4:12b/26b·gpt-oss:20b·qwen3.5:27b recall 0.98–1.0로 근접하나
   grounding 92–98%(환각 존재), latency 116×–570× 열세. **hard track(UE 미등록
@@ -212,6 +222,26 @@ precision에 기반했다.
 `ResolutionGuard`(§2 불변조건, **Level B 전용**)로 구성된다. guard는
 후보를 제거하지 않고 commit만 보류하며, 설정은 snapshot ID에 반영된다.
 수치는 [SEGMENTATION_AB.md](../reports/SEGMENTATION_AB.md).
+
+**M2 (의미 안전성)** — ✅ 완료. M1까지 suffix 카탈로그는 평평한 집합이라
+`부`·`본부`·`장`·`노조`가 전부 같은 종류였고, 응답은 core span과 원시 토큰
+span만 내보냈다. 그래서 **`금감원장`(사람)과 `한국전력공사`(같은 기관)가
+API 상 구분되지 않았고**, `full_span`을 하이라이트·치환하는 소비자는
+불변조건 ②가 금지하는 overcommit을 그대로 했다.
+
+M2는 suffix를 `NAME_PART`/`ORG_UNIT`/`ROLE`/`AFFILIATE`/`DERIVED_ORG`/
+`REFERENTIAL`/`ARTIFACT`로 타입화하고, 응답에 `core_link`(core가 가리키는
+것)와 `full_surface`(전체가 가리키는 것, 조사 제외)를 **분리해서** 실었다.
+스키마에만 있고 resolve 시점에 아무도 읽지 않던 `COMPOSES_TO` 관계를
+연결해 `한전`+`노조` → 전국전력노동조합처럼 **선언된 파생을 이름으로**
+돌려준다(REQ-TAIL-002가 deferred에서 implemented로 이동). ContextPack과
+XML/text 렌더러까지 이어져 LLM이 실제로 보는 경로에서도 파생이 사라지지
+않는다. 수치는 [COMPOSITION_AUDIT.md](../reports/COMPOSITION_AUDIT.md).
+
+작업 중 별도 결함도 드러났다: Pass-2 abbreviation alignment가 guard를 전혀
+거치지 않고 후보를 추가하고 있었고, `CandidatePool`이 차단되지 않은 증거로
+`commit_blocked`를 해제하기 때문에 **다른 채널의 차단을 조용히 되돌리고**
+있었다. M1부터 있던 구멍이다.
 
 ## Pi Extension 통합 (PLAN_PI.md, 6단계)
 

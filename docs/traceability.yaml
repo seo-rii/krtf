@@ -154,12 +154,17 @@ implemented:
     tests: [tests/test_eval_metrics.py::test_wilson_interval]
   - req: REQ-EVAL-003
     tests: [tests/test_traceability.py::test_all_reqs_mapped]
+  # --- typed tails and registered compositions (VARIANTS_PLAN M2) ---
+  - req: REQ-TAIL-002
+    # a COMPOSES_TO relation is now read at resolve time and names the
+    # derivative, instead of being parsed and then ignored
+    tests: [tests/test_surface_composition.py::test_registered_composition_names_the_derivative,
+            tests/test_surface_composition.py::test_the_parent_never_takes_the_full_surface,
+            tests/test_surface_composition.py::test_fast_mode_also_reports_the_separation]
   - req: REQ-LVL-003
     tests: [tests/test_eval_metrics.py::test_conformance_and_coverage_not_merged]
 
 deferred:
-  - req: REQ-TAIL-002
-    reason: "EntityRelation/COMPOSES_TO expansion channel — M2 scope (relations are parsed/validated only)"
   - req: REQ-TRM-002
     reason: "termness classifier — V3/M4 scope (V1 keeps UNCERTAIN, never forces RESOLVED)"
   - req: REQ-BUD-002

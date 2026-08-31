@@ -101,6 +101,42 @@ class EntityRelation:
     surface_suffix: str | None = None
 
 
+@dataclass(frozen=True)
+class Composition:
+    """A registered `core + suffix -> other entity` reading (§2 invariant ③).
+
+    ``한전`` + ``노조`` is not 한국전력공사 under a longer span; it is a
+    different organisation. When the glossary declares that relation, the
+    resolver reports the declared target instead of leaving the derivative
+    unexplained — a registered relation always beats an inferred one.
+    """
+
+    relation_id: str
+    source_entity_id: str
+    surface_suffix: str
+    target_entity_id: str
+
+
+def composition_index(g: "Glossary") -> dict[tuple[str, str], Composition]:
+    """Index COMPOSES_TO relations by (source entity, surface suffix).
+
+    Only relations that carry a ``surface_suffix`` are indexed: without one
+    there is no surface to recognise, and the relation stays a pure KB fact.
+    The suffix is matched literally, so this lookup is as deterministic as
+    the exact channel it complements.
+    """
+    idx: dict[tuple[str, str], Composition] = {}
+    for r in g.entity_relations:
+        if r.relation_type != "COMPOSES_TO" or not r.surface_suffix:
+            continue
+        idx.setdefault(
+            (r.source_entity_id, r.surface_suffix),
+            Composition(r.relation_id, r.source_entity_id, r.surface_suffix,
+                        r.target_entity_id),
+        )
+    return idx
+
+
 @dataclass
 class Glossary:
     glossary_id: str
