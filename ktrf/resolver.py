@@ -270,13 +270,22 @@ def resolve(
                     continue
                 n = node_for(span)
                 n.sources.add("dense")
+                # dense is a Level B channel and answers to the guard like
+                # the rest of them. Skipping it does not merely leave one
+                # channel unchecked: unblocked evidence for an entity lifts
+                # the block when the pool merges, so an unguarded dense hit
+                # silently re-allows a commit the tail already refused.
+                verdict = _guard_for(snapshot, n, "dense", 1 - strength)
                 n.pool.add(Candidate(
                     entity_id=eid, alias_id=None, family_id=None,
                     generation_channels={"dense"},
-                    channel_scores={"dense": _CHANNEL_BASE["dense"]
-                                    + 0.3 * strength},
+                    channel_scores={"dense": (_CHANNEL_BASE["dense"]
+                                              + 0.3 * strength)
+                                    * verdict.score_factor},
                     is_exact=False, retrieval_pass=2,
-                    provenance={"dense_sim": round(sim, 4)},
+                    commit_blocked=verdict.blocked_reason,
+                    provenance={"dense_sim": round(sim, 4),
+                                "guard": list(verdict.reasons)},
                 ))
                 pass2 = True
                 n.pass2_applied = True
@@ -464,11 +473,30 @@ def _guard_for(snapshot, node, channel: str, transform_cost: float):
     Channels that do not carry a :class:`StructuralPath` of their own still
     have to answer for the decomposition the node was built from, or they
     become a way around the guard.
+
+    Either origin will do. A node the exact channel opened records its tail
+    on the proposal rather than as a path, and reading only the path let a
+    Level B candidate ride onto an exact node's span unguarded — dense
+    proposing ORG_MSIT inside `한국전력공사노조` while the tail says the
+    surface is a different organisation. Which channel found the *core* does
+    not change what the tail means; only the channel asking to commit does,
+    and that is what :attr:`MatchEvidence.level_a` already decides.
     """
-    if node.path is None:
+    if node.path is not None:
+        ev = MatchEvidence.from_path(channel, node.path,
+                                     transform_cost=transform_cost)
+    elif node.proposal is not None and node.proposal.best_tail is not None:
+        t = node.proposal.best_tail
+        ev = MatchEvidence(
+            channel=channel, path_kind=t.kind, core_surface=node.surface,
+            core_span=node.core_span, full_span=node.proposal.full_span,
+            transform_cost=transform_cost, residual_kind=t.residual_kind,
+            full_identity=t.full_identity, relation=t.relation,
+            particles=t.particles, grammatical=t.grammatical,
+            tail_stripped=bool(t.residual or t.particles or t.latin_tail),
+        )
+    else:
         return GuardVerdict()
-    ev = MatchEvidence.from_path(channel, node.path,
-                                 transform_cost=transform_cost)
     return snapshot.guard.evaluate(ev)
 
 

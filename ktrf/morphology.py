@@ -58,9 +58,15 @@ PARTICLES: dict[str, str] = {
 # §16.3 기관·역할 suffix catalog (초기), typed by what the *full* surface denotes.
 #
 # VARIANTS_PLAN §2: a suffix is not just a boundary marker. `금감원` + `장` is a
-# person, `한전` + `노조` is a different organisation, `한국전력` + `공사` is the
+# person, `한전` + `노조` is a different organisation, `기획재정` + `부` is the
 # same organisation. Collapsing all three into one SUFFIX class is what lets a
 # consumer read the whole token as the core entity (invariant ②).
+#
+# NAME_PART is the thin class here: every member is one syllable, so the
+# multi-syllable endings real names carry (공사, 공단) fall outside it and a
+# full official name reads as DISTINCT or UNKNOWN. Safe — the guard only ever
+# withholds — but it means SAME is rare in practice (5 records in 4,000 wild
+# sentences). Populating it is catalog work, deferred to M3 with the rest.
 NAME_PART = "NAME_PART"      # tail syllables of the org's own name
 ORG_UNIT = "ORG_UNIT"        # an internal unit of the core org
 ROLE = "ROLE"                # the office holder — a person, not the org
@@ -267,25 +273,31 @@ class ResidualAnalysis:
         """SAME | DISTINCT | UNKNOWN for ``core + residual`` vs the core.
 
         A leading modifier always makes the whole a distinct name
-        (``서울본부``), even when the head alone would be a name part.
+        (``서울본부``), even when the head alone would be a name part —
+        :attr:`governing_class` carries that, because MODIFIER is itself a
+        DISTINCT class sitting leftmost, so it is the fallback when no part
+        to its right objects.
         """
         if not self.text:
             return SAME
         if self.kind == "UNKNOWN":
             return UNRESOLVED
-        if self.kind == "SUFFIX_WITH_MODIFIER":
-            return DISTINCT
         return TAIL_CLASSES.get(self.governing_class, (UNRESOLVED, ""))[0]
 
     @property
     def relation(self) -> str:
-        """How the full surface relates to the core entity."""
+        """How the full surface relates to the core entity.
+
+        Read off the same part the verdict came from. Short-circuiting a
+        modifier to NAMED_VARIANT here is what made `한국투자증권` report
+        ``tail_class=AFFILIATE`` beside ``relation=NAMED_VARIANT``: the
+        modifier says the *name* differs, but 증권 still says how the two
+        organisations relate, and that is the more specific answer.
+        """
         if not self.text:
             return "IDENTITY"
         if self.kind == "UNKNOWN":
             return "UNKNOWN"
-        if self.kind == "SUFFIX_WITH_MODIFIER":
-            return "NAMED_VARIANT"
         return TAIL_CLASSES.get(self.governing_class, ("", "UNKNOWN"))[1]
 
 

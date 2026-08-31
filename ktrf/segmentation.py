@@ -70,7 +70,7 @@ class TailAnalysis:
     latin_tail_kind: str = ""
     score: float = 1.0
     # M2 typed tail: what core+residual denotes relative to the core alone.
-    # SAME (한국전력 + 공사), DISTINCT (금감원 + 장 is a person), UNKNOWN.
+    # SAME (기획재정 + 부), DISTINCT (금감원 + 장 is a person), UNKNOWN.
     residual_classes: tuple[str, ...] = ()
     governing_class: str = ""
     full_identity: str = SAME

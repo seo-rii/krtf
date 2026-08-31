@@ -175,9 +175,15 @@ API 상으로 구분되지 않았다.
 
 | 표면형 | 전체가 가리키는 것 | M1 응답 |
 |---|---|---|
-| `한국전력공사` | 같은 기관 | core + full_span |
+| `기획재정부` | 같은 기관 | core + full_span |
 | `금감원장` | **사람** | core + full_span |
 | `한전노조` | **다른 조직** | core + full_span |
+
+> `한국전력공사`처럼 다음절 어미(`공사`·`공단`)로 끝나는 정식 명칭은 아직
+> 이 표의 첫 줄에 해당하지 않는다. NAME_PART이 전부 1음절이라 `공사`는
+> 카탈로그 밖이고, 따라서 `한국전력` + `공사`는 SAME이 아니라 UNKNOWN으로
+> 판정된다 — commit은 막히므로 안전한 방향이지만 관계 라벨은 틀린다.
+> 카탈로그 확장은 M3.
 
 `full_span`을 하이라이트하거나 치환하는 소비자는 `금감원장`을 통째로
 금융감독원으로 만든다. 이것이 불변조건 ②(parent full-span overcommit
@@ -279,6 +285,45 @@ silver span 위에 떨어졌다(silver 밖 확정은 204로 동일). tail 커버
 기존 항목을 **재분류**했고 `노조`/`노동조합`만 추가했다 — wild tail 16%를
 채우는 것은 수동 taxonomy 작업이며 §5("검토 없이 전역 SUFFIXES에 추가")를
 따른다. 미등록 파생을 `COMPOSES_TO` 후보로 **자동 제안**하는 것은 M4다.
+
+#### M2 검토 후속 (2026-08-31)
+
+M2를 실텍스트에 돌려 **라벨을 채점**하면서 나온 수정이다. 세는 것과 채점하는
+것은 다른 작업이고, 위의 감사는 세기만 했다.
+
+- **dense 채널이 guard를 거치지 않았다.** Pass-2 abbrev의 구멍은 M2에서
+  고쳤지만 같은 블록의 dense는 남아 있었다. dense는 Level B이고 같은 pool로
+  합쳐지므로, 차단되지 않은 dense 후보가 tail이 이미 거부한 entity의 차단을
+  **푼다**. 같은 입력에서 dense를 끄면 `typed_derivative`, 켜면 `None`이었다.
+  `_guard_for`가 `node.path`만 읽던 것도 함께 고쳤다 — exact 채널이 연 노드는
+  tail을 proposal에 기록하므로, core를 어느 채널이 찾았는지에 따라 guard가
+  적용되거나 안 되는 상태였다.
+- **`relation`이 `tail_class`와 모순됐다.** `governing_class`가 `identity`의
+  모순은 없앴지만 `relation`의 `SUFFIX_WITH_MODIFIER` 단축 경로가 그것을
+  우회해, `한국투자증권`이 `tail_class=AFFILIATE`와 `relation=NAMED_VARIANT`를
+  함께 실었다. 실텍스트 기록의 8.2%. modifier는 *이름*이 다르다고 말할 뿐이고
+  뒤의 접미사가 여전히 관계를 말한다.
+- **`TAIL_CLASSES`가 해시에 없었다.** class→(판정, 관계) 표를 고치면 표면형은
+  하나도 안 건드리고 모든 판정이 바뀌는데, 그것이 손으로 올리는 버전 문자열에
+  의존했다. **규칙(`governing_class`)은 버전으로, 데이터(표)는 해시로** 나눴다.
+
+**측정.** 6,000문장 동일 표본(seed 20260830), `run_wild`의 silver·fake-glossary
+스위트를 두 체크아웃 × 두 구성으로:
+
+| | 수정 전 Level A | 수정 전 dense | 수정 후 Level A | 수정 후 dense |
+|---|---:|---:|---:|---:|
+| RESOLVED 확정 | 331 | **330** | 331 | **331** |
+| commit precision | 1.0 | 1.0 | 1.0 | 1.0 |
+| ledger silver 밖 | 117 | 117 | 117 | 117 |
+| fake-glossary FP | 0 | 0 | 0 | 0 |
+| 후보 밀도 /1k chars | 5.132 | 5.132 | 5.132 | 5.132 |
+
+수정 전에는 dense를 켜면 확정이 하나 **줄었다**. guard를 안 거친 dense 후보가
+차단도 감점도 없이 예측집합에서 경쟁해 정답을 AMBIGUOUS로 밀어낸 것이다.
+guard를 붙이자 그 후보들이 감점·차단되면서 확정이 Level A와 같아졌다. 1건은
+n=6,000에서 노이즈 범위이므로 **재현율이 올랐다고 읽지 않는다** — 읽을 것은
+비용이 0이라는 것과, 불변조건 ②가 이제 dense 구성에서도 코드로 성립한다는
+것이다. NEURAL_EVAL의 Level B recall(0.853 / 0.8719 / 0.8683)은 불변이다.
 
 ## 4. SLM 진입 조건 (요약)
 

@@ -203,3 +203,89 @@ def test_a_temporal_prefix_is_named_not_silently_identified(snap):
     assert fs["surface"] == "전 한전"
     assert fs["prefix_kind"] == "TEMPORAL"
     assert "tail_class" not in fs  # nothing followed the core
+
+
+# --- review findings: the guard's reach and the verdict's consistency ------
+
+@pytest.fixture(scope="module")
+def dense_snap():
+    """The same glossary with Pass-2 dense retrieval switched on.
+
+    Every guard test above runs on a Level A-only snapshot, which is exactly
+    why the dense channel could skip the guard unnoticed: with no encoder
+    compiled in, `dense_enrich` returns before it adds anything.
+    """
+    from ktrf.encoders import HashEncoder
+    return compile_snapshot(load_glossary("examples/demo_glossary.yaml"),
+                            encoder=HashEncoder())
+
+
+def test_dense_retrieval_does_not_lift_the_guard(dense_snap):
+    """Turning dense on must not turn invariant ② off.
+
+    Dense is Level B and merges into the same pool, so an unguarded dense
+    hit clears `commit_blocked` for an entity the tail already refused —
+    the abbrev hole again, in the other Pass-2 channel. Measured before the
+    fix: identical input, `typed_derivative` with dense off, None with it on.
+    """
+    resp = resolve(dense_snap, "과학기술정보통신붑장관이 참석했다.", mode="commit")
+    m = _mention(resp, "과학기술정보통신붑") or _mention(resp, "과학기술정보통신")
+    member = next(x for x in m["prediction_set"]["members"]
+                  if x.get("entity_id") == "ORG_MSIT")
+    assert "dense" in member["generation_channels"]  # the merging channel
+    assert member["commit_blocked"] == "typed_derivative"
+    assert m["link_decision"] != "RESOLVED"
+
+
+def test_no_dense_candidate_escapes_the_guard_on_a_distinct_tail(dense_snap):
+    """Not just the entity another channel proposed: every dense hit on a
+    span whose tail says DISTINCT has to carry the block too."""
+    resp = resolve(dense_snap, "한국전력공사노조가 성명을 냈다.", mode="commit")
+    m = _mention(resp, "한국전력공사")
+    assert m["full_surface"]["identity"] == "DISTINCT_FROM_CORE"
+    dense_only = [x for x in m["prediction_set"]["members"]
+                  if x.get("generation_channels") == ["dense"]]
+    assert dense_only, "expected dense-only candidates on this span"
+    assert all(x["commit_blocked"] == "typed_derivative" for x in dense_only)
+
+
+@pytest.mark.parametrize("residual,tail_class,relation", [
+    ("투자증권", "AFFILIATE", "AFFILIATE_OF"),   # 한국 + 투자증권
+    ("아트센터", "ORG_UNIT", "PART_OF"),         # 두산 + 아트센터
+    ("서울지사장", "ROLE", "ROLE_OF"),            # a person, not a variant
+    ("서울부", "MODIFIER", "NAMED_VARIANT"),      # nothing to the right objects
+])
+def test_a_modifier_does_not_erase_the_relation(residual, tail_class,
+                                                relation):
+    """A leading modifier says the *name* differs; the suffix after it still
+    says how the two relate, and that is the more specific answer.
+
+    Short-circuiting the modifier to NAMED_VARIANT made `한국투자증권` report
+    `tail_class=AFFILIATE` beside `relation=NAMED_VARIANT` — the same
+    self-contradiction the governing class removed from `identity`, left
+    behind in `relation`. 8.2% of records on real text.
+    """
+    r = analyze_residual(residual)
+    assert r.governing_class == tail_class
+    assert r.full_identity == "DISTINCT"     # a modifier is still distinct
+    assert r.relation == relation
+
+
+def test_snapshot_id_tracks_the_class_verdict_table():
+    """invariant ⑥ again, for the table rather than the catalog.
+
+    Turning ROLE from DISTINCT to SAME rewrites every verdict while touching
+    no suffix surface. Hashing only the catalog left that change resting on
+    someone remembering to bump TAIL_GRAMMAR_VERSION by hand.
+    """
+    from ktrf import morphology
+    from ktrf.snapshot import _morphology_hash
+
+    before = _morphology_hash()
+    original = morphology.TAIL_CLASSES[morphology.ROLE]
+    morphology.TAIL_CLASSES[morphology.ROLE] = (morphology.SAME, "IDENTITY")
+    try:
+        assert _morphology_hash() != before
+    finally:
+        morphology.TAIL_CLASSES[morphology.ROLE] = original
+    assert _morphology_hash() == before

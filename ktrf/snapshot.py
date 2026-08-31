@@ -28,7 +28,7 @@ from .glossary import (Glossary, GlossaryError, composition_index,
 from .matcher import ExactIndex
 from .segmentation import ResolutionGuard
 from .morphology import (DEFAULT_CHAIN_DEPTH, PARTICLES, PREFIXES,
-                         SUFFIX_CLASSES, ParticleFST)
+                         SUFFIX_CLASSES, TAIL_CLASSES, ParticleFST)
 
 COMPATIBILITY_ID = "ktrf-py-v1"
 NORMALIZER_VERSION = "nrm-1"
@@ -119,9 +119,17 @@ def _guard_hash(guard: ResolutionGuard) -> str:
 def _morphology_hash() -> str:
     # the suffix *classes* are hashed, not just the surfaces: reclassifying
     # 노조 from UNKNOWN to DERIVED_ORG changes what the resolver commits, so
-    # it has to change the snapshot id too (VARIANTS_PLAN §2 invariant ⑥)
+    # it has to change the snapshot id too (VARIANTS_PLAN §2 invariant ⑥).
+    #
+    # TAIL_CLASSES is hashed for the same reason and is the easier one to
+    # miss: turning ROLE from DISTINCT to SAME rewrites every verdict while
+    # touching no surface, and a hand-bumped version string is only as
+    # reliable as whoever edits the table. Version the *rule* that combines
+    # the classes (governing_class), hash the *data* it reads.
     return _hash({"particles": sorted(PARTICLES),
                   "suffixes": dict(sorted(SUFFIX_CLASSES.items())),
+                  "tail_classes": {k: list(v)
+                                   for k, v in sorted(TAIL_CLASSES.items())},
                   "prefixes": sorted(PREFIXES), "depth": DEFAULT_CHAIN_DEPTH,
                   "tail_grammar": TAIL_GRAMMAR_VERSION})
 
