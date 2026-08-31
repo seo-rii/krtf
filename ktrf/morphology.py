@@ -111,6 +111,8 @@ SUFFIX_CLASSES: dict[str, str] = {
     "규정": ARTIFACT, "시스템": ARTIFACT,
 }
 
+# the untyped view, kept because it is part of this module's public
+# surface (§16.3); nothing inside KTRF reads it any more
 SUFFIXES: frozenset[str] = frozenset(SUFFIX_CLASSES)
 
 # §16.6 prefix modifier catalog (초기)
