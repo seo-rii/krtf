@@ -2,7 +2,7 @@
 
 이 리포트의 단위는 mention이 아니라 **등록 용어**다. glossary의 각 entity에 대해 표면형을 formation 하나씩 변형해 실문장에 넣고, 그 용어가 돌아오는지를 묻는다. headline은 family 매크로 평균이라 천 번 언급되는 부처와 한 번 언급되는 용어가 같은 무게를 갖는다.
 
-재현: `python -m eval.run_variant_recall` · seed 20260901 · 170 families × 16 formations = **3059 cases** · host 문장 6000개.
+재현: `python -m eval.run_variant_recall` · seed 20260901 · 170 families × 17 formations = **3273 cases** · host 문장 6000개.
 
 대조군은 같은 스크립트·같은 seed를 다른 체크아웃에서 돌린 것이다 (`--compare`). 두 arm은 같은 표본·같은 case를 본다.
 
@@ -10,11 +10,11 @@
 
 | 지표 | 조건 | 값 |
 |---|---|---:|
-| **variant-family macro recall** | `\|candidate` | 0.932 → **0.9397** (+0.0077) |
-| ├ Level A formation | `\|candidate` | 0.9868 → **0.9868** (0.0) |
-| └ **Level B formation** | `\|candidate` | 0.7296 → **0.7626** (+0.033) |
+| **variant-family macro recall** | `\|candidate` | 0.9444 → **0.9444** (0.0) |
+| ├ Level A formation | `\|candidate` | 0.9869 → **0.9869** (0.0) |
+| └ **Level B formation** | `\|candidate` | 0.771 → **0.771** (0.0) |
 | commit macro (§2 SAME 형성) | `\|commit` | 0.9865 → **0.9865** (0.0) |
-| core span 오분해율 | `\|mention` | 0.0075 → **0.0072** (-0.0003) |
+| core span 오분해율 | `\|mention` | 0.0046 → **0.0046** (0.0) |
 | 잘못된 entity 확정 | `\|commit` | 0 → **0** (0) |
 | **불변조건 ② 위반** | `\|commit` | 0 → **0** (0) |
 
@@ -33,17 +33,18 @@ Level A는 결정적 정규화·분해로 닿는 formation(원형·띄어쓰기�
 | `fullwidth` | A | SAME | 19 | 1.0 → **1.0** (0.0) | 1.0 | 1.0 | 1.0 | — | 0 |
 | `particle` | A | SAME | 214 | 1.0 → **1.0** (0.0) | 1.0 | 1.0 | 1.0 | — | 0 |
 | `particle_chain` | A | SAME | 214 | 1.0 → **1.0** (0.0) | 1.0 | 1.0 | 1.0 | — | 0 |
-| `typo` | B | CONDITIONAL | 214 | 0.6688 → **0.6688** (0.0) | 0.6682 | 0.0 | 0.6682 | — | 0 |
-| `typo_particle` | B | CONDITIONAL | 214 | 0.6201 → **0.6201** (0.0) | 0.6308 | 0.0 | 0.6355 | — | 0 |
+| `typo` | B | CONDITIONAL | 214 | 0.6656 → **0.6656** (0.0) | 0.6682 | 0.0 | 0.6682 | — | 0 |
+| `typo_particle` | B | CONDITIONAL | 214 | 0.6494 → **0.6494** (0.0) | 0.6589 | 0.0 | 0.6589 | — | 0 |
 | `keyboard` | B | CONDITIONAL | 214 | 0.974 → **0.974** (0.0) | 0.9766 | 0.0 | 0.9766 | — | 0 |
 | `jamo` | A | SAME | 214 | 1.0 → **1.0** (0.0) | 1.0 | 1.0 | 1.0 | — | 0 |
-| `mixed_abbrev` | B | CONDITIONAL | 6 | 0.0 → **1.0** (+1.0) | 1.0 | 0.0 | 1.0 | — | 0 |
+| `mixed_abbrev` | B | CONDITIONAL | 6 | 1.0 → **1.0** (0.0) | 1.0 | 0.0 | 1.0 | — | 0 |
 | `base_modifier` | A | CONDITIONAL | 214 | 1.0 → **1.0** (0.0) | 1.0 | 1.0 | 1.0 | — | 0 |
-| `derivative_org` | A | FORBIDDEN | 214 | 1.0 → **1.0** (0.0) | 1.0 | 0.3019 | 1.0 | 118 → **118** (0) | 0 |
-| `derivative_role` | A | FORBIDDEN | 214 | 1.0 → **1.0** (0.0) | 1.0 | 0.3831 | 1.0 | 86 → **86** (0) | 0 |
-| `derivative_particle` | A | FORBIDDEN | 214 | 1.0 → **1.0** (0.0) | 1.0 | 0.4091 | 1.0 | 85 → **85** (0) | 0 |
-| `org_unit` | A | FORBIDDEN | 214 | 1.0 → **1.0** (0.0) | 1.0 | 0.8571 | 1.0 | 32 → **32** (0) | 0 |
-| `artifact` | A | FORBIDDEN | 214 | 1.0 → **1.0** (0.0) | 1.0 | 0.8506 | 1.0 | 33 → **33** (0) | 0 |
+| `derivative_org` | A | FORBIDDEN | 214 | 1.0 → **1.0** (0.0) | 1.0 | 0.3214 | 1.0 | 115 → **115** (0) | 0 |
+| `derivative_role` | A | FORBIDDEN | 214 | 1.0 → **1.0** (0.0) | 1.0 | 0.3929 | 1.0 | 98 → **98** (0) | 0 |
+| `derivative_particle` | A | FORBIDDEN | 214 | 1.0 → **1.0** (0.0) | 1.0 | 0.4221 | 1.0 | 91 → **91** (0) | 0 |
+| `latin_suffix` | A | FORBIDDEN | 214 | 1.0 → **1.0** (0.0) | 1.0 | 0.0 | 1.0 | 0 → **214** (+214) | 0 |
+| `org_unit` | A | FORBIDDEN | 214 | 1.0 → **1.0** (0.0) | 1.0 | 0.9026 | 1.0 | 21 → **21** (0) | 0 |
+| `artifact` | A | FORBIDDEN | 214 | 1.0 → **1.0** (0.0) | 1.0 | 0.9058 | 1.0 | 23 → **23** (0) | 0 |
 
 FORBIDDEN 행의 `commit macro`는 재현율이 아니라 **보수성**이다: core에 확정을 건 비율이며, 낮을수록 guard가 많이 보류했다는 뜻이다. CONDITIONAL 행의 0.0도 결함이 아니다 — §2가 확정을 요구하지 않는다.
 
@@ -51,11 +52,11 @@ FORBIDDEN 행의 `commit macro`는 재현율이 아니라 **보수성**이다: c
 
 `한전노조`는 다른 조직이고 `금감원장`은 사람이다. 두 가지를 따로 센다: **확정을 막았는가**(불변조건 ②, 위 표의 `위반` 열)와 **관계를 이름으로 말했는가**. 앞은 계약이라 0이어야 하고, 뒤는 카탈로그 커버리지라 개선 대상이다 — 카탈로그를 넓히면 뒤가 오르고 앞은 그대로여야 한다.
 
-- FORBIDDEN cases: **1070**
-- 넓은 표면형을 응답에 실은 것: 1070
-- 그중 `UNKNOWN` 판정: 354 → **354** (0) (카탈로그 확장 여지)
+- FORBIDDEN cases: **1284**
+- 넓은 표면형을 응답에 실은 것: 1284
+- 그중 `UNKNOWN` 판정: 348 → **562** (+214) (카탈로그 확장 여지)
 
-관계 라벨 분포: `UNKNOWN` 405, `ROLE_OF` 192, `PART_OF` 182, `ARTIFACT_OF` 181, `DERIVED_FROM` 110
+관계 라벨 분포: `UNKNOWN` 616, `PART_OF` 191, `ARTIFACT_OF` 191, `ROLE_OF` 171, `DERIVED_FROM` 115
 
 ## 3. Confusion — 닮은 것 중에 고르기
 
@@ -70,7 +71,7 @@ fake glossary는 코퍼스와 형태소를 공유하지 않는 이름을 쓴다.
 같은 문장·같은 silver span을 decoy 있는 스냅샷과 없는 스냅샷에서 각각 돌린 쌍 비교다.
 
 - silver mention 343건, gold-in-set 1.0
-- 확정: decoy 없음 332 → decoy 있음 280 (**차이 52**)
+- 확정: decoy 없음 329 → decoy 있음 278 (**차이 51**)
 
 ### 3.2 약칭 충돌 — 두 뜻이 생기면 확정을 미루는가
 
@@ -92,12 +93,12 @@ decoy가 실제 약칭을 **같이** 등록한다. 그러면 그 약칭의 올�
 | `ORG_MBC` | 0.6667 |
 | `ORG_SBS` | 0.6667 |
 | `ORG_YTN` | 0.6667 |
-| `ORG_KOTRA` | 0.8333 |
-| `ORG_CELLTRION` | 0.8571 |
-| `ORG_GWL` | 0.8571 |
-| `ORG_GYEONGGI` | 0.8571 |
-| `ORG_HANJIN` | 0.8571 |
-| `ORG_HMM` | 0.8571 |
+| `ORG_BAI` | 0.8667 |
+| `ORG_CHA` | 0.8667 |
+| `ORG_CHUNGBUK` | 0.8667 |
+| `ORG_CHUNGNAM` | 0.8667 |
+| `ORG_GWL` | 0.8667 |
+| `ORG_GYEONGBUK` | 0.8667 |
 
 ## 5. 읽는 법과 한계
 
@@ -107,6 +108,6 @@ decoy가 실제 약칭을 **같이** 등록한다. 그러면 그 약칭의 올�
 - 적용 불가 cell(라틴 표면형에 중성 오타)은 0점이 아니라 **분모에서 빠진다**. 문자 체계 때문에 family가 손해 보면 안 된다.
 - decoy는 합성이지만 실제 등록 표면형에서 **1 중성 거리**로 만든다. 형태소를 공유하지 않는 fake glossary와는 난이도가 다르다.
 
-*측정 시점: commit `dcf3daf`, 2026-09-01. 리포트와 코드가 어긋나면 코드가 맞다 — 재생성해서 확인할 것.*
+*측정 시점: commit `a2599e7`, 2026-09-01. 리포트와 코드가 어긋나면 코드가 맞다 — 재생성해서 확인할 것.*
 
 *generated by `python -m eval.run_variant_recall`*
