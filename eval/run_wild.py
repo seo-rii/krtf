@@ -54,7 +54,7 @@ def _is_hangul(ch: str) -> bool:
     return "가" <= ch <= "힣"
 
 
-def _silver_occurrences(text: str, aliases: list[str]) -> list[tuple[int, int, str]]:
+def silver_occurrences(text: str, aliases: list[str]) -> list[tuple[int, int, str]]:
     """Maximal, left-clean occurrences of silver aliases in text."""
     raw: list[tuple[int, int, str]] = []
     for a in aliases:
@@ -118,7 +118,7 @@ def run_silver_and_tails(corpus: list[dict], encoder=None, policy=None) -> dict:
 
     for row in corpus:
         text = row["text"]
-        occs = _silver_occurrences(text, silver_aliases)
+        occs = silver_occurrences(text, silver_aliases)
         has_detection_only = any(a in text for a in DETECTION_ONLY)
         if not occs and not has_detection_only:
             continue

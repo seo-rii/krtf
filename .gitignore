@@ -6,5 +6,11 @@ build/
 dist/
 .venv/
 eval/out/
-eval/data/
+# The corpus cache is a licensed third-party download, so the directory's
+# contents are ignored — but the pattern excludes the *contents*, not the
+# directory, because git cannot re-include a file whose parent is excluded.
+eval/data/*
+# The hand-labelled gold is neither downloaded nor regenerable: it is a
+# person's reading of 160 sentences.
+!eval/data/variant_gold.jsonl
 models/

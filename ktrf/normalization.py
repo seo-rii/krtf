@@ -35,12 +35,15 @@ class NormalizationProfile:
     ignore_punctuation: tuple[str, ...] = ()
     spacing_mode: str = "strict"  # "strict" or "tolerant"
     latin_morph: bool = False
+    # §4.5 OCR/PDF confusable folding. Off everywhere by default: it is only
+    # correct when the caller asserts the text came from OCR.
+    ocr_fold: bool = False
 
     def merged(self, override: dict) -> "NormalizationProfile":
         """Field-level override (AliasBinding.normalization_policy, REQ-NRM-001)."""
         allowed = {
             "nfc", "width_fold", "case_fold", "ignore_punctuation",
-            "spacing_mode", "latin_morph", "case_sensitive",
+            "spacing_mode", "latin_morph", "case_sensitive", "ocr_fold",
         }
         data = {
             "id": self.id,
@@ -50,6 +53,7 @@ class NormalizationProfile:
             "ignore_punctuation": self.ignore_punctuation,
             "spacing_mode": self.spacing_mode,
             "latin_morph": self.latin_morph,
+            "ocr_fold": self.ocr_fold,
         }
         for k, v in override.items():
             if k not in allowed:
@@ -64,20 +68,38 @@ class NormalizationProfile:
         return NormalizationProfile(**data)
 
 
+# §14.7 punctuation classes (M3).
+#
+# A profile that tolerates "-" has to tolerate every dash a keyboard, a word
+# processor's autocorrect, or a PDF extractor can produce, or the tolerance
+# becomes a lottery on which hyphen the author happened to type. `S-Oil`
+# copied out of a PDF arrives as `S‐Oil` (U+2010) and used to miss.
+#
+# `/`, `&`, `+`, `#` deliberately have **no class**: each can be a load-bearing
+# part of a name (`KT&G`, `S/W`, `C#`), so a profile opts into them one at a
+# time rather than inheriting a group.
+HYPHEN_CLASS: tuple[str, ...] = (
+    "-", "‐", "‑", "‒", "–", "—", "―",
+    "−", "﹘", "﹣",
+)
+MIDDOT_CLASS: tuple[str, ...] = ("·", "・", "•", "‧", "∙")
+
 DEFAULT_PROFILES: dict[str, NormalizationProfile] = {
     p.id: p
     for p in [
         NormalizationProfile(
             id="latin_acronym", case_fold="ascii",
-            ignore_punctuation=(".", "-"), spacing_mode="strict",
+            ignore_punctuation=(".", *HYPHEN_CLASS), spacing_mode="strict",
         ),
         NormalizationProfile(
             id="latin_word", case_fold="ascii",
-            ignore_punctuation=("-",), spacing_mode="strict", latin_morph=True,
+            ignore_punctuation=HYPHEN_CLASS, spacing_mode="strict",
+            latin_morph=True,
         ),
         NormalizationProfile(
             id="korean_org_name", case_fold="none",
-            ignore_punctuation=("-", "·"), spacing_mode="tolerant",
+            ignore_punctuation=(*HYPHEN_CLASS, *MIDDOT_CLASS),
+            spacing_mode="tolerant",
         ),
         NormalizationProfile(
             id="korean_term", case_fold="none",
@@ -85,10 +107,28 @@ DEFAULT_PROFILES: dict[str, NormalizationProfile] = {
         ),
         NormalizationProfile(
             id="mixed_alnum", case_fold="ascii",
-            ignore_punctuation=("-", "&", "/"), spacing_mode="tolerant",
+            ignore_punctuation=(*HYPHEN_CLASS, "&", "/"),
+            spacing_mode="tolerant",
+        ),
+        # §4.5: OCR and PDF confusables are **not** a default. A resolver that
+        # folds 0/O and 1/l for everyone turns every serial number into a
+        # near-miss of every other one. This profile exists to be named by a
+        # binding whose input provenance says the text came from OCR — the
+        # tenant asserts the source, KTRF does not guess it.
+        NormalizationProfile(
+            id="ocr_tolerant", case_fold="ascii",
+            ignore_punctuation=(".", *HYPHEN_CLASS, *MIDDOT_CLASS),
+            spacing_mode="tolerant", ocr_fold=True,
         ),
     ]
 }
+
+# §4.5 OCR confusable folding, applied only under ``ocr_fold``. Each group
+# collapses to its first member. Hangul is absent on purpose: syllable-level
+# OCR confusion is a *cost* question for the fuzzy channel (§17.2), not an
+# equality question, and folding it here would make distinct names equal.
+OCR_FOLD_GROUPS: tuple[str, ...] = ("0OoDQ", "1lIi|", "5S", "8B", "2Z", "6G")
+OCR_FOLD: dict[str, str] = {c: g[0] for g in OCR_FOLD_GROUPS for c in g}
 
 # ---------------------------------------------------------------------------
 # Canonical stream (§14.2)
@@ -101,6 +141,9 @@ ZERO_WIDTH_ALLOWLIST = {"​", "‌", "‍", "﻿"}
 TRANSFORM_COST = {
     "T-01": 0.0, "T-02": 0.0, "T-03": 0.0,
     "T-04": 0.05, "T-05": 0.05, "T-08": 0.0, "T-09": 0.0,
+    # T-10 OCR confusable fold: opt-in only, and priced well above the
+    # exact-preserving transforms because it makes distinct strings equal.
+    "T-10": 0.15,
 }
 
 
@@ -255,6 +298,9 @@ def build_channel(stream: CanonicalStream, profile: NormalizationProfile) -> Cha
         if profile.case_fold == "ascii" and "A" <= ch <= "Z":
             ch = ch.lower()
             t = "T-03"
+        if profile.ocr_fold and ch in OCR_FOLD:
+            ch = OCR_FOLD[ch]
+            t = t or "T-10"
         chars.append(ch)
         unit_idx.append(idx)
         pos_transform.append(t)
@@ -278,5 +324,7 @@ def normalize_alias(surface: str, profile: NormalizationProfile) -> str:
             continue
         if profile.case_fold == "ascii" and "A" <= ch <= "Z":
             ch = ch.lower()
+        if profile.ocr_fold and ch in OCR_FOLD:
+            ch = OCR_FOLD[ch]
         out.append(ch)
     return "".join(out)

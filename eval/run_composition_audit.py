@@ -106,7 +106,7 @@ def write_markdown(treatment: dict, control: dict | None,
     """Render the audit, paired against a control arm when one is supplied."""
     t = treatment
     lines = [
-        "# 표면형 합성 감사 — core_link / full_surface (M2)",
+        "# 표면형 합성 감사 — core_link / full_surface",
         "",
         "`한전노조`의 `한전`은 한국전력공사를 가리키지만 `한전노조` 전체는"
         " 다른 조직이고, `금감원장`은 사람이다. VARIANTS_PLAN §2 불변조건 ②는"
@@ -114,8 +114,9 @@ def write_markdown(treatment: dict, control: dict | None,
         " 현상이 실제 텍스트에서 **얼마나 자주** 일어나는지를 센다.",
         "",
         "재현: `python -m eval.run_composition_audit`"
-        " (대조군은 M2 이전 체크아웃에서 같은 스크립트를 돌려 `--compare`로"
-        " 넘긴다 — 두 arm은 같은 seed·같은 표본이다).",
+        " (대조군은 다른 체크아웃에서 같은 스크립트를 돌려 `--compare`로"
+        " 넘긴다 — 두 arm은 같은 seed·같은 표본이다). 리포트만 다시 쓰려면"
+        " `--render-only`.",
         "",
         f"표본: KLUE 등 실문장 **{t['sentences']:,}문장**, realorg glossary.",
         "",
@@ -124,7 +125,7 @@ def write_markdown(treatment: dict, control: dict | None,
     ]
     if control:
         lines += [
-            "| 지표 | 대조군(M1) | M2 |",
+            "| 지표 | 대조군 | 현재 |",
             "|---|---:|---:|",
             f"| mention 수 | {control['mentions']:,} | {t['mentions']:,} |",
             f"| RESOLVED 확정 | {control['resolved_commits']:,} "
@@ -135,9 +136,9 @@ def write_markdown(treatment: dict, control: dict | None,
             f"{sum(control['commit_blocked'].values()):,} "
             f"| {sum(t['commit_blocked'].values()):,} |",
             "",
-            "대조군의 `core보다 넓은 표면형`이 0인 것은 그 현상이 없어서가"
-            " 아니라 **그 빌드가 구분을 표현할 수 없어서**다. 세는 것은 M2가"
-            " 처음이다.",
+            "대조군에서 `core보다 넓은 표면형`이 0이라면 그 현상이 없어서가"
+            " 아니라 **그 빌드가 구분을 표현할 수 없어서**다 — M2 이전"
+            " 체크아웃이 그렇다. 두 arm 모두 0이 아니면 그 열은 실제 변화다.",
             "",
         ]
     else:
@@ -205,10 +206,25 @@ def main():
     ap.add_argument("--json", type=str, default=None,
                     help="output path (default eval/out/composition_audit.json)")
     ap.add_argument("--compare", type=str, default=None,
-                    help="control-arm JSON from a pre-M2 checkout")
+                    help="control-arm JSON from another checkout")
     ap.add_argument("--markdown", type=str, default=None,
                     help="also write reports/COMPOSITION_AUDIT.md")
+    ap.add_argument("--render-only", type=str, default=None,
+                    help="rewrite the report from an existing payload without "
+                         "re-measuring. Re-stamping a report after a commit, "
+                         "or fixing a layout, should not cost a 10k-sentence "
+                         "run.")
     args = ap.parse_args()
+
+    if args.render_only:
+        payload = json.loads(Path(args.render_only).read_text(encoding="utf-8"))
+        control = (json.loads(Path(args.compare).read_text(encoding="utf-8"))
+                   if args.compare else None)
+        md = (Path(args.markdown) if args.markdown
+              else ROOT / "reports" / "COMPOSITION_AUDIT.md")
+        write_markdown(payload, control, md)
+        print(f"rendered {md} from {args.render_only}")
+        return
 
     corpus = load_corpus()
     sample = random.Random(SEED).sample(corpus, min(args.sentences, len(corpus)))

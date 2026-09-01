@@ -127,4 +127,6 @@ def test_binding_profile_precedence():
     g = load_glossary(d)
     prof = g.binding_profile(g.alias_bindings[1])
     assert prof.case_fold == "none"
-    assert prof.ignore_punctuation == (".", "-")  # family field kept
+    # family field kept, and the hyphen class came with it (§14.7)
+    assert prof.ignore_punctuation[:2] == (".", "-")
+    assert "‐" in prof.ignore_punctuation

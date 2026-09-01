@@ -13,12 +13,35 @@ from ktrf.normalization import (
 
 
 def test_default_profiles_present():
-    # §14.6: the five system profiles are normative (REQ-NRM-002)
+    # §14.6: the system profiles are normative (REQ-NRM-002)
     assert set(DEFAULT_PROFILES) == {
-        "latin_acronym", "latin_word", "korean_org_name", "korean_term", "mixed_alnum",
+        "latin_acronym", "latin_word", "korean_org_name", "korean_term",
+        "mixed_alnum", "ocr_tolerant",
     }
     assert DEFAULT_PROFILES["latin_word"].latin_morph is True
     assert DEFAULT_PROFILES["latin_acronym"].latin_morph is False
+
+
+def test_ocr_folding_is_opt_in_only():
+    """§4.5: only the profile that names itself OCR folds confusables.
+
+    Shipping the profile is not the same as enabling it. A default that
+    folded 0/O for everyone would make every serial number a near-miss of
+    every other one, so the tenant has to assert the source.
+    """
+    assert [k for k, v in DEFAULT_PROFILES.items() if v.ocr_fold] == ["ocr_tolerant"]
+    ocr = DEFAULT_PROFILES["ocr_tolerant"]
+    assert normalize_alias("S-0IL", ocr) == normalize_alias("S-OIL", ocr)
+    plain = DEFAULT_PROFILES["latin_word"]
+    assert normalize_alias("S-0IL", plain) != normalize_alias("S-OIL", plain)
+
+
+def test_hyphen_class_covers_every_dash_a_pdf_produces():
+    """§14.7: tolerating "-" but not U+2010 makes tolerance a lottery."""
+    p = DEFAULT_PROFILES["korean_org_name"]
+    key = normalize_alias("한국전력공사", p)
+    for dash in ("-", "‐", "‑", "–", "—", "−"):
+        assert normalize_alias("한국전력" + dash + "공사", p) == key, dash
 
 
 def test_nfc_composition_with_provenance():

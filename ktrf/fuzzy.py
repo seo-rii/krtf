@@ -39,6 +39,44 @@ KEYBOARD_MODE_COST = 0.30  # english/hangul input-mode conversion
 _CONSONANTS = set("ㄱㄲㄳㄴㄵㄶㄷㄸㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅃㅄㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ")
 _VOWELS = set("ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ")
 
+# §17.2 confusion table (M3). Two jamo can be one edit apart on the keyboard
+# and still be nothing alike to a reader, or be a key apart on the *tongue*
+# and produce the misspelling people actually make. `개발`/`계발` and
+# `까치`/`가치` are the second kind, and until M3 they cost the same 0.70 as
+# swapping ㅏ for ㅠ.
+#
+# The costs below come from Korean phonology and orthography, not from
+# counted corrections — REVIEW_3 §4.6 asks for a table compiled from accepted
+# corrections, and there are none yet (that is M4's approval loop). Naming
+# the classes is what makes that substitution possible later: when counts
+# arrive, only the numbers move, and the snapshot id moves with them.
+CONFUSION_CLASSES: dict[str, dict] = {
+    # 평음·격음·경음 — the same articulation, three phonation types
+    "obstruent_series": {"cost": 0.35,
+                         "groups": ("ㄱㅋㄲ", "ㄷㅌㄸ", "ㅂㅍㅃ",
+                                    "ㅈㅊㅉ", "ㅅㅆ")},
+    # 모음 혼동 — merged in modern Seoul Korean, so the misspelling is
+    # near-universal rather than a slip.
+    #
+    # Only *simple* vowels can appear here. ``to_jamo_seq`` decomposes every
+    # compound (ㅚ -> ㅗㅣ, ㅙ -> ㅗㅐ), so a group naming ㅚ or ㅙ would be a
+    # table entry the distance function can never read — coverage that is not
+    # there. 되/돼 is therefore out of reach of a jamo-pair rule: it is a
+    # two-jamo sequence confusion and would need a rule of that shape.
+    "vowel_merger": {"cost": 0.35, "groups": ("ㅐㅔ", "ㅒㅖ")},
+}
+
+# jamo -> {class: cost} for every pair inside a group
+_CONFUSION_COST: dict[tuple[str, str], float] = {}
+for _name, _spec in CONFUSION_CLASSES.items():
+    for _group in _spec["groups"]:
+        for _a in _group:
+            for _b in _group:
+                if _a != _b:
+                    _prev = _CONFUSION_COST.get((_a, _b))
+                    if _prev is None or _spec["cost"] < _prev:
+                        _CONFUSION_COST[(_a, _b)] = _spec["cost"]
+
 
 def _indel_cost(ch: str) -> float:
     if ch.isspace():
@@ -58,6 +96,9 @@ def _subst_cost(a: str, b: str) -> float:
     costs = [COST_OTHER_SUBST]
     if jamo_keys_adjacent(a, b):
         costs.append(COST_ADJACENT_KEY)
+    conf = _CONFUSION_COST.get((a, b))
+    if conf is not None:
+        costs.append(conf)
     if (a in _CONSONANTS and b in _CONSONANTS) or (a in _VOWELS and b in _VOWELS):
         costs.append(COST_CV_SUBST)
     # REQ-FUZ-001: cheapest (most specific) applicable rule only

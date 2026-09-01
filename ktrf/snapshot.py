@@ -18,7 +18,8 @@ import json
 from dataclasses import dataclass, field
 from threading import Lock
 
-from .abbrev import AbbrevAligner
+from .abbrev import SIGNATURES as ABBREV_SIGNATURES
+from .abbrev import TYPE_TERMINALS, AbbrevAligner
 from .candidates import CandidateBudget
 from .doclocal import DocLocalDetector
 from .errors import KtrfApiError
@@ -27,11 +28,16 @@ from .glossary import (Glossary, GlossaryError, composition_index,
                        glossary_to_dict, has_errors, validate_glossary)
 from .matcher import ExactIndex
 from .segmentation import ResolutionGuard
-from .morphology import (DEFAULT_CHAIN_DEPTH, PARTICLES, PREFIXES,
-                         SUFFIX_CLASSES, TAIL_CLASSES, ParticleFST)
+from .morphology import (CONTEXTUAL_SUFFIX_CLASSES, DEFAULT_CHAIN_DEPTH,
+                         PARTICLES, PREFIXES, SUFFIX_CLASSES, TAIL_CLASSES,
+                         TOKEN_FINAL_PARTICLES, ParticleFST)
 
 COMPATIBILITY_ID = "ktrf-py-v1"
-NORMALIZER_VERSION = "nrm-1"
+# Bumped for M3: `build_channel` gained an OCR confusable fold (T-10). The
+# *rule* gets a version because it lives in code; the *profiles* it reads get
+# hashed below, because a version string is only as reliable as whoever
+# remembers to edit it — the same split as morphology_rules_hash.
+NORMALIZER_VERSION = "nrm-2"
 # The tail *grammar* — how catalog classes combine into an identity
 # verdict — is code, not a catalog, so hashing SUFFIX_CLASSES alone would
 # miss a change to the rule itself (M2 moved the verdict from "head-final
@@ -116,6 +122,36 @@ def _guard_hash(guard: ResolutionGuard) -> str:
     return _hash(dataclasses.asdict(guard))
 
 
+def _normalization_hash() -> str:
+    """The default profiles are data, and M3 changed them.
+
+    Widening the hyphen class means surfaces that used to miss now match, so
+    two snapshots built from the same glossary before and after are not the
+    same artifact. ``normalizer_hash`` covers the rule version; this covers
+    the table the rule reads, including the OCR fold groups.
+    """
+    from .normalization import DEFAULT_PROFILES, OCR_FOLD_GROUPS
+
+    return _hash({
+        "profiles": {k: dataclasses.asdict(v)
+                     for k, v in sorted(DEFAULT_PROFILES.items())},
+        "ocr_fold_groups": sorted(OCR_FOLD_GROUPS),
+    })
+
+
+def _fuzzy_hash() -> str:
+    """The §17.2 confusion table is resolution-affecting config.
+
+    Cheapening 평음/격음 substitution changes which aliases the fuzzy channel
+    reaches, so it changes what the resolver can commit — invariant ⑥ puts it
+    in the snapshot id alongside the morphology catalogs.
+    """
+    from .fuzzy import CONFUSION_CLASSES
+
+    return _hash({k: {"cost": v["cost"], "groups": sorted(v["groups"])}
+                  for k, v in sorted(CONFUSION_CLASSES.items())})
+
+
 def _morphology_hash() -> str:
     # the suffix *classes* are hashed, not just the surfaces: reclassifying
     # 노조 from UNKNOWN to DERIVED_ORG changes what the resolver commits, so
@@ -127,7 +163,11 @@ def _morphology_hash() -> str:
     # reliable as whoever edits the table. Version the *rule* that combines
     # the classes (governing_class), hash the *data* it reads.
     return _hash({"particles": sorted(PARTICLES),
+                  "token_final_particles": sorted(TOKEN_FINAL_PARTICLES),
                   "suffixes": dict(sorted(SUFFIX_CLASSES.items())),
+                  "contextual_suffixes": {k: [list(v[0]), v[1], v[2]]
+                                          for k, v in
+                                          sorted(CONTEXTUAL_SUFFIX_CLASSES.items())},
                   "tail_classes": {k: list(v)
                                    for k, v in sorted(TAIL_CLASSES.items())},
                   "prefixes": sorted(PREFIXES), "depth": DEFAULT_CHAIN_DEPTH,
@@ -188,7 +228,13 @@ def compile_snapshot(
         "glossary_version": glossary.version,
         "compatibility_id": COMPATIBILITY_ID,
         "normalizer_hash": _hash(NORMALIZER_VERSION),
+        "normalization_profiles_hash": _normalization_hash(),
         "morphology_rules_hash": _morphology_hash(),
+        "fuzzy_confusion_hash": _fuzzy_hash(),
+        # invariant 6 names the abbreviation signatures explicitly: widening
+        # a signature changes which entities a token can reach
+        "abbrev_signature_hash": _hash({"signatures": list(ABBREV_SIGNATURES),
+                                        "terminals": list(TYPE_TERMINALS)}),
         # invariant 6: a guard change changes resolution, so it changes
         # snapshot identity too
         "segmentation_guard_hash": _guard_hash(guard),

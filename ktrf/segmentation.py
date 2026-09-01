@@ -115,7 +115,7 @@ def enumerate_tails(right: str, prev_char: str,
         if residual and not all(is_syllable(c) for c in residual):
             continue  # residuals are Hangul chunks; Latin tails handled apart
         if cut == n:
-            r = analyze_residual(residual)
+            r = analyze_residual(residual, prev_char)
             kind = r.kind if residual else ""
             analyses.append(TailAnalysis(
                 residual, kind, r.parts if residual else (), (), True,
@@ -126,7 +126,7 @@ def enumerate_tails(right: str, prev_char: str,
             continue
         prev = residual[-1] if residual else prev_char
         for parse in fst.parse_full(particle_part, prev):
-            r = analyze_residual(residual)
+            r = analyze_residual(residual, prev_char)
             kind = r.kind if residual else ""
             base = _RESIDUAL_BASE.get(kind, 0.3)
             analyses.append(TailAnalysis(

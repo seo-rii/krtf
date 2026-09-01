@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .hangul import decompose_syllable
+from .hangul import decompose_syllable, is_syllable
 
 # batchim constraint classes
 ANY = "ANY"
@@ -53,7 +53,24 @@ PARTICLES: dict[str, str] = {
     # 축약형 — wild-corpus 실측(§3.5 분포 커버리지 신호)으로 추가:
     # 엔(=에는), 에선(=에서는), 껜(=께는)
     "엔": ANY, "에선": ANY, "껜": ANY,
+    # M3 실측: `서`(=에서)는 헤드라인체에서 흔하고 미포함 tail 중 두 번째로
+    # 잦았다(1,970건 중 14: 국정원서, 방통위서, 외교부서). TOKEN_FINAL 제약이
+    # 붙는다 — 아래를 볼 것.
+    "서": ANY,
+    # 합쇼체 계사 (실측 2). `이다` 계열이 이미 있으므로 그 자리에 맞춘다.
+    "입니다": ANY, "입니까": ANY,
 }
+
+# §16.2 조사이되 **한글이 더 이어지면 조사가 아닌** 것.
+#
+# `서`를 그냥 넣으면 `서울본부`가 조사 `서`로 시작하는 것처럼 보이고,
+# `한전서울본부`의 경계 판정이 SOFT에서 PASS로 풀린다. 한 음절 조사는 원래
+# 명사 첫 음절과 겹치지만(`도`시, `과`학) `서`는 겹치는 명사가 유난히 흔해서
+# — 서울·서비스·서류 — 그 완화가 카탈로그 전체로 번진다.
+#
+# 실제 용법은 그 자리에서 어절이 끝난다: `국정원서 발표`. 그래서 뒤에 한글
+# 음절이 더 오면 조사로 읽지 않는다. 14건은 그대로 얻고 `서울`은 잃지 않는다.
+TOKEN_FINAL_PARTICLES: frozenset[str] = frozenset({"서"})
 
 # §16.3 기관·역할 suffix catalog (초기), typed by what the *full* surface denotes.
 #
@@ -62,11 +79,19 @@ PARTICLES: dict[str, str] = {
 # same organisation. Collapsing all three into one SUFFIX class is what lets a
 # consumer read the whole token as the core entity (invariant ②).
 #
-# NAME_PART is the thin class here: every member is one syllable, so the
-# multi-syllable endings real names carry (공사, 공단) fall outside it and a
-# full official name reads as DISTINCT or UNKNOWN. Safe — the guard only ever
-# withholds — but it means SAME is rare in practice (5 records in 4,000 wild
-# sentences). Populating it is catalog work, deferred to M3 with the rest.
+# Membership is measured, not guessed: the M3 entries carry the count they
+# had in a census of 1,970 real post-core tails (eval/run_wild §2 reports the
+# same census as coverage). Entries without a count are closed-set siblings of
+# a counted one — every 행정규범 type beside the four that were observed —
+# and are marked as such so a later reader can tell evidence from taxonomy.
+#
+# Getting a class wrong is not symmetric. NAME_PART and REFERENTIAL say SAME,
+# which *allows* a commit on the whole surface; every other class says
+# DISTINCT, which only withholds. So an ending goes in the SAME group only
+# when the shorter form is genuinely the same organisation's short name
+# (`한국전력`/`한국전력공사`), and anything arguable goes in AFFILIATE —
+# which is why `은행` sits beside `증권`, `카드`, `생명` rather than with
+# `공사`: 신한은행 and 신한카드 are siblings, not the same body.
 NAME_PART = "NAME_PART"      # tail syllables of the org's own name
 ORG_UNIT = "ORG_UNIT"        # an internal unit of the core org
 ROLE = "ROLE"                # the office holder — a person, not the org
@@ -96,9 +121,16 @@ SUFFIX_CLASSES: dict[str, str] = {
     "부": NAME_PART, "처": NAME_PART, "청": NAME_PART, "원": NAME_PART,
     "국": NAME_PART, "실": NAME_PART, "과": NAME_PART, "팀": NAME_PART,
     "위원회": NAME_PART,
+    # 다음절 기관 종결어 (M3). `한국전력` + `공사`는 한국전력공사이지 그 계열사가
+    # 아니다 — 짧은 쪽은 같은 조직의 통칭이다. `공단`은 M2까지 AFFILIATE였는데,
+    # 그 분류라면 `국민연금` + `공단`이 국민연금공단과 다른 조직이 된다.
+    "공사": NAME_PART, "공단": NAME_PART,
     # 내부 조직 — 부분이지 전체가 아니다
     "본부": ORG_UNIT, "지사": ORG_UNIT, "센터": ORG_UNIT,
     "사무국": ORG_UNIT, "연구원": ORG_UNIT, "연구소": ORG_UNIT,
+    "이사회": ORG_UNIT,                                    # 실측 6
+    "사무처": ORG_UNIT, "지회": ORG_UNIT, "분회": ORG_UNIT,
+    "지점": ORG_UNIT, "출장소": ORG_UNIT,
     # 직책 — 사람이다 (wild-corpus 실측으로 추가된 항목)
     "장": ROLE, "장관": ROLE, "차관": ROLE, "청장": ROLE,
     "원장": ROLE, "위원장": ROLE, "총장": ROLE,
@@ -108,13 +140,42 @@ SUFFIX_CLASSES: dict[str, str] = {
     "그룹": AFFILIATE, "증권": AFFILIATE, "카드": AFFILIATE,
     "생명": AFFILIATE, "전자": AFFILIATE, "건설": AFFILIATE,
     "병원": AFFILIATE, "대학": AFFILIATE, "재단": AFFILIATE,
-    "협회": AFFILIATE, "공단": AFFILIATE,
+    "협회": AFFILIATE,
+    "교향악단": AFFILIATE, "서비스": AFFILIATE, "써비스": AFFILIATE,
+    "헬스케어": AFFILIATE, "케미칼": AFFILIATE, "네트웍스": AFFILIATE,
+    "투자": AFFILIATE, "리츠": AFFILIATE, "제약": AFFILIATE,
+    "미디어": AFFILIATE, "몰": AFFILIATE, "기술": AFFILIATE,   # 이상 실측
+    "은행": AFFILIATE, "홀딩스": AFFILIATE, "화학": AFFILIATE,
+    "중공업": AFFILIATE, "물산": AFFILIATE, "해운": AFFILIATE,
+    "캐피탈": AFFILIATE, "자산운용": AFFILIATE, "화재": AFFILIATE,
     # 관련 파생 조직 — VARIANTS_PLAN §2의 `한전노조` 사례
     "노조": DERIVED_ORG, "노동조합": DERIVED_ORG,
     # 지시적 — 여전히 그 기관을 가리킨다
+    #
+    # `내`(內)는 실측 2건이 있었지만 넣지 않았다. REFERENTIAL은 SAME이라
+    # 전체 표면형의 **확정을 허용**하는데, `서울시내`는 서울시가 아니라
+    # 서울 시내다 — `eval/run_wild.py`의 DETECTION_ONLY가 이미 그 충돌을
+    # 이유로 서울시를 재현율 분모에서 빼고 있다. 2건을 얻자고 SAME 쪽으로
+    # 넣을 근거가 못 된다.
     "측": REFERENTIAL,
     # 산물 — 기관이 아니라 기관의 것
     "규정": ARTIFACT, "시스템": ARTIFACT,
+    "법": ARTIFACT, "법안": ARTIFACT, "판결": ARTIFACT,      # 실측 26/8
+    "고시": ARTIFACT, "훈령": ARTIFACT, "조례": ARTIFACT,    # 실측 5/2/2
+    "규칙": ARTIFACT,                                        # 실측 2
+    "시행령": ARTIFACT, "시행규칙": ARTIFACT, "지침": ARTIFACT,
+    "예규": ARTIFACT, "공고": ARTIFACT, "약관": ARTIFACT,
+    "정관": ARTIFACT,
+}
+
+# §16.3 문맥 의존 종결어 (M3). 한 철자에 두 뜻이 있고, **core가 무엇으로
+# 끝나는지**가 그것을 가른다: 도 뒤의 `지사`는 知事(사람)이고 회사 뒤의
+# `지사`는 支社(지점)다. 두 해석 모두 DISTINCT라 commit 안전성은 어느 쪽이든
+# 같다 — 갈리는 것은 relation 라벨뿐이라, 작은 표로 충분하고 파서는 필요 없다.
+# 규칙은 잔여부의 **맨 왼쪽** part에만 적용된다. 그 자리만이 core와 맞닿는다.
+CONTEXTUAL_SUFFIX_CLASSES: dict[str, tuple[tuple[str, ...], str, str]] = {
+    # 종결어 -> (첫 class를 고르는 core 끝음절, 그때의 class, 그 밖의 class)
+    "지사": (("도",), ROLE, ORG_UNIT),
 }
 
 # the untyped view, kept because it is part of this module's public
@@ -191,12 +252,20 @@ class ParticleFST:
         """True if some catalog particle is a prefix of ``s``.
 
         Grammaticality is NOT enforced here: ungrammatical attachment is a
-        soft signal (§16.2), so the boundary stays permissive.
+        soft signal (§16.2), so the boundary stays permissive. The one thing
+        that *is* enforced is :data:`TOKEN_FINAL_PARTICLES` — a particle that
+        only exists at the end of an 어절 is not a boundary when more Hangul
+        follows it.
         """
         for p in self._by_first.get(s[:1], ()):
-            if s.startswith(p):
+            if s.startswith(p) and self._final_ok(p, s[len(p):]):
                 return True
         return False
+
+    @staticmethod
+    def _final_ok(particle: str, rest: str) -> bool:
+        return (particle not in TOKEN_FINAL_PARTICLES
+                or not rest or not is_syllable(rest[0]))
 
     # -- parsing interface ---------------------------------------------------
 
@@ -218,6 +287,8 @@ class ParticleFST:
             rest = s[pos:]
             for p in self._by_first.get(rest[:1], ()):
                 if not rest.startswith(p):
+                    continue
+                if not self._final_ok(p, rest[len(p):]):
                     continue
                 ok = _constraint_ok(self.particles[p], prev)
                 g2 = grammatical and (ok is not False)
@@ -301,12 +372,28 @@ class ResidualAnalysis:
         return TAIL_CLASSES.get(self.governing_class, ("", "UNKNOWN"))[1]
 
 
-def classify_suffix(part: str) -> str:
-    """Semantic class of one catalog suffix (MODIFIER when uncatalogued)."""
+def classify_suffix(part: str, core_end: str = "") -> str:
+    """Semantic class of one catalog suffix (MODIFIER when uncatalogued).
+
+    ``core_end`` is the character the core ends in, and only matters for the
+    handful of endings in :data:`CONTEXTUAL_SUFFIX_CLASSES`. Callers that do
+    not have it get the context-free reading, which is the safer of the two
+    for every entry in that table.
+    """
+    ctx = CONTEXTUAL_SUFFIX_CLASSES.get(part)
+    if ctx is not None and core_end:
+        endings, when, otherwise = ctx
+        return when if core_end.endswith(endings) else otherwise
     return SUFFIX_CLASSES.get(part, MODIFIER)
 
 
-def analyze_residual(chunk: str) -> ResidualAnalysis:
+def _classes(parts, core_end: str) -> tuple[str, ...]:
+    """Class each part, giving only the leftmost one the core as context."""
+    return tuple(classify_suffix(p, core_end if i == 0 else "")
+                 for i, p in enumerate(parts))
+
+
+def analyze_residual(chunk: str, core_end: str = "") -> ResidualAnalysis:
     """Classify a post-core Hangul chunk (residual, §7.6/§16.3).
 
     - decomposes fully into catalog suffixes -> SUFFIX (예: 본부, 담당자)
@@ -316,21 +403,24 @@ def analyze_residual(chunk: str) -> ResidualAnalysis:
 
     Every part carries its :data:`SUFFIX_CLASSES` class so callers read the
     semantics off the analysis instead of re-deriving them from the surface.
+    ``core_end`` is the last character of the core, passed through for the
+    context-dependent endings; omitting it costs a label, never safety.
     """
     if not chunk:
         return ResidualAnalysis("", "SUFFIX", (), ())
     parts = _suffix_decompose(chunk)
     if parts is not None:
         return ResidualAnalysis(chunk, "SUFFIX", tuple(parts),
-                                tuple(classify_suffix(p) for p in parts))
+                                _classes(parts, core_end))
     # longest catalog suffix at the end, with a short leading modifier
     for cut in range(1, len(chunk)):
         tail_parts = _suffix_decompose(chunk[cut:])
         if tail_parts is not None and cut <= 4:
             all_parts = (chunk[:cut], *tail_parts)
+            # the modifier, not the core, is what the suffix now sits behind
             return ResidualAnalysis(
                 chunk, "SUFFIX_WITH_MODIFIER", all_parts,
-                (MODIFIER, *(classify_suffix(p) for p in tail_parts)),
+                (MODIFIER, *_classes(tail_parts, chunk[:cut])),
             )
     return ResidualAnalysis(chunk, "UNKNOWN", (chunk,), (UNKNOWN_CLASS,))
 

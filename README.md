@@ -220,8 +220,15 @@ KTRF is evaluated in layers, each targeting a failure mode the previous
 layer cannot see. All reports are regenerated from code — the files under
 [reports/](reports/) are the source of truth for current numbers:
 
+The unit most of these count is the *occurrence*, which the frequent terms
+decide. Two of them count the *registered term* instead — the question a
+glossary owner actually asks — and one grades labels a person wrote down
+rather than counting what the resolver produced:
+
 | Layer | What it measures | Report |
 |---|---|---|
+| `python -m eval.run_variant_recall` | **variant-family macro recall**: every registered term, deformed one typed formation at a time inside real sentences. Candidate and commit layers reported apart; confusion glossaries (one-중성 siblings, shared abbreviations) as the negative control | [VARIANT_RECALL.md](reports/VARIANT_RECALL.md) |
+| `python -m eval.run_variant_gold` | hand-labelled real sentences: mention precision, wrong-boundary rate, and **the price of silence** — how often a commit that a reader would make is withheld | [VARIANT_GOLD.md](reports/VARIANT_GOLD.md) |
 | `python -m eval.run_eval` | deterministic conformance, golden set, release gate (CI-lower-bound gated) | [EVALUATION.md](reports/EVALUATION.md) |
 | `python -m eval.run_benchmarks` | adversarial anti-overfitting matrix: collisions, boundary traps, out-of-catalog tails, negative corpora, unicode fuzzing — hard gates must be 0 at every scale | [BENCHMARKS.md](reports/BENCHMARKS.md) |
 | `python -m eval.run_wild` | real multi-domain Korean text (news, petitions, court decisions, encyclopedia) with a real-organization glossary: silver recall, real particle-distribution coverage, fake-glossary false positives | [WILD_CORPUS.md](reports/WILD_CORPUS.md) |
@@ -244,6 +251,17 @@ quality metric identical across the change — silver recall, commit count,
 commit precision, the full commit ledger and tail coverage all unmoved —
 with structural false positives at zero under the corrected fake-glossary
 construction.
+
+Two numbers only the variant-family suites can produce. First, **the price
+of silence**: on 160 hand-labelled real sentences, half the spans where a
+careful reader would name the entity are left uncommitted — and the cause is
+not the guard but calibration, since the same core scores 0.943 alone and
+0.645 inside `금감원장`, below a 0.70 threshold. A commit precision of 1.0 is
+free if you never commit; this is what it costs. Second, **a negative
+control that is actually hard**: registering 110 organisations one 중성 away
+from real ones costs 42 of 301 silver commits, where the fake-glossary suite
+reports zero interference by construction. Neither of those is visible from
+any occurrence-counting report.
 
 The shared segmenter is the clearest single result. Read by formation
 rather than in aggregate: inflected and suffixed surfaces were already at

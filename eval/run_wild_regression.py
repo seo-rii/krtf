@@ -55,11 +55,33 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--sentences", type=int, default=20000)
     ap.add_argument("--paths", type=int, default=4)
+    ap.add_argument("--seed", type=int, default=SEED)
+    ap.add_argument("--single", action="store_true",
+                    help="run one arm only and write it to --json. Use this "
+                         "to pair two *checkouts* instead of two policies: "
+                         "the policy arms below share a process, and a code "
+                         "change cannot.")
+    ap.add_argument("--json", type=Path, default=None)
     args = ap.parse_args()
 
     corpus = load_corpus()
-    sample = random.Random(SEED).sample(corpus, min(args.sentences, len(corpus)))
+    sample = random.Random(args.seed).sample(corpus,
+                                             min(args.sentences, len(corpus)))
     print(f"sample: {len(sample)} of {len(corpus)} sentences")
+
+    if args.single:
+        policy = RuntimePolicy(max_segmentation_paths=args.paths)
+        t0 = time.perf_counter()
+        arm = {"sample_sentences": len(sample), "seed": args.seed,
+               "max_segmentation_paths": args.paths,
+               **_summary(run_silver_and_tails(sample, policy=policy),
+                          run_fake_glossary_fp(sample, policy=policy)),
+               "elapsed_seconds": round(time.perf_counter() - t0, 1)}
+        blob = json.dumps(arm, ensure_ascii=False, indent=2)
+        print(blob)
+        if args.json:
+            args.json.write_text(blob, encoding="utf-8")
+        return
 
     arms = {}
     for name, paths in (("control", 1), ("treatment", args.paths)):
