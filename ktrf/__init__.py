@@ -1,6 +1,17 @@
 """KTRF — Korean Terminology Resolver Framework (V1 symbolic core)."""
 
-__all__ = []
+__all__ = ["__version__"]
+
+# Single-sourced from the package metadata so the wheel and the runtime can
+# never disagree about which version this is. An editable/source checkout
+# that was never installed has no metadata; report that honestly rather
+# than inventing a number a bug report would then cite.
+try:  # pragma: no cover - trivial, and untestable in both states at once
+    from importlib.metadata import PackageNotFoundError, version as _version
+
+    __version__ = _version("ktrf")
+except Exception:  # PackageNotFoundError, or no metadata at all
+    __version__ = "0.0.0+unknown"
 
 
 def __getattr__(name):

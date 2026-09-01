@@ -73,6 +73,21 @@ pip install -e .[gpu]           # + CUDA inference (onnxruntime-gpu)
 pip install -e .[training]      # + cross-encoder fine-tuning (torch)
 ```
 
+### Building a wheel
+
+```bash
+./scripts/build_wheel.sh        # Linux / macOS
+.\scripts\build_wheel.ps1       # Windows
+```
+
+Both wrappers hand off to `scripts/build_wheel.py`, which builds
+`ktrf-<version>-py3-none-any.whl` plus an sdist into `dist/`, then installs
+the wheel into a throwaway venv — from outside the repository, so the
+source tree cannot stand in for it — and resolves a Korean sentence with
+it. Model weights are never packaged; see
+[docs/PACKAGING.md](docs/PACKAGING.md) for why, and for how the snapshot
+manifest pins them by content hash instead.
+
 To enable the dense retrieval reference backend, download
 `Xenova/multilingual-e5-small` (ONNX + tokenizer) into
 `models/multilingual-e5-small/` and pass an encoder at compile time:

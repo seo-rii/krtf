@@ -2,17 +2,38 @@
 name = "ktrf"
 version = "0.1.0"
 description = "KTRF - Korean Terminology Resolver Framework (V1 symbolic core reference implementation)"
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
 dependencies = ["PyYAML>=6.0"]
+keywords = ["korean", "nlp", "terminology", "entity-linking", "glossary"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Natural Language :: Korean",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Text Processing :: Linguistic",
+    "Typing :: Typed",
+]
+# NOTE: no `license` field on purpose - the repository carries no LICENSE
+# file, and metadata must not assert terms nobody has chosen. Add both
+# together when the terms are decided.
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
-# M4 neural runtime (bi-encoder/cross-encoder ONNX backends)
+dev = ["pytest>=8.0", "build>=1.2"]
+# M4 neural runtime (bi-encoder/cross-encoder ONNX backends). Weights are
+# NOT installed by this extra - see docs/PACKAGING.md.
 neural = ["numpy", "onnxruntime>=1.24", "tokenizers", "huggingface_hub"]
 # GPU inference (docs/GPU_PLAN.md G1): CUDA-12-era ORT + torch-bundled DLLs
 gpu = ["numpy", "onnxruntime-gpu==1.25.*", "tokenizers", "torch"]
 # Stage B/C training (docs/GPU_PLAN.md G2); never required at runtime
 training = ["torch", "transformers", "onnx"]
+
+[project.scripts]
+ktrf-pi = "ktrf.integrations.pi_stdio:serve"
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -20,6 +41,11 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["ktrf*"]
+
+# py.typed is the only non-.py file in the package; without it the wheel
+# ships pervasive annotations that no consumer's type checker can see.
+[tool.setuptools.package-data]
+ktrf = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

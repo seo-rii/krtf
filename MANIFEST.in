@@ -1,0 +1,31 @@
+# The sdist is the *buildable source*, not the working tree: everything a
+# consumer needs to rebuild the wheel and check it, and nothing that is a
+# measurement input, a downloaded artifact, or a scratch note.
+#
+# This file is a pure allowlist, so it carries no `prune` or `exclude`
+# rules. Nothing is picked up unless a line below names it, which means
+# the things that must never ship are already excluded by silence:
+#
+#   models/       1.5G of weights. Fetched, never shipped - the smallest
+#                 quantized ONNX alone exceeds PyPI's 100MB file limit.
+#                 The snapshot manifest pins them by content hash instead
+#                 (INV-015), so a bundle names the exact weights it was
+#                 compiled against without carrying them.
+#   eval/data/    the wild corpus is a licensed third-party download;
+#                 eval/wild_data.py ships the downloader, not the text.
+#   reports/      measurement output is a result, not a source.
+#   out.bundle    working artifacts in the repository root.
+#   REVIEW*.md
+#
+# Silence is not proof, so it is checked rather than assumed:
+# scripts/build_wheel.py fails the build if either artifact grows past a
+# few MB, and tests/test_packaging.py guards the wheel's contents.
+include README.md MODEL_RECOMMEND.md
+recursive-include ktrf py.typed
+recursive-include scripts *.py *.sh *.ps1
+recursive-include tests *.py
+recursive-include examples *.yaml
+
+# The one exception under eval/: the hand-labelled gold is not
+# downloadable at all. It is a person's reading of 160 sentences.
+include eval/data/variant_gold.jsonl
