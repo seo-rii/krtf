@@ -772,6 +772,68 @@ tail coverage / fake-glossary FP / **후보 밀도(5.459)** 전부 소수점까�
 측정 주기가 필요하다. **이번 변경에 끼워 넣지 않았다**: 같은 전제("문자 체계
 전환 = 경계")가 틀렸다는 것만 여기 적어 둔다.
 
+### 응답 계약 — 모르는 것을 관계로 말하지 않는다 (2026-09-01)
+
+**먼저 잰 것.** M2 검토 미결 #3은 "entity가 확정되지 않은 mention에
+`core_link`/`full_surface`가 붙는다(기록의 56%)"였다. 고치기 전에 **어느
+결정 층에 실리는지**부터 셌다:
+
+| gold 판정 | `KB_MISSING` | `AMBIGUOUS` | `RESOLVED` |
+|---|---:|---:|---:|
+| `refers=NO` | 38 | 14 | **0** |
+| `refers=PARTIAL` | 9 | 14 | **0** |
+| `refers=YES` | 3 | 14 | 16 |
+
+**gold가 "여기엔 그 entity가 없다"고 한 75건 중 확정된 것은 하나도 없다.**
+층 분리는 이미 `link_decision`으로 성립하고 있었고, ContextPack도 KB_MISSING
+mention을 아예 싣지 않는다. AMBIGUOUS는 `ambiguous_mentions`로 따로 나가며
+거기 붙는 `appears_inside`는 `same_entity="false"` — **안전한 방향**의 경고다.
+
+그러므로 이것은 정확성 결함이 아니라 **가독성** 문제였다. 스키마를 다시 짤
+일이 아니었고, 실제로 고칠 것은 따로 있었다.
+
+**진짜 결함: 모르는 조각이 특정 관계를 주장했다.** `classify_suffix`는 카탈로그가
+모르는 조각에 `MODIFIER`를 돌려주고, `TAIL_CLASSES[MODIFIER]`가
+`(DISTINCT, NAMED_VARIANT)`였다. 그래서 `대한`|`민`국, `산림`|`당`국처럼
+**아무것도 모르는** 자리가 "전체는 core의 다른 이름"이라는 **발견**을 내놓았다.
+gold에서 `NAMED_VARIANT`가 붙은 15건은 **전부** mention이 아닌 자리였다.
+
+두 주장이 엉켜 있었다:
+
+- **전체가 core가 아니다** — 모르는 조각도 이것은 확실히 정한다(`서울부`는 `부`가
+  아니다). `DISTINCT`는 유지한다.
+- **어떻게 관계되는가** — 모르는 조각은 이것을 정하지 못한다. 주장을 멈춘다.
+
+`MODIFIER`를 `UNKNOWN_PART`로 바꾸고 `(DISTINCT, "UNKNOWN")`에 매핑했다.
+이름도 바꾼 이유는, `MODIFIER`가 §16.6의 **등록된 수식어**(전/현/구/신)와 같은
+말이라 읽는 사람을 오도했기 때문이다. 실제로는 `SUFFIX_CLASSES` 어느 항목도
+그 class를 갖지 않는다 — 오직 fallback이었다. (이 혼동은 앞선 calibration
+작업에서 `민공원`을 "설명된 tail"로 착각하게 만든 것과 같은 뿌리다.)
+
+**측정** (`5203ac5` 대비, 같은 표본):
+
+| 지표 | 조건 | 이전 | 이후 |
+|---|---|---:|---:|
+| **mention이 아닌 곳에 관계를 단언** | `\|mention` | 0.68 (51/75) | **0.48 (36/75)** |
+| 실문장 10,000의 `NAMED_VARIANT` 주장 | — | 178 | **0** |
+| `relation` 정확도 (gold) | — | 0.8148 | 0.8148 |
+| `identity` 정확도 (gold) | — | 0.8214 | 0.8214 |
+| 확정해야 할 때 확정 / commit precision | `\|commit` | 0.7143 / 0.9524 | 0.7143 / 0.9524 |
+| variant-family macro recall | `\|candidate` | 0.9397 | 0.9397 |
+| **불변조건 ② 위반 / 잘못된 entity 확정** | `\|commit` | **0 / 0** | **0 / 0** |
+
+**아무것도 움직이지 않았다는 것이 요점이다.** 실문장 10,000에서 mention(4,140),
+확정(827), 넓은 표면형(544), `identity` 분포(431/91/22), **commit 보류
+사유(886/31)까지 전부 소수점 없이 동일**하다. guard는 `full_identity`를 읽지
+`relation`을 읽지 않으므로 안전성 경로는 애초에 닿지 않는다 — 사라진 것은
+근거 없는 관계 이름 **178건**뿐이다.
+
+**새 지표를 하나 추가했다.** `overclaimed_relations` — gold가 mention이 아니라고
+한 자리에 응답이 특정 관계를 실은 비율. 이것이 없었다면 이 변경은 모든
+리포트에서 "아무 변화 없음"으로 보였을 것이다. 남은 0.48은 `ROLE_OF`(12) ·
+`IDENTITY`(11) · `AFFILIATE_OF`(9)처럼 **형태론적으로는 맞지만 core 자체가
+잘못 제안된** 경우이고, 그것은 라벨이 아니라 후보 생성의 문제다.
+
 ## 4. SLM 진입 조건 (요약)
 
 SLM은 resolver 대체재가 아니라 **candidate-only proposer**다. 본 학습 전

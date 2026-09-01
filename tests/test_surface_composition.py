@@ -46,12 +46,20 @@ def test_suffix_classes_decide_full_identity(residual, cls, identity, relation):
     assert r.relation == relation
 
 
-def test_a_leading_modifier_always_makes_a_distinct_name():
+def test_a_leading_unknown_chunk_always_makes_a_distinct_name():
+    """An unknown chunk in front establishes *that* the name differs.
+
+    That much a chunk the catalog cannot read really does settle: 서울부 is
+    not 부. What it cannot settle is *how* the two relate, so the relation
+    stays UNKNOWN while the identity is firm — the safe half of the claim
+    survives and the unsupported half does not.
+    """
     # 서울본부 is a unit even though 본부 alone would already say so; the rule
     # has to hold for a NAME_PART head too (서울부 is not 부)
     assert analyze_residual("서울본부").full_identity == "DISTINCT"
+    assert analyze_residual("서울본부").relation == "PART_OF"
     assert analyze_residual("서울부").full_identity == "DISTINCT"
-    assert analyze_residual("서울부").relation == "NAMED_VARIANT"
+    assert analyze_residual("서울부").relation == "UNKNOWN"
 
 
 def test_an_unanalysed_remainder_is_unknown_not_same():
@@ -318,21 +326,26 @@ def test_no_dense_candidate_escapes_the_guard_on_a_distinct_tail(dense_snap):
     ("투자증권", "AFFILIATE", "AFFILIATE_OF"),   # 한국 + 투자증권
     ("아트센터", "ORG_UNIT", "PART_OF"),         # 두산 + 아트센터
     ("서울지사장", "ROLE", "ROLE_OF"),            # a person, not a variant
-    ("서울부", "MODIFIER", "NAMED_VARIANT"),      # nothing to the right objects
+    ("서울부", "UNKNOWN_PART", "UNKNOWN"),        # nothing to the right objects
 ])
-def test_a_modifier_does_not_erase_the_relation(residual, tail_class,
-                                                relation):
-    """A leading modifier says the *name* differs; the suffix after it still
-    says how the two relate, and that is the more specific answer.
+def test_an_unknown_chunk_does_not_erase_the_relation(residual, tail_class,
+                                                      relation):
+    """An unknown leading chunk says the *name* differs; a suffix after it
+    still says how the two relate, and that is the more specific answer.
 
-    Short-circuiting the modifier to NAMED_VARIANT made `한국투자증권` report
+    Short-circuiting the chunk to NAMED_VARIANT made `한국투자증권` report
     `tail_class=AFFILIATE` beside `relation=NAMED_VARIANT` — the same
     self-contradiction the governing class removed from `identity`, left
     behind in `relation`. 8.2% of records on real text.
+
+    The last row is the case where the chunk *is* the answer: nothing to its
+    right objects, so the whole is a different name and nothing says what
+    kind. It used to read NAMED_VARIANT, which is a finding the resolver
+    cannot support — DISTINCT is kept, the relation is not asserted.
     """
     r = analyze_residual(residual)
     assert r.governing_class == tail_class
-    assert r.full_identity == "DISTINCT"     # a modifier is still distinct
+    assert r.full_identity == "DISTINCT"     # an unknown chunk is still distinct
     assert r.relation == relation
 
 

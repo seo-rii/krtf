@@ -99,7 +99,20 @@ AFFILIATE = "AFFILIATE"      # a separate org sharing the core's name
 DERIVED_ORG = "DERIVED_ORG"  # a related but independent organisation
 REFERENTIAL = "REFERENTIAL"  # a proxy reference *to* the core org
 ARTIFACT = "ARTIFACT"        # a document/system belonging to the core org
-MODIFIER = "MODIFIER"        # §16.3 leading modifier inside a residual
+# An uncatalogued chunk sitting to the left of a catalog suffix
+# (`대한`|`민`국, `산림`|`당`국). It is what
+# :func:`classify_suffix` returns for anything the catalog does not know, so
+# it is a statement of ignorance and its class has to say so.
+#
+# It used to be called MODIFIER and map to NAMED_VARIANT, which reads as a
+# finding — "the whole is a differently-named variant of the core". The
+# resolver has no basis for that when the chunk is unknown, and in the
+# hand-labelled gold **every** NAMED_VARIANT it produced sat on a span that
+# was not a mention at all. Two claims were tangled: *that* the whole is not
+# the core, which an unknown chunk really does establish, and *how* the two
+# relate, which it does not. DISTINCT keeps the first; UNKNOWN stops
+# asserting the second.
+UNKNOWN_PART = "UNKNOWN_PART"
 UNKNOWN_CLASS = "UNKNOWN"
 
 # class -> (does the full surface denote the core entity?, core→full relation)
@@ -112,7 +125,7 @@ TAIL_CLASSES: dict[str, tuple[str, str]] = {
     AFFILIATE: (DISTINCT, "AFFILIATE_OF"),
     DERIVED_ORG: (DISTINCT, "DERIVED_FROM"),
     ARTIFACT: (DISTINCT, "ARTIFACT_OF"),
-    MODIFIER: (DISTINCT, "NAMED_VARIANT"),
+    UNKNOWN_PART: (DISTINCT, "UNKNOWN"),
     UNKNOWN_CLASS: (UNRESOLVED, "UNKNOWN"),
 }
 
@@ -345,9 +358,10 @@ class ResidualAnalysis:
 
         A leading modifier always makes the whole a distinct name
         (``서울본부``), even when the head alone would be a name part —
-        :attr:`governing_class` carries that, because MODIFIER is itself a
-        DISTINCT class sitting leftmost, so it is the fallback when no part
-        to its right objects.
+        :attr:`governing_class` carries that, because UNKNOWN_PART is itself
+        a DISTINCT class sitting leftmost, so it is the fallback when no part
+        to its right objects — the whole is a different name, even though
+        nothing says what kind of different.
         """
         if not self.text:
             return SAME
@@ -373,7 +387,7 @@ class ResidualAnalysis:
 
 
 def classify_suffix(part: str, core_end: str = "") -> str:
-    """Semantic class of one catalog suffix (MODIFIER when uncatalogued).
+    """Semantic class of one catalog suffix (UNKNOWN_PART when uncatalogued).
 
     ``core_end`` is the character the core ends in, and only matters for the
     handful of endings in :data:`CONTEXTUAL_SUFFIX_CLASSES`. Callers that do
@@ -384,7 +398,7 @@ def classify_suffix(part: str, core_end: str = "") -> str:
     if ctx is not None and core_end:
         endings, when, otherwise = ctx
         return when if core_end.endswith(endings) else otherwise
-    return SUFFIX_CLASSES.get(part, MODIFIER)
+    return SUFFIX_CLASSES.get(part, UNKNOWN_PART)
 
 
 def _classes(parts, core_end: str) -> tuple[str, ...]:
@@ -420,7 +434,7 @@ def analyze_residual(chunk: str, core_end: str = "") -> ResidualAnalysis:
             # the modifier, not the core, is what the suffix now sits behind
             return ResidualAnalysis(
                 chunk, "SUFFIX_WITH_MODIFIER", all_parts,
-                (MODIFIER, *_classes(tail_parts, chunk[:cut])),
+                (UNKNOWN_PART, *_classes(tail_parts, chunk[:cut])),
             )
     return ResidualAnalysis(chunk, "UNKNOWN", (chunk,), (UNKNOWN_CLASS,))
 

@@ -152,8 +152,8 @@ def parse_matches(
         # double signal: 0.3 × 0.6 leaves it far below any threshold.
         #
         # `SUFFIX` only, not `SUFFIX_WITH_MODIFIER`. The latter reads as
-        # "explained" and is not: its leading chunk gets the MODIFIER class
-        # because `classify_suffix` returns MODIFIER for anything the catalog
+        # "explained" and is not: its leading chunk gets the UNKNOWN_PART
+        # class, which `classify_suffix` returns for anything the catalog
         # does *not* know, so `민공원` decomposes as 민(unknown) + 원(NAME_PART)
         # and looks like a clean tail. Letting it through committed `부산시`
         # inside `부산시민공원` — caught by the hand-labelled gold, which is

@@ -109,6 +109,14 @@ def grade(rows: list[dict], snap) -> list[dict]:
                              if m else None),
             "wider_reported": fs is not None,
         }
+        # A relation named on a span the reader says is not a mention at all
+        # is an overclaim: the response has moved from "this surface is not
+        # that core", which the morphology settles, to "here is how they
+        # relate", which it does not. Both ride the candidate layer, so this
+        # counts legibility rather than safety.
+        rec["overclaimed_relation"] = bool(
+            g["refers"] != "YES" and rec["relation_got"]
+            and rec["relation_got"] != "UNKNOWN")
         # `SAME` says the wider string is still just the entity, so saying
         # SAME_AS_CORE and saying nothing at all are the same answer — the
         # response has not claimed the wider string is something else. That
@@ -177,6 +185,13 @@ def summarise(graded: list[dict]) -> dict:
         "commit_recall_where_warranted": _rate(
             sum(r["commit_correct"] for r in want), len(want)),
         # labels
+        # |mention — of the labels riding on spans that are not mentions,
+        # how many name a relation instead of admitting they cannot
+        "overclaimed_relations": _rate(
+            sum(r["overclaimed_relation"] for r in graded),
+            sum(1 for r in graded
+                if r["emitted"] and r["gold_refers"] != "YES"
+                and r["relation_got"])),
         "identity_accuracy": _rate(sum(r["identity_correct"] for r in ident),
                                    len(ident)),
         "relation_accuracy": _rate(sum(r["relation_correct"] for r in rel),
@@ -240,6 +255,14 @@ def write_markdown(payload: dict, out_path: Path,
         f" {s['unwarranted_commits']}건 |",
         f"| **확정해야 할 때 확정한 비율** | `\\|commit` |"
         f" {_d(s['commit_recall_where_warranted'], c.get('commit_recall_where_warranted'))} |",
+        "| **mention이 아닌 곳에 관계를 단언** | `\|mention` | "
+        + _d(s["overclaimed_relations"], c.get("overclaimed_relations")) + " |",
+        "",
+        "바로 위 줄은 안전성이 아니라 **가독성**이다. gold가 \"여기엔 그 entity가"
+        " 없다\"고 한 자리에 응답이 `ROLE_OF` 같은 **특정 관계**를 실은 비율이며,"
+        " 전부 candidate 층이라 확정 오류가 아니다(아래 층별 표에서 확인). 형태론이"
+        " 정하는 `DISTINCT`까지 지우자는 뜻도 아니다 — 지울 것은 근거 없는"
+        " **관계 이름**뿐이다.",
         "",
         "마지막 줄이 이 리포트가 처음 재는 값이다. 다른 어떤 리포트도"
         " **침묵의 값**을 매기지 않는다 — commit precision 1.0은 아무것도"
