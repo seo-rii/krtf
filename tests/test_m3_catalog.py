@@ -241,11 +241,33 @@ def test_one_candidate_per_entity():
     assert len({c.entity_id for c in got}) == len(got)
 
 
-def test_signature_index_shortlists_by_first_character():
+def test_signature_index_prunes_without_losing_reach():
     al = AbbrevAligner(load_glossary(dict(GLOSSARY)))
     stats = al.signature_stats()
     assert stats["buckets"] > 1
     assert stats["largest_bucket"] < stats["entries"]
+
+
+def test_an_abbreviation_may_drop_the_leading_morpheme():
+    """`고용노동부` -> `노동부`, `보건복지부` -> `복지부`.
+
+    Indexing by the target's *first* syllable looks like a free shortlist
+    and is not: Korean abbreviations routinely start partway into the name.
+    That premise cost 3pp of unseen-abbreviation recall until the neural
+    track measured it, so the reachable condition is "contains the token's
+    first character", which a subsequence match already requires.
+    """
+    g = load_glossary({
+        **GLOSSARY, "entities": [{"entity_id": "E_MOEL",
+                                  "canonical": "고용노동부"}],
+        "alias_families": [{"family_id": "FX", "representative": "고용노동부",
+                            "normalization_profile": "korean_org_name"}],
+        "alias_bindings": [{"alias_id": "AX", "family_id": "FX",
+                            "entity_id": "E_MOEL", "surface": "고용노동부",
+                            "kind": "name"}],
+    })
+    al = AbbrevAligner(g)
+    assert [c.entity_id for c in al.align_token("노동부", (0, 3))] == ["E_MOEL"]
 
 
 # ---------------------------------------------------------------------------

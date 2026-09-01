@@ -8,13 +8,17 @@ in :mod:`ktrf.segmentation` judges it like any other Level B evidence.
 
 Three things changed in M3 (VARIANTS_PLAN):
 
-**The index.** Every token used to be compared against every entity. A
-Korean abbreviation is a subsequence of the name and keeps the name's first
-syllable, so the first character is a free shortlist key: 과기정통부 only
-ever aligns to names starting with 과. That is the whole of
-:data:`SIGNATURES` — a signature is a cheap necessary condition, never the
-decision, so widening one costs recall nothing and narrowing one costs
-speed nothing.
+**The index.** Every token used to be compared against every entity. An
+abbreviation is a *subsequence* of the name, so its first character has to
+appear somewhere in the name — index every character of every target and
+look up the token's first one. That is a cheap necessary condition, which is
+all a signature may ever be.
+
+The obvious sharper key, "starts with the name's first syllable", is wrong
+for Korean and cost 3pp of unseen-abbreviation recall before the neural
+track caught it: `고용노동부` abbreviates to `노동부` and `보건복지부` to
+`복지부`, dropping the leading morpheme entirely. A signature that is merely
+*usually* true is a recall bug wearing a performance costume.
 
 **The alignment targets.** The aligner read ``entity.canonical`` only, so a
 tenant that registered `한국전력` as a second name got no abbreviation
@@ -46,7 +50,8 @@ from .hangul import is_syllable
 # could abbreviate that surface produces the same key. They are filters:
 # a signature miss removes an entity from the shortlist, a signature hit
 # proves nothing on its own and still has to pass subsequence alignment.
-SIGNATURES: tuple[str, ...] = ("first_char", "first_last", "type_terminal")
+SIGNATURES: tuple[str, ...] = ("contains_first", "first_last",
+                              "type_terminal")
 
 # 기관 유형 종결 signature (REVIEW_3 §4.7). An abbreviation almost always
 # keeps the type ending it inherited: 과기정통부 from 과학기술정보통신부,
@@ -138,16 +143,18 @@ class AbbrevAligner:
             if b.kind == "name":
                 add(b.entity_id, b.surface)
 
-        # first-character shortlist. Case-folded so a Latin token and a Latin
-        # name meet in the same bucket.
-        self._by_first: dict[str, list[_Entry]] = {}
+        # character-occurrence shortlist: an entry is reachable from every
+        # character it contains, because a subsequence match needs the
+        # token's first character to appear *somewhere*. Case-folded so a
+        # Latin token and a Latin name meet in the same bucket.
+        self._by_char: dict[str, list[_Entry]] = {}
         for entry in self.entries:
-            self._by_first.setdefault(entry.compact[:1].lower(),
-                                      []).append(entry)
+            for ch in dict.fromkeys(entry.compact.lower()):
+                self._by_char.setdefault(ch, []).append(entry)
 
     def signature_stats(self) -> dict:
         """Index shape, for the snapshot manifest and for eval reports."""
-        buckets = {k: len(v) for k, v in self._by_first.items()}
+        buckets = {k: len(v) for k, v in self._by_char.items()}
         return {"entries": len(self.entries), "buckets": len(buckets),
                 "largest_bucket": max(buckets.values(), default=0),
                 "signatures": list(SIGNATURES)}
@@ -178,7 +185,7 @@ class AbbrevAligner:
         if token.isascii() and len(token) < MIN_LATIN_TOKEN:
             return out
         token_terminal = _type_terminal(token)
-        for entry in self._by_first.get(token[:1].lower(), ()):
+        for entry in self._by_char.get(token[:1].lower(), ()):
             compact = entry.compact
             if len(compact) <= len(token):
                 continue
@@ -186,7 +193,7 @@ class AbbrevAligner:
             if pos is None:
                 continue
             score = len(token) / len(compact)  # coverage
-            sig = "first_char"
+            sig = "contains_first"
             if token[-1] == compact[-1]:
                 score += 0.25
                 sig = "first_last"

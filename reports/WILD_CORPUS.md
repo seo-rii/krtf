@@ -5,10 +5,18 @@
 소스 구성: `klue:ynat:train` 45634, `korean-petitions:default:train` 12000, `korean_law_open_data_precedents:default:train` 12000, `klue:sts:train` 11652, `klue:ynat:validation` 9096, `wikipedia:20231101.ko:train` 8000, `squad_kor_v1:squad_kor_v1:train` 6670, `klue:nli:train` 5036, `kobest_v1:boolq:train` 3000, `klue:nli:validation` 1000, `klue:sts:validation` 517
 
 > [!WARNING]
-> **아래 수치는 commit `8d6f427` 시점 측정이며, 이후 resolver가 두 번
-> 바뀌었다** — M1 공유 segmentation(`decfb3d`)과 M2 typed tail. 전체
-> 재생성은 114,605문장 ×6 pass로 약 6시간이라 아직 돌리지 않았다. 대신
-> 각 변경을 표본으로 쌍 비교했다.
+> **아래 수치는 commit `8d6f427` 시점 측정이며, 이후 resolver가 세 번
+> 바뀌었다** — M1 공유 segmentation(`decfb3d`), M2 typed tail, M3 카탈로그
+> 확장(`975056b`). 전체 재생성은 114,605문장 ×6 pass로 약 6시간이라 아직
+> 돌리지 않았다. 대신 각 변경을 표본으로 쌍 비교했다.
+>
+> **M3 (tail taxonomy / punctuation class / abbreviation signature)** —
+> **재측정 대기.** 첫 측정 뒤 abbreviation signature index의 결함
+> (`고용노동부`→`노동부`처럼 앞 형태소를 버리는 약어가 정렬 대상에서
+> 사라지던 문제)을 고쳤고, 그 수정이 후보 생성을 바꾸므로 첫 수치는 이
+> 커밋의 것이 아니다. 그동안의 M3 실텍스트 근거는
+> [COMPOSITION_AUDIT.md](COMPOSITION_AUDIT.md)(10,000문장)와
+> [VARIANT_GOLD.md](VARIANT_GOLD.md)에 있다.
 >
 > **M2 (typed tail / core_link·full_surface)** — 10,000문장, 두 체크아웃에서
 > `run_wild`의 같은 스위트:
