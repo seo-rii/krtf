@@ -10,6 +10,23 @@
 > 확장(`975056b`). 전체 재생성은 114,605문장 ×6 pass로 약 6시간이라 아직
 > 돌리지 않았다. 대신 각 변경을 표본으로 쌍 비교했다.
 >
+> **침묵의 값 (설명된 tail이 core의 확정을 깎지 않는다)** — 20,000문장,
+> 두 체크아웃에서 `run_wild_regression --single`:
+>
+> | 지표 | M3 | +calibration |
+> |---|---:|---:|
+> | silver mentions / 탐지 / gold-in-set | 1,176 / 1.0 / 1.0 | 1,176 / 1.0 / 1.0 |
+> | **RESOLVED commits** | 1,051 | **1,141** |
+> | **commit precision** | **1.0** | **1.0** |
+> | silver 커버리지 | 0.8937 | **0.9702** |
+> | commit ledger (silver 위 / 밖) | 1,051 / 469 | 1,141 / 482 |
+> | tail coverage | 0.9273 | 0.9273 |
+> | **fake-glossary RESOLVED FP** | **0** | **0** |
+> | candidate mentions /1k chars | 5.459 | 5.459 |
+>
+> **후보를 하나도 더 만들지 않고** silver span 위 확정이 90건 늘었다. 이미
+> 찾아 놓고 threshold 아래에 머물던 것들이며, precision은 1.0 그대로다.
+>
 > **M3 (tail taxonomy / punctuation class / abbreviation signature)** —
 > 20,000문장, 두 체크아웃에서 `run_wild_regression --single`:
 >
