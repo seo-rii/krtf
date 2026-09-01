@@ -157,6 +157,48 @@ def test_snapshot_id_tracks_the_suffix_classification():
     assert _morphology_hash() == before
 
 
+# --- what a tail costs the core -------------------------------------------
+
+def test_an_explained_tail_does_not_cost_the_core_its_commit(snap):
+    """`한국전력공사` is the same mention alone and inside `한국전력공사사장`.
+
+    A SOFT boundary asks whether the Hangul running past the core is still
+    this name; a residual that decomposes wholly into catalog suffixes has
+    answered it, and ``_RESIDUAL_BASE`` already priced how confident that
+    answer is. Charging a further 0.6 on top held the core at 0.645 against
+    a 0.70 threshold while the bare surface sat at 0.943 — the same entity,
+    the same channel, the same span, withheld for a doubt already counted.
+    """
+    bare = _mention(resolve(snap, "한국전력공사가 오늘 발표했다.", mode="commit"),
+                    "한국전력공사")
+    with_tail = _mention(
+        resolve(snap, "한국전력공사사장이 오늘 발표했다.", mode="commit"),
+        "한국전력공사")
+    assert bare["link_decision"] == "RESOLVED"
+    assert with_tail["link_decision"] == "RESOLVED"
+    # and the response still says the wider surface is somebody else
+    assert with_tail["full_surface"]["identity"] == "DISTINCT_FROM_CORE"
+    assert with_tail["core_link"]["relation"] == "ROLE_OF"
+
+
+def test_an_unexplained_tail_still_costs_the_core_its_commit(snap):
+    """The relaxation is for *explained* tails only.
+
+    `민공원` decomposes as 민 + 원 and reads as SUFFIX_WITH_MODIFIER, which
+    looks like an explanation and is not: ``classify_suffix`` hands MODIFIER
+    to anything the catalog does not know, so the leading chunk is unknown
+    by construction. Accepting that kind committed `부산시` inside
+    `부산시민공원`, which is a park.
+    """
+    from ktrf.morphology import ParticleFST
+    from ktrf.segmentation import enumerate_tails
+
+    assert enumerate_tails("민공원", "시", ParticleFST())[0].residual_kind == \
+        "SUFFIX_WITH_MODIFIER"
+    m = _mention(resolve(snap, "한전민공원에서 모였다.", mode="commit"), "한전")
+    assert m is not None and m["link_decision"] != "RESOLVED"
+
+
 # --- the LLM-facing path ---------------------------------------------------
 
 def test_context_pack_marks_a_derivative_occurrence(snap):
@@ -169,16 +211,28 @@ def test_context_pack_marks_a_derivative_occurrence(snap):
                    mode="commit")
     pack = build_context_pack(snap, resp)
 
-    derivative = next(a for a in pack["ambiguous_mentions"]
-                      if a.get("appears_inside"))
+    # Look in both sections. Whether the core commits is a calibration
+    # question and it has already changed once; whether the derivative is
+    # *marked* is the contract, and that holds either way. Pinning the
+    # section would fail this test for a reason it does not care about — and
+    # the committed side matters more, because that is where a consumer is
+    # most likely to highlight or substitute the whole surface.
+    occurrences = [o for group in (pack["resolved_terms"],
+                                   pack["ambiguous_mentions"])
+                   for entry in group
+                   for o in (entry.get("mentions") or [entry])]
+    derivative = next(o for o in occurrences if o.get("appears_inside"))
     assert derivative["appears_inside"]["surface"] == "한전노조"
     assert derivative["appears_inside"]["is_the_same_entity"] is False
     assert derivative["appears_inside"]["refers_to_entity_id"] == \
         "ORG_KEPCO_UNION"
 
-    # and it has to survive rendering, or the model never sees it
+    # and it has to survive rendering, or the model never sees it. Assert on
+    # what the render must *say*, not on which syntax says it — the resolved
+    # section spells this as an `<appears_inside>` element and the ambiguous
+    # one as an attribute, and either is fine for a reader.
     xml = render_context_pack(pack, "xml")
-    assert 'appears_inside="한전노조"' in xml and 'same_entity="false"' in xml
+    assert "한전노조" in xml and 'same_entity="false"' in xml
     assert "한전노조" in render_context_pack(pack, "text")
 
 
@@ -239,9 +293,20 @@ def test_dense_retrieval_does_not_lift_the_guard(dense_snap):
 
 def test_no_dense_candidate_escapes_the_guard_on_a_distinct_tail(dense_snap):
     """Not just the entity another channel proposed: every dense hit on a
-    span whose tail says DISTINCT has to carry the block too."""
-    resp = resolve(dense_snap, "한국전력공사노조가 성명을 냈다.", mode="commit")
-    m = _mention(resp, "한국전력공사")
+    span whose tail says DISTINCT has to carry the block too.
+
+    The core carries a typo on purpose. With a clean `한국전력공사노조` the
+    exact channel now commits the core, and a committed mention reports only
+    the winner — the dense candidates are still blocked, but the response
+    stops showing them, so the assertion below would pass on an empty list.
+    A test that can only see what it guards through a prediction set has to
+    keep the mention unresolved.
+    """
+    resp = resolve(dense_snap, "한국전력공삽노조가 성명을 냈다.", mode="commit",
+                   options={"return_all_mentions": True,
+                            "max_prediction_set": 50})
+    m = _mention(resp, "한국전력공삽")
+    assert m["link_decision"] != "RESOLVED"
     assert m["full_surface"]["identity"] == "DISTINCT_FROM_CORE"
     dense_only = [x for x in m["prediction_set"]["members"]
                   if x.get("generation_channels") == ["dense"]]

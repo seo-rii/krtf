@@ -134,7 +134,33 @@ def parse_matches(
         else:
             full_end = core_end
         best = tail_analyses[0]
-        boundary_factor = 1.0 if m.boundary.status == "PASS" else 0.6
+        # A SOFT boundary is the *question* "Hangul continues past the core —
+        # is that still this name?", and `best` is the answer. The residual
+        # score has already priced how much of the continuation the catalog
+        # explained (§16.5: 0.9 for catalog suffixes, 0.75 behind a modifier,
+        # 0.3 for an unknown chunk), so multiplying an explained tail by 0.6
+        # again charges the same doubt twice.
+        #
+        # That is what kept `금감원장`'s core at 0.645 against a 0.70 commit
+        # threshold while a bare `금감원` sat at 0.943 — same entity, same
+        # channel, same span, and the response already said in its own fields
+        # that the wider surface is a *different* thing (`full_surface.identity
+        # = DISTINCT_FROM_CORE`). Withholding the core on top of that is not
+        # caution, it is answering a question twice.
+        #
+        # An unexplained residual keeps both penalties, which is the intended
+        # double signal: 0.3 × 0.6 leaves it far below any threshold.
+        #
+        # `SUFFIX` only, not `SUFFIX_WITH_MODIFIER`. The latter reads as
+        # "explained" and is not: its leading chunk gets the MODIFIER class
+        # because `classify_suffix` returns MODIFIER for anything the catalog
+        # does *not* know, so `민공원` decomposes as 민(unknown) + 원(NAME_PART)
+        # and looks like a clean tail. Letting it through committed `부산시`
+        # inside `부산시민공원` — caught by the hand-labelled gold, which is
+        # the only suite that knows 부산시민공원 is a park.
+        explained = best.residual_kind == "SUFFIX" and best.grammatical
+        boundary_factor = (1.0 if m.boundary.status == "PASS" or explained
+                           else 0.6)
         score = max(0.05, (1.0 - min(m.transform_cost, 0.5))) * best.score * boundary_factor
 
         raw_surface = stream.raw_text[core_start:core_end]

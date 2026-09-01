@@ -257,14 +257,18 @@ wrong-entity commits unmoved at zero.
 
 Two numbers only the variant-family suites can produce. First, **the price
 of silence**: on 160 hand-labelled real sentences, half the spans where a
-careful reader would name the entity are left uncommitted — and the cause is
-not the guard but calibration, since the same core scores 0.943 alone and
-0.645 inside `금감원장`, below a 0.70 threshold. A commit precision of 1.0 is
-free if you never commit; this is what it costs. Second, **a negative
-control that is actually hard**: registering 110 organisations one 중성 away
-from real ones costs 42 of 301 silver commits, where the fake-glossary suite
-reports zero interference by construction. Neither of those is visible from
-any occurrence-counting report.
+careful reader would name the entity were left uncommitted — not by the
+guard but by scoring, since the same core read 0.943 alone and 0.645 inside
+`금감원장`, under a 0.70 threshold. A SOFT boundary asks whether the Hangul
+past the core is still this name, and a tail that decomposes into catalog
+suffixes has answered it; charging the doubt again was costing the commit.
+Pricing it once takes that rate to 0.71, and on 20,000 real sentences it
+turns 1,051 silver commits into 1,141 with precision still 1.0 and no extra
+candidates. A commit precision of 1.0 is free if you never commit — only
+this suite says what the silence cost. Second, **a negative control that is
+actually hard**: registering 110 organisations one 중성 away from real ones
+costs 42 of 301 silver commits, where the fake-glossary suite reports zero
+interference by construction. Neither is visible from an occurrence count.
 
 The shared segmenter is the clearest single result. Read by formation
 rather than in aggregate: inflected and suffixed surfaces were already at
