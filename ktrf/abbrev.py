@@ -30,13 +30,13 @@ abbreviation was read against.
 between the two branches and matched nothing. Subsequence alignment does not
 care about script; only the two entry points did.
 
-That last one is **not yet reachable end to end**: the tokenizer splits at
-script boundaries, so ``resolve`` hands this module `SK` and `하닉`
-separately and never the whole. The aligner is ready and the pipeline is
-not; joining script runs into one token changes boundary policy for every
-channel, which is a larger change than M3. Until then the capability is
-exercised only by its unit test, and this paragraph is here so nobody reads
-the test as evidence that a mixed-script mention resolves.
+``resolve`` reaches this now: :func:`ktrf.resolver._abbrev_tokens` offers the
+mixed run alongside the script runs, for this channel only. What is still
+*not* handled is the same wrong premise one layer up — a Hangul→Latin
+transition is treated as a clean token boundary by the matcher, so `한전KDN`
+reports a bare `한전` with no wider surface at all. That lives in Level A
+boundary policy with conformance fixtures behind it and needs its own
+measurement cycle.
 """
 
 from __future__ import annotations

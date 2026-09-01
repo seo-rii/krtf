@@ -45,6 +45,7 @@ does not: the contract holds either way, so a catalog change must move the
 from __future__ import annotations
 
 import random
+import re
 from dataclasses import dataclass, field
 
 from ktrf.hangul import (compose_syllable, decompose_syllable, hangul_to_keys,
@@ -113,8 +114,12 @@ def _particle_for(core: str, rng: random.Random) -> str:
     return rng.choice(pool)
 
 
+def _is_hangul_char(c: str) -> bool:
+    return "가" <= c <= "힣"
+
+
 def _all_hangul(s: str) -> bool:
-    return bool(s) and all("가" <= c <= "힣" for c in s)
+    return bool(s) and all(_is_hangul_char(c) for c in s)
 
 
 def _single_jamo_typo(core: str, rng: random.Random) -> str | None:
@@ -206,6 +211,34 @@ def _gen_base_modifier(s, rng):
     return (token, len(token) - len(s), s)
 
 
+def _gen_mixed_abbrev(s, rng):
+    """`SK하이닉스` -> `SK하이`: keep the Latin, shorten the Hangul head.
+
+    Only a surface that already mixes scripts qualifies, so most families
+    have no cell here — Korean organisation names that change script
+    mid-name are a minority, and inventing one for the rest would put a
+    surface in the sample that nobody would ever write.
+
+    The formation exists because the suite was blind to a whole class of
+    fix: the abbreviation aligner learned to read mixed script in M3 and the
+    tokenizer went on splitting at the script boundary, so `resolve` never
+    saw one. Every metric stayed identical across that change in both
+    directions — broken and fixed — which is not a measurement.
+    """
+    if not any(_is_hangul_char(c) for c in s):
+        return None
+    if not any(c.isascii() and c.isalnum() for c in s):
+        return None
+    runs = re.findall(r"[\uac00-\ud7a3]+", s)
+    if not runs:
+        return None
+    run = max(runs, key=len)
+    if len(run) <= 2:
+        return None
+    token = s.replace(run, run[:2], 1)
+    return None if token == s else (token, 0, token)
+
+
 def _gen_derivative_org(s, rng):
     if not _all_hangul(s):
         return None
@@ -259,6 +292,8 @@ FORMATIONS: tuple[Formation, ...] = (
               "영타 오입력: the whole surface as dubeolsik keys (§17.4)"),
     Formation("jamo", "동등 표면형", SAME, "A",
               "compat-jamo run from a broken IME (T-08)"),
+    Formation("mixed_abbrev", "약어", CONDITIONAL, "B",
+              "`SK하이`: a coined abbreviation of a name that changes script"),
     Formation("base_modifier", "base modifier", CONDITIONAL, "A",
               "`전 한전`: §2 says conditional, so this slice has no verdict"),
     Formation("derivative_org", "관련 파생", FORBIDDEN, "A",
@@ -278,6 +313,7 @@ _GENERATORS = {
     "particle": _gen_particle, "particle_chain": _gen_particle_chain,
     "typo": _gen_typo, "typo_particle": _gen_typo_particle,
     "keyboard": _gen_keyboard, "jamo": _gen_jamo,
+    "mixed_abbrev": _gen_mixed_abbrev,
     "base_modifier": _gen_base_modifier,
     "derivative_org": _gen_derivative_org,
     "derivative_role": _gen_derivative_role,

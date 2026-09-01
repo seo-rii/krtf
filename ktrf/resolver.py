@@ -34,6 +34,38 @@ from .snapshot import Snapshot
 from .tailparser import MentionProposal, parse_matches
 
 _TOKEN_RE = re.compile(r"[가-힣ㄱ-ㅣ]+|[A-Za-z][A-Za-z0-9]*|[0-9]+")
+_MIXED_RUN_RE = re.compile(r"[가-힣ㄱ-ㅣA-Za-z0-9]+")
+
+
+def _is_hangul_ch(ch: str) -> bool:
+    return "가" <= ch <= "힣" or "ㄱ" <= ch <= "ㅣ"
+
+
+def _abbrev_tokens(text: str):
+    """Script runs, plus any run that mixes Hangul with ASCII alphanumerics.
+
+    Korean organisation names change script mid-name — `SK하이닉스`,
+    `LG유플러스`, `한전KDN` — so a script change is not a name boundary,
+    and an abbreviation coined from one (`SK하닉`) is neither all-Latin nor
+    all-Hangul. :data:`_TOKEN_RE` stops at every script change, so the aligner
+    only ever received the halves and could not match either.
+
+    The whole run is yielded *in addition to* the halves, and only here. The
+    abbreviation channel reasons by subsequence, which does not care what
+    alphabet a character belongs to. The fuzzy channel's edit costs are
+    defined per script (jamo distance, dubeolsik adjacency) and what a mixed
+    run should cost there is a separate question, so it keeps script runs.
+    """
+    seen: set[tuple[int, int]] = set()
+    for m in _MIXED_RUN_RE.finditer(text):
+        token = m.group()
+        if any(_is_hangul_ch(c) for c in token) and any(
+                c.isascii() and c.isalnum() for c in token):
+            seen.add(m.span())
+            yield m.span(), token
+    for m in _TOKEN_RE.finditer(text):
+        if m.span() not in seen:
+            yield m.span(), m.group()
 
 TRUST_LEVELS = (
     "SERVER_VERIFIED", "AUTH_CLAIM", "APPLICATION_VERIFIED",
@@ -317,8 +349,7 @@ def resolve(
         # (defining occurrences inside doc-local definitions are not scanned)
         covered = [n.core_span for n in nodes.values()]
         covered += [b.definition_span for b in local_bindings]
-        for m in _TOKEN_RE.finditer(text):
-            span, token = m.span(), m.group()
+        for span, token in _abbrev_tokens(text):
             if len(token) < 2 or len(token) > 12:
                 continue
             if any(span[0] < e and s < span[1] for s, e in covered):

@@ -215,11 +215,41 @@ def test_mixed_script_tokens_align():
     assert [c.entity_id for c in got] == ["E_HYNIX"]
 
 
-def test_mixed_script_does_not_reach_the_resolver_yet(snap):
-    """Pins the gap so it is a known limit, not a silent one."""
-    surfaces = {m["surface"]
-                for m in resolve(snap, "어제 SK하닉 발표", mode="commit")["mentions"]}
-    assert "SK하닉" not in surfaces
+def test_a_mixed_script_abbreviation_reaches_the_resolver(snap):
+    """`SK하닉` has to survive tokenisation, not just alignment.
+
+    The token regex stops at every script change, so this arrived at the
+    aligner as `SK` and `하닉` and matched nothing — the capability existed
+    in :mod:`ktrf.abbrev` and was unreachable through ``resolve``. A unit
+    test on the aligner could not tell the difference, which is why this one
+    goes through the public entry point.
+    """
+    m = _mention(snap, "어제 SK하닉 발표", "SK하닉")
+    assert m is not None
+    assert "E_HYNIX" in {x.get("entity_id")
+                         for x in m["prediction_set"]["members"]}
+    # Level B: a coined abbreviation proposes, it does not commit (§2)
+    assert m["link_decision"] != "RESOLVED"
+
+
+def test_script_runs_are_still_offered_on_their_own(snap):
+    """The mixed run is offered *in addition to* the halves, not instead.
+
+    A Hangul alias sitting inside a mixed word would otherwise stop being
+    queried the moment the word gained a Latin character.
+    """
+    from ktrf.resolver import _abbrev_tokens
+
+    got = dict((tok, span) for span, tok in _abbrev_tokens("어제 SK하닉 발표"))
+    assert "SK하닉" in got and "SK" in got and "하닉" in got
+
+
+def test_pure_runs_are_not_duplicated():
+    """A run with no script mixing must be yielded once, not twice."""
+    from ktrf.resolver import _abbrev_tokens
+
+    spans = [span for span, _ in _abbrev_tokens("과기정통부가 발표했다")]
+    assert len(spans) == len(set(spans))
 
 
 def test_two_letter_latin_does_not_align_as_a_subsequence(snap):
