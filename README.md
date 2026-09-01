@@ -247,12 +247,13 @@ at 1.0 in every encoder configuration; on the unseen-abbreviation track
 forms against ~79% for the symbolic path alone, at roughly 8× the
 prediction-set size. The wild report's numbers predate the shared segmenter
 and say so at the top, with a paired 20,000-sentence regression for each
-change since; the one for the M3 catalog expansion is being re-measured after
-a defect that expansion's own evaluation found. On 10,000 real sentences M3
-reads as more reach and better labels: mentions 3,867 to 4,140, commits 771
-to 775, and wider surfaces the resolver cannot name 102 to 91 — with
-invariant-② violations, wrong-entity commits and structural false positives
-all unmoved at zero.
+change since. M3 reads as more reach and better labels rather than higher
+recall: candidate density rises 5.044 to 5.459 per 1k characters and buys
+tail coverage 0.8634 to 0.9273 and four more commits, while silver recall,
+commit precision and structural false positives all stay where they were. On
+10,000 real sentences the same shape shows in the labels — wider surfaces the
+resolver cannot name fall 102 to 91, with invariant-② violations and
+wrong-entity commits unmoved at zero.
 
 Two numbers only the variant-family suites can produce. First, **the price
 of silence**: on 160 hand-labelled real sentences, half the spans where a

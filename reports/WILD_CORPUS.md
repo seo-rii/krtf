@@ -11,12 +11,23 @@
 > 돌리지 않았다. 대신 각 변경을 표본으로 쌍 비교했다.
 >
 > **M3 (tail taxonomy / punctuation class / abbreviation signature)** —
-> **재측정 대기.** 첫 측정 뒤 abbreviation signature index의 결함
-> (`고용노동부`→`노동부`처럼 앞 형태소를 버리는 약어가 정렬 대상에서
-> 사라지던 문제)을 고쳤고, 그 수정이 후보 생성을 바꾸므로 첫 수치는 이
-> 커밋의 것이 아니다. 그동안의 M3 실텍스트 근거는
-> [COMPOSITION_AUDIT.md](COMPOSITION_AUDIT.md)(10,000문장)와
-> [VARIANT_GOLD.md](VARIANT_GOLD.md)에 있다.
+> 20,000문장, 두 체크아웃에서 `run_wild_regression --single`:
+>
+> | 지표 | M2 | M3 |
+> |---|---:|---:|
+> | silver mentions / 탐지 / gold-in-set | 1,176 / 1.0 / 1.0 | 1,176 / 1.0 / 1.0 |
+> | RESOLVED commits | 1,047 | **1,051** |
+> | commit precision | 1.0 | 1.0 |
+> | commit ledger (silver 위 / 밖) | 1,047 / 468 | 1,051 / 469 |
+> | **tail coverage** | 0.8634 | **0.9273** |
+> | **fake-glossary RESOLVED FP** | **0** | **0** |
+> | candidate mentions /1k chars | 5.044 | **5.459** |
+>
+> 카탈로그가 넓어져 후보가 8% 늘었고, 그 대가로 tail coverage가 +6.4%p,
+> 확정이 4건 늘었다. 재현율과 구조적 오탐은 움직이지 않았다. (전체 코퍼스
+> 114,605문장 기준 tail coverage는 `docs/VARIANTS_PLAN.md` M3 절의
+> 0.8538 → 0.9112이며, 표본 크기가 달라 절대값이 다르다. 지연은 두 arm 모두
+> CPU를 나눠 쓴 상태에서 재어 생략했다.)
 >
 > **M2 (typed tail / core_link·full_surface)** — 10,000문장, 두 체크아웃에서
 > `run_wild`의 같은 스위트:
