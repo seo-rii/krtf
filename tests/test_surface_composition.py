@@ -165,6 +165,85 @@ def test_snapshot_id_tracks_the_suffix_classification():
     assert _morphology_hash() == before
 
 
+# --- an attached Latin run is a residual, not a boundary --------------------
+
+def test_an_attached_latin_run_is_reported_as_a_wider_surface(snap):
+    """`한전KDN` is another company whose name starts with a registered one.
+
+    (The fixture uses `한국전력공사ICT` because the demo glossary registers
+    `한전KDN` itself, so the exact channel would match the whole thing and
+    the branch under test would never run.)
+
+    `_is_token_boundary` calls a script change a clean break, so the parser
+    never looked to the right of a Hangul core followed by Latin and no
+    `full_surface` was emitted at all. That is worse than `농협카드`, where
+    the field exists to carry the warning — here a consumer highlighting the
+    committed span had nothing telling it the span was part of a longer name.
+    """
+    m = _mention(resolve(snap, "한국전력공사ICT가 발표했다.", mode="commit"),
+                 "한국전력공사")
+    assert m is not None
+    assert m["full_surface"]["surface"] == "한국전력공사ICT"
+    # the catalog has nothing to say about KDN, and says so
+    assert m["full_surface"]["identity"] == "UNKNOWN"
+    assert m["link_decision"] != "RESOLVED"
+
+
+def test_a_particle_after_a_latin_run_is_not_part_of_the_name(snap):
+    """M2 kept 조사 out of `full_surface`; this path has to honour that too.
+
+    `_right_run` walks to the next space, so the first version of this branch
+    reported `한국전력공사ICT가` — a name ending in a subject marker.
+    """
+    m = _mention(resolve(snap, "한국전력공사ICT가 발표했다.", mode="commit"),
+                 "한국전력공사")
+    assert m["tail"]["residual"] == "ICT"
+    assert m["tail"]["particles"] == ["가"]
+    assert m["full_surface"]["surface"].endswith("ICT")
+
+
+def test_a_run_that_is_another_registered_surface_is_a_boundary(snap):
+    """`한전KDN` and `한전AP` differ by whether the run is a name we know.
+
+    Korean headlines drop the punctuation between two organisations
+    (`산업부KOTRA`, `삼성전자SKT`), and treating the second one as an
+    unexplained residual withheld both commits. The matcher has already found
+    the second surface, so the parser only had to ask.
+
+    `eval/run_wild.py` has excluded exactly these from its tail census since
+    M0 under the same rule — the evaluation knew and the resolver did not.
+    """
+    both = resolve(snap, "한전AP가 보도했다.", mode="commit")["mentions"]
+    assert {m["surface"] for m in both} == {"한전", "AP"}
+    # what the rule governs is the *boundary*: neither surface swallowed the
+    # other as a residual. `AP` carries two senses in this glossary and stays
+    # ambiguous for that reason, which is a different question.
+    assert all("full_surface" not in m for m in both)
+    assert _mention(resolve(snap, "한전AP가 보도했다.", mode="commit"),
+                    "한전")["link_decision"] == "RESOLVED"
+
+
+def test_an_attached_digit_run_is_not_a_name_fragment(snap):
+    """`과학기술정보통신부2024년` is a year that lost its space, not a company.
+
+    The names this branch exists for append *letters* (KDN, ICT, GRS). The
+    first version took any Latin-class run, digits included, and withheld a
+    commit the ministry had earned.
+    """
+    m = _mention(resolve(snap, "과학기술정보통신부2024년 예산", mode="commit"),
+                 "과학기술정보통신부")
+    assert m["link_decision"] == "RESOLVED"
+    assert "full_surface" not in m
+
+
+def test_a_spaced_latin_word_is_still_a_boundary(snap):
+    """`한국전력공사 ICT` is two tokens; only an *attached* run is a residual."""
+    m = _mention(resolve(snap, "한국전력공사 ICT가 발표했다.", mode="commit"),
+                 "한국전력공사")
+    assert m["link_decision"] == "RESOLVED"
+    assert "full_surface" not in m
+
+
 # --- what a tail costs the core -------------------------------------------
 
 def test_an_explained_tail_does_not_cost_the_core_its_commit(snap):

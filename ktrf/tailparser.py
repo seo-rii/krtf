@@ -19,9 +19,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .matcher import RawExactMatch, _right_run, _script
-from .morphology import ParticleFST, match_latin_tail, match_prefix_modifier
+from .morphology import (ParticleFST, analyze_residual, match_latin_tail,
+                         match_prefix_modifier)
 from .normalization import CanonicalStream
-from .segmentation import MAX_TAIL_LEN, TailAnalysis, enumerate_tails
+from .segmentation import (MAX_TAIL_LEN, _RESIDUAL_BASE, TailAnalysis,
+                           enumerate_tails)
 
 __all__ = ["TailAnalysis", "MentionProposal", "analyze_tail", "parse_matches"]
 
@@ -59,6 +61,17 @@ def analyze_tail(right: str, prev_char: str,
     return enumerate_tails(right, prev_char, fst)
 
 
+def _has_latin_letter(run: str) -> bool:
+    """Is this attached run a *name* fragment rather than a number?
+
+    The names this branch exists for append letters — `한전KDN`, `포스코ICT`,
+    `롯데GRS`. A pure-digit run attached to a Korean name is a quantity that
+    lost its space (`과학기술정보통신부2024년`), and treating it as an unexplained
+    residual withheld a commit the ministry had earned. Letters in, digits out.
+    """
+    return any(c.isascii() and c.isalpha() for c in run)
+
+
 def parse_matches(
     stream: CanonicalStream,
     matches: list[RawExactMatch],
@@ -66,6 +79,13 @@ def parse_matches(
 ) -> list[MentionProposal]:
     proposals: list[MentionProposal] = []
     units = stream.units
+    # Where another registered surface begins. A run that starts one is not a
+    # residual at all — it is the next mention with its punctuation dropped,
+    # which Korean headlines do constantly (`산업부KOTRA`, `삼성전자SKT`).
+    # `eval/run_wild.py` has excluded exactly these from its tail census since
+    # M0 under the same rule; the resolver simply never had the fact to hand,
+    # and it does — the matcher already found the second surface.
+    match_starts = {mm.unit_indices[0] for mm in matches}
     for m in matches:
         first, last = m.unit_indices[0], m.unit_indices[-1]
         core_start, core_end = m.core_span
@@ -80,9 +100,12 @@ def parse_matches(
             right = _right_run(units, last)[:MAX_TAIL_LEN]
             right_len_units = len(right)
             tail_analyses = analyze_tail(right, core_last_ch, fst)
-        elif next_ch is not None and _script(next_ch) == "latin" and m.profile.latin_morph:
+        elif next_ch is not None and _script(next_ch) == "latin" and (
+                m.profile.latin_morph
+                or (_has_latin_letter(_right_run(units, last))
+                    and last + 1 not in match_starts)):
             right = _right_run(units, last)
-            latin_tail = match_latin_tail(right)
+            latin_tail = match_latin_tail(right) if m.profile.latin_morph else None
             if latin_tail:
                 right_len_units = len(latin_tail[0])
                 tail_analyses = [
@@ -91,7 +114,45 @@ def parse_matches(
                                  latin_tail_kind=latin_tail[1], score=0.95)
                 ]
             else:
-                tail_analyses = [TailAnalysis("", "", (), (), True, score=1.0)]
+                # An attached Latin/digit run that no morphological rule
+                # explains is a residual, not a boundary. `한전KDN`,
+                # `포스코ICT`, `롯데GRS` are *other companies* whose names begin
+                # with a registered one, and the response used to say nothing
+                # at all about them: `_is_token_boundary` calls a script
+                # change a clean break, so the parser never looked right and
+                # no `full_surface` was emitted. That is worse than the
+                # `농협카드` case, where at least the field exists to carry the
+                # warning.
+                #
+                # The catalog has nothing to say about the run, so it is an
+                # UNKNOWN residual — the same answer an unexplained Hangul
+                # chunk gets, reached the same way.
+                #
+                # The residual stops at the end of the Latin run, and the
+                # Hangul after it is a particle chain like any other:
+                # `한전KDN이` is `한전` + `KDN` + `이`, not a name ending in
+                # `이`. M2 settled that a particle is never part of
+                # `full_surface`, and that has to hold on this path too.
+                run = right[:MAX_TAIL_LEN]
+                cut = 0
+                while cut < len(run) and _script(run[cut]) == "latin":
+                    cut += 1
+                residual, rest = run[:cut], run[cut:]
+                parses = fst.parse_full(rest, residual[-1:]) if rest else []
+                particles = parses[0].particles if parses else ()
+                grammatical = parses[0].grammatical if parses else True
+                right_len_units = len(residual) + sum(
+                    len(x) for x in particles)
+                r = analyze_residual(residual, core_last_ch)
+                tail_analyses = [
+                    TailAnalysis(residual, r.kind, r.parts, particles,
+                                 grammatical,
+                                 score=_RESIDUAL_BASE.get(r.kind, 0.3),
+                                 residual_classes=r.classes,
+                                 governing_class=r.governing_class,
+                                 full_identity=r.full_identity,
+                                 relation=r.relation)
+                ]
         elif next_ch in ("'", "’") and m.profile.latin_morph:
             right = _right_run(units, last)
             latin_tail = match_latin_tail(right)

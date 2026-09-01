@@ -31,12 +31,10 @@ between the two branches and matched nothing. Subsequence alignment does not
 care about script; only the two entry points did.
 
 ``resolve`` reaches this now: :func:`ktrf.resolver._abbrev_tokens` offers the
-mixed run alongside the script runs, for this channel only. What is still
-*not* handled is the same wrong premise one layer up — a Hangul→Latin
-transition is treated as a clean token boundary by the matcher, so `한전KDN`
-reports a bare `한전` with no wider surface at all. That lives in Level A
-boundary policy with conformance fixtures behind it and needs its own
-measurement cycle.
+mixed run alongside the script runs, for this channel only. The same wrong premise one layer up — a
+Hangul→Latin transition read as a clean boundary, so `한전KDN` reported a bare
+`한전` with no wider surface at all — was fixed in the tail parser rather than
+in boundary policy: see :func:`ktrf.tailparser.parse_matches`.
 """
 
 from __future__ import annotations

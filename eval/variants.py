@@ -93,6 +93,12 @@ ORG_UNIT_ENDINGS = ("이사회", "본부", "지사", "사무국", "지회", "분
 ARTIFACT_ENDINGS = ("법", "판결", "고시", "훈령", "조례", "규칙",
                     "지침", "예규", "요강")
 
+# Latin runs Korean conglomerates append to make a *subsidiary's* name:
+# 한전KDN, 포스코ICT, 롯데GRS, 신한DS, LG CNS. None contains `&` or `-`,
+# because `_right_run` stops at punctuation and the case under test is the
+# attached run.
+LATIN_SUFFIXES = ("KDN", "ICT", "GRS", "DS", "NS", "CNS", "IDS")
+
 # §16.6 temporal/naming modifiers, quoted from the plan, not imported: the
 # point is to test the resolver against the spec's list.
 BASE_MODIFIERS = ("전", "현", "구", "신")
@@ -239,6 +245,18 @@ def _gen_mixed_abbrev(s, rng):
     return None if token == s else (token, 0, token)
 
 
+def _gen_latin_suffix(s, rng):
+    """`한국전력공사ICT` — a different company whose name begins with this one.
+
+    The tail parser used to treat a Hangul→Latin transition as a clean
+    boundary and emit no wider surface at all, so this case had no way to
+    fail: nothing was reported to be wrong about.
+    """
+    if not _all_hangul(s):
+        return None
+    return (s + rng.choice(LATIN_SUFFIXES), 0, s)
+
+
 def _gen_derivative_org(s, rng):
     if not _all_hangul(s):
         return None
@@ -302,6 +320,8 @@ FORMATIONS: tuple[Formation, ...] = (
               "`금감원장` is a person (invariant ②)"),
     Formation("derivative_particle", "관련 파생", FORBIDDEN, "A",
               "the derivative inflected — must be blocked through 조사 too"),
+    Formation("latin_suffix", "관련 파생", FORBIDDEN, "A",
+              "`한전KDN`: a subsidiary named by appending Latin to the parent"),
     Formation("org_unit", "관련 파생", FORBIDDEN, "A",
               "`한전본부`: a body inside the org is not the org (실측 이사회)"),
     Formation("artifact", "관련 파생", FORBIDDEN, "A",
@@ -318,6 +338,7 @@ _GENERATORS = {
     "derivative_org": _gen_derivative_org,
     "derivative_role": _gen_derivative_role,
     "derivative_particle": _gen_derivative_particle,
+    "latin_suffix": _gen_latin_suffix,
     "org_unit": _gen_org_unit, "artifact": _gen_artifact,
 }
 
