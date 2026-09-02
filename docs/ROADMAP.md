@@ -21,6 +21,7 @@
 | [reports/LLM_RAG_COMPARE.md](../reports/LLM_RAG_COMPARE.md) | KTRF vs 범용 LLM+RAG (Ollama) | 생성 리포트 |
 | [reports/SEGMENTATION_AB.md](../reports/SEGMENTATION_AB.md) | 공유 segmentation 쌍 표본 A/B (M1) | 생성 리포트 |
 | [reports/COMPOSITION_AUDIT.md](../reports/COMPOSITION_AUDIT.md) | core_link/full_surface 표면형 합성 감사 (M2) | 생성 리포트 |
+| [reports/VARIANT_MINING.md](../reports/VARIANT_MINING.md) | 미등록 변형 채굴 백로그 (M4) | 생성 리포트 |
 
 리포트 재생성: `python -m eval.run_eval` / `run_benchmarks` / `run_wild` / `run_neural_eval`.
 
