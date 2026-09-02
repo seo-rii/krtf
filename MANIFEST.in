@@ -20,7 +20,7 @@
 # Silence is not proof, so it is checked rather than assumed:
 # scripts/build_wheel.py fails the build if either artifact grows past a
 # few MB, and tests/test_packaging.py guards the wheel's contents.
-include README.md MODEL_RECOMMEND.md
+include LICENSE README.md MODEL_RECOMMEND.md
 recursive-include ktrf py.typed
 recursive-include scripts *.py *.sh *.ps1
 recursive-include tests *.py

@@ -135,3 +135,35 @@ def test_the_version_is_single_sourced():
     # in an installed/editable tree it should agree with pyproject
     if ktrf.__version__ != "0.0.0+unknown":
         assert ktrf.__version__ == _pyproject()["project"]["version"]
+
+
+def test_the_license_is_declared_and_the_file_it_names_exists():
+    """Metadata and file, or neither.
+
+    A `license` field naming a file that is not there produces a wheel that
+    claims terms it does not carry, which is worse than the state before —
+    no field and no file, where at least nothing was asserted. The SPDX
+    expression form (PEP 639) is what is checked, because a `License ::`
+    classifier is deprecated and would be read by nothing.
+    """
+    project = _pyproject()["project"]
+    assert project["license"] == "MIT"
+    assert project["license-files"] == ["LICENSE"]
+    for name in project["license-files"]:
+        text = (ROOT / name).read_text(encoding="utf-8")
+        assert "MIT License" in text
+        assert re.search(r"Copyright \(c\) \d{4}", text)
+    # the classifier form must not linger beside the expression: two
+    # declarations can disagree, and only one of them is authoritative
+    assert not [c for c in project["classifiers"] if c.startswith("License ::")]
+
+
+def test_the_build_backend_is_new_enough_for_the_license_form():
+    """PEP 639 needs setuptools 77+; an older one drops the field silently.
+
+    Pinning the floor is what turns "the wheel has no license" from a thing
+    someone notices on PyPI into a build error.
+    """
+    requires = _pyproject()["build-system"]["requires"]
+    floor = next(r for r in requires if r.startswith("setuptools"))
+    assert int(re.search(r">=(\d+)", floor).group(1)) >= 77

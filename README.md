@@ -346,3 +346,11 @@ presenting stale numbers as current — the full wild-corpus run is ~6 hours,
 so a sampled paired regression check stands in between full runs. Where a
 sample cannot decide whether a target is met, the report says
 `INSUFFICIENT_DATA` instead of reporting a pass.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+The corpora and model weights are not covered by it: the repository ships
+the downloaders (`eval/wild_data.py`, `docs/PACKAGING.md`) rather than the
+data, and each source carries its own terms.

@@ -153,10 +153,40 @@ import하지 않는다.** 의도했던 페처가 안 써진 채 의존성만 남
 받고, 받은 디렉터리로 `OnnxE5Encoder`를 열어 `encoder_id`를 찍어 준다.
 그러면 사용자가 **자기 스냅샷에 무엇이 고정됐는지 즉시 본다.**
 
+## 라이선스
+
+MIT다. 파일(`LICENSE`)과 메타데이터를 **같이** 넣었다 — 한쪽만 있으면 휠이
+가지고 있지 않은 조건을 주장하게 된다.
+
+선언은 SPDX 표현식(PEP 639)이다:
+
+```toml
+license = "MIT"
+license-files = ["LICENSE"]
+```
+
+`License :: OSI Approved :: MIT License` 분류자는 쓰지 않았다. 폐기 예정이고,
+표현식과 나란히 두면 **서로 다른 말을 할 수 있는 선언이 둘**이 된다. 대신
+`build-system.requires`를 `setuptools>=77`로 올렸다 — 그보다 낮으면 이 필드를
+**조용히 버리고** 라이선스 없는 휠이 나오므로, 빌드가 실패하는 편이 낫다.
+
+빌드 산출물에서 확인한 것:
+
+```
+Metadata-Version: 2.4
+License-Expression: MIT
+License-File: LICENSE
+wheel: ktrf-0.1.0.dist-info/licenses/LICENSE
+sdist: ktrf-0.1.0/LICENSE
+```
+
+`tests/test_packaging.py`가 필드와 파일이 함께 있는지, 분류자가 다시 끼어들지
+않았는지, setuptools 하한이 이 형식을 감당하는지를 빌드 없이 지킨다.
+
+코퍼스와 모델 가중치는 이 라이선스가 아니다 — 저장소는 다운로더만 배포하고,
+각 소스가 자기 조건을 가진다(`eval/wild_data.py`, `MANIFEST.in`의 주석).
+
 ## 남은 항목
 
-- **LICENSE 파일이 없다.** 그래서 `pyproject.toml`에 `license` 필드를 넣지
-  않았다 — 아무도 고르지 않은 조건을 메타데이터가 주장하면 안 된다. 조건이
-  정해지면 파일과 필드를 **같이** 추가한다. 그 전까지 공개 배포는 불가.
 - 위의 `fetch_encoder`.
 - 저장소 URL이 없어 `[project.urls]`도 비어 있다.

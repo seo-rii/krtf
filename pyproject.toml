@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "KTRF - Korean Terminology Resolver Framework (V1 symbolic core reference implementation)"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = ["PyYAML>=6.0"]
 keywords = ["korean", "nlp", "terminology", "entity-linking", "glossary"]
 classifiers = [
@@ -18,9 +20,11 @@ classifiers = [
     "Topic :: Text Processing :: Linguistic",
     "Typing :: Typed",
 ]
-# NOTE: no `license` field on purpose - the repository carries no LICENSE
-# file, and metadata must not assert terms nobody has chosen. Add both
-# together when the terms are decided.
+# The license is declared as an SPDX expression (PEP 639), not a classifier:
+# `License ::` classifiers are deprecated, and the expression is the field a
+# consumer's tooling actually reads. The build backend is pinned to a
+# setuptools new enough to emit Metadata 2.4 for it, so an old backend fails
+# the build rather than quietly dropping the field.
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "build>=1.2"]
@@ -36,7 +40,7 @@ training = ["torch", "transformers", "onnx"]
 ktrf-pi = "ktrf.integrations.pi_stdio:serve"
 
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]   # PEP 639 `license` / `license-files`
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
