@@ -284,11 +284,19 @@ def _gen_artifact(s, rng):
 
 
 def _gen_derivative_particle(s, rng):
-    """The derivative inflected — the case a bare-token index cannot see."""
+    """The derivative inflected — the case a bare-token index cannot see.
+
+    This formation is also where the response has to say where the *name*
+    stops. Seven of these eleven endings are outside the resolver's catalog
+    on purpose (`대변인`, `고문`, `출입기자단`, …), so the tail is
+    unexplained and the 조사 after it is the only thing marking where the
+    name ended — the reading that absorbs it scores exactly the same. The
+    fourth element is the answer: token minus 조사.
+    """
     if not _all_hangul(s):
         return None
     end = rng.choice(DERIVATIVE_ORG_ENDINGS + DERIVATIVE_ROLE_ENDINGS)
-    return (s + end + _particle_for(end, rng), 0, s)
+    return (s + end + _particle_for(end, rng), 0, s, s + end)
 
 
 FORMATIONS: tuple[Formation, ...] = (
@@ -358,6 +366,12 @@ class VariantCase:
     core: str               # what the resolver's core span should cover
     core_span: tuple[int, int]
     full_span: tuple[int, int]   # token span; wider than core for derivatives
+    # What `full_surface` should report, when the generator knows: the token
+    # minus its 조사. `full_span` answers "which characters did this token
+    # occupy"; this answers "which of them spell a name" — the same split
+    # §16 draws between `full_span` and `surface_span`. Empty when the
+    # formation appends no particle and there is nothing to distinguish.
+    name: str = ""
 
     @property
     def commit_contract(self) -> str:
@@ -432,7 +446,8 @@ def build_cases(corpus, glossary, per_cell: int = 2,
                 out = gen(surface, rng)
                 if out is None:
                     continue
-                token, off, core = out
+                token, off, core = out[:3]
+                name = out[3] if len(out) > 3 else ""
                 # a host already containing the surface would leave two
                 # candidate spans for one gold answer
                 for _ in range(len(hosts)):
@@ -448,6 +463,7 @@ def build_cases(corpus, glossary, per_cell: int = 2,
                     registered=surface, text=text, token=token, core=core,
                     core_span=(start + off, start + off + len(core)),
                     full_span=(start, start + len(token)),
+                    name=name,
                 ))
                 made += 1
     return cases

@@ -123,6 +123,13 @@ def score_case(case, mentions: list[dict]) -> dict:
                      if at_core else None),
         "identity": fs.get("identity") if fs else None,
         "surface_wider": fs is not None,
+        # Where does the response say the *name* ends? Only scored where the
+        # generator knows the answer (a formation that appends a 조사). The
+        # two layers stay apart here too: this is not about whether the core
+        # was found or committed, only about the extent the response asks a
+        # consumer to highlight or substitute.
+        "name_span_exact": (None if not case.name
+                            else bool(fs) and fs.get("surface") == case.name),
     }
 
 
@@ -163,6 +170,12 @@ def _slice(records: list[dict]) -> dict:
                               if r["surface_wider"] and r["identity"]
                               and r["identity"] != "UNKNOWN"),
         "identity_unknown": sum(1 for r in records if r["identity"] == "UNKNOWN"),
+        "name_span_scored": sum(1 for r in records
+                                if r["name_span_exact"] is not None),
+        "name_span_exact": round(
+            _micro([r for r in records if r["name_span_exact"] is not None],
+                   "name_span_exact"), 4)
+        if any(r["name_span_exact"] is not None for r in records) else None,
     }
 
 
@@ -224,6 +237,12 @@ def run_variant_suite(corpus, per_cell: int, seed: int,
             "commit_macro_on_same": round(_macro(same, "commit_gold"), 4)
             if same else None,
             "core_span_wrong_rate": round(_micro(records, "core_span_wrong"), 4),
+            # |mention, and only over the cases whose generator appended a
+            # 조사: does `full_surface` stop where the name stops?
+            "name_span_exact_rate": round(
+                _micro([r for r in records if r["name_span_exact"] is not None],
+                       "name_span_exact"), 4)
+            if any(r["name_span_exact"] is not None for r in records) else None,
             "contract_violations": sum(int(bool(r["violation"])) for r in records),
             "wrong_entity_commits": sum(int(r["commit_wrong"]) for r in records),
         },
@@ -401,6 +420,9 @@ def write_markdown(payload: dict, out_path: Path,
         + _delta(h["commit_macro_on_same"], ch.get("commit_macro_on_same")) + " |",
         "| core span 오분해율 | `\\|mention` | "
         + _delta(h["core_span_wrong_rate"], ch.get("core_span_wrong_rate")) + " |",
+        "| 이름 끝을 맞게 보고 (`name_span_exact`) | `\\|mention` | "
+        + _delta(h["name_span_exact_rate"], ch.get("name_span_exact_rate"))
+        + " |",
         "| 잘못된 entity 확정 | `\\|commit` | "
         + _delta(h["wrong_entity_commits"], ch.get("wrong_entity_commits"), 0) + " |",
         "| **불변조건 ② 위반** | `\\|commit` | "

@@ -29,6 +29,7 @@ from .hangul import is_syllable
 from .morphology import (
     DISTINCT,
     SAME,
+    SPLITTABLE_PARTICLES,
     UNRESOLVED,
     ParticleFST,
     analyze_residual,
@@ -97,6 +98,28 @@ class TailAnalysis:
         return BARE
 
 
+def _ends_the_name(a: TailAnalysis) -> bool:
+    """Does this reading say where the name stops and grammar starts?
+
+    Only used to break score ties, and a tie here is always between the two
+    readings of the same characters: `카카오톡에` is either one unexplained
+    chunk or `카카오톡` plus 에, and `서울시장과` is either 장 + 과(부서) or
+    장 plus the conjunctive 과. Every scoring input is equal, because
+    :data:`_RESIDUAL_BASE` and the grammaticality factor give eight distinct
+    products — a tie therefore means the same ``residual_kind`` and the same
+    grammaticality, and the verdict, relation and commit are already decided.
+    What is left to choose is only *where the reported name ends*.
+
+    The particle reading wins, but only for particles that cannot end a name
+    (:data:`SPLITTABLE_PARTICLES`). Choosing wrong is not symmetric: keeping
+    a 조사 inside the name reports a superstring of a real name, while
+    splitting one that was a name syllable reports `카카오게` — a span that
+    spells nothing and leaves 임 outside the mention.
+    """
+    return bool(a.particles) and all(p in SPLITTABLE_PARTICLES
+                                     for p in a.particles)
+
+
 def enumerate_tails(right: str, prev_char: str,
                     fst: ParticleFST) -> list[TailAnalysis]:
     """Enumerate every [residual][particle-chain] split of ``right``.
@@ -141,7 +164,8 @@ def enumerate_tails(right: str, prev_char: str,
             right, "UNKNOWN", (right,), (), True, score=0.3,
             residual_classes=("UNKNOWN",), governing_class="UNKNOWN",
             full_identity=UNRESOLVED, relation="UNKNOWN"))
-    analyses.sort(key=lambda a: (-a.score, len(a.particles)))
+    analyses.sort(key=lambda a: (-a.score, not _ends_the_name(a),
+                                 len(a.particles)))
     return analyses
 
 

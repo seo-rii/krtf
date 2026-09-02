@@ -446,3 +446,85 @@ def test_snapshot_id_tracks_the_class_verdict_table():
     finally:
         morphology.TAIL_CLASSES[morphology.ROLE] = original
     assert _morphology_hash() == before
+
+
+# --- a 조사 is grammar, not the end of the name -----------------------------
+
+def test_a_particle_is_not_absorbed_into_an_unexplained_name(snap):
+    """`한국전력공사딜에` is `…딜` plus 에, not one six-syllable chunk.
+
+    Both readings score the same — the catalog explains neither `딜에` nor
+    `딜`, so `_RESIDUAL_BASE` gives 0.3 either way — and the tie used to be
+    broken toward *fewer* particles, which put the 조사 inside the name the
+    response reports. §16 settled that a 조사 is grammar; `surface_span`
+    says so in as many words. The tie-break has to agree.
+    """
+    m = _mention(resolve(snap, "한국전력공사딜에 참여했다.", mode="commit"),
+                 "한국전력공사")
+    assert m["full_surface"]["surface"] == "한국전력공사딜"
+    assert m["full_surface"]["identity"] == "UNKNOWN"
+
+
+def test_a_particle_shaped_name_syllable_stays_in_the_name(snap):
+    """`카카오게임` is not `카카오게` + 임, and the resolver cannot know that.
+
+    `임`, `인`, `도`, `로` are catalog particles that are also ordinary
+    name-final syllables (게`임`, 브레`인`, 공항철`도`, 메트`로`). With an
+    unexplained residual there is no evidence either way, and the two errors
+    are not worth the same: keeping 조사 in reports a superstring of a real
+    name, splitting a name syllable reports a span that spells nothing and
+    leaves the syllable outside the mention entirely.
+    """
+    for tail in ("게임", "브레인", "철도"):
+        m = _mention(resolve(snap, f"한국전력공사{tail} 얘기다.", mode="commit"),
+                     "한국전력공사")
+        assert m["full_surface"]["surface"] == "한국전력공사" + tail
+
+
+def test_a_conjunctive_particle_is_not_a_department(snap):
+    """`한전장과` is 장 plus the conjunctive 과, not 장 + 과(부서).
+
+    `과` is the only entry SUFFIX_CLASSES and PARTICLES share, so it is the
+    only ending that can tie a *fully explained* residual against itself.
+    Its 부서 reading is legitimate behind a name the catalog does not hold
+    (`총무과`), and that reading arrives as SUFFIX_WITH_MODIFIER at 0.75 —
+    never a tie. A tie means 과 sits directly behind another catalog ending,
+    where no department is being named.
+    """
+    m = _mention(resolve(snap, "한전장과 산업부가 만났다.", mode="commit"), "한전")
+    assert m["full_surface"]["surface"] == "한전장"
+    # the verdict was never in question — only where the name stopped
+    assert m["full_surface"]["identity"] == "DISTINCT_FROM_CORE"
+    assert m["core_link"]["relation"] == "ROLE_OF"
+
+
+def test_a_score_tie_can_only_be_about_the_span():
+    """Why re-ranking ties is safe: a tie implies the same verdict.
+
+    `_RESIDUAL_BASE` × the grammaticality factor yields eight *distinct*
+    products, so two analyses can only tie when they share `residual_kind`
+    and grammaticality — and identity, relation and the commit guard all
+    read off those. Ranking ties therefore moves the reported name boundary
+    and nothing else. If this table ever grows a collision, that argument
+    silently stops holding, so it is pinned here rather than in a comment.
+    """
+    from ktrf.segmentation import _RESIDUAL_BASE
+
+    products = [round(base * g, 9)
+                for base in _RESIDUAL_BASE.values() for g in (1.0, 0.7)]
+    assert len(set(products)) == len(products)
+
+
+def test_snapshot_id_tracks_which_particles_may_be_split(monkeypatch):
+    """invariant ⑥: this set decides where `full_surface` ends.
+
+    `TOKEN_FINAL_PARTICLES` is hashed for the same reason and this is the
+    same kind of data — response-visible morphology that no version string
+    is watching.
+    """
+    from ktrf.snapshot import _morphology_hash
+
+    before = _morphology_hash()
+    monkeypatch.setattr("ktrf.snapshot.SPLITTABLE_PARTICLES",
+                        frozenset({"은"}))
+    assert _morphology_hash() != before

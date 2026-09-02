@@ -29,8 +29,9 @@ from .glossary import (Glossary, GlossaryError, composition_index,
 from .matcher import ExactIndex
 from .segmentation import ResolutionGuard
 from .morphology import (CONTEXTUAL_SUFFIX_CLASSES, DEFAULT_CHAIN_DEPTH,
-                         PARTICLES, PREFIXES, SUFFIX_CLASSES, TAIL_CLASSES,
-                         TOKEN_FINAL_PARTICLES, ParticleFST)
+                         PARTICLES, PREFIXES, SPLITTABLE_PARTICLES,
+                         SUFFIX_CLASSES, TAIL_CLASSES, TOKEN_FINAL_PARTICLES,
+                         ParticleFST)
 
 COMPATIBILITY_ID = "ktrf-py-v1"
 # Bumped for M3: `build_channel` gained an OCR confusable fold (T-10). The
@@ -164,6 +165,9 @@ def _morphology_hash() -> str:
     # the classes (governing_class), hash the *data* it reads.
     return _hash({"particles": sorted(PARTICLES),
                   "token_final_particles": sorted(TOKEN_FINAL_PARTICLES),
+                  # which 조사 may be split off a tail decides where
+                  # `full_surface` ends, so it is response-visible data
+                  "splittable_particles": sorted(SPLITTABLE_PARTICLES),
                   "suffixes": dict(sorted(SUFFIX_CLASSES.items())),
                   "contextual_suffixes": {k: [list(v[0]), v[1], v[2]]
                                           for k, v in

@@ -31,6 +31,7 @@ import time
 from pathlib import Path
 
 from ktrf.glossary import load_glossary
+from ktrf.morphology import PARTICLES, ParticleFST
 from ktrf.resolver import resolve
 from ktrf.snapshot import compile_snapshot
 
@@ -45,8 +46,33 @@ def audit(corpus: list[dict], limit: int | None = None) -> dict:
     glossary = load_glossary(str(ROOT / "examples" / "realorg_glossary.yaml"))
     snap = compile_snapshot(glossary)
 
+    # The *whole* catalog, on purpose. A count of surfaces ending in a
+    # particle the resolver has agreed to split is 0 by construction and
+    # measures nothing; this asks the question the consumer asks — is there
+    # 조사 inside the name I was told to highlight — and the residue after a
+    # split rule lands is exactly what that rule deliberately left behind.
+    #
+    # 받침 agreement is checked because a plain suffix test says `카카오페이`
+    # and `롯데제과` end in 조사: 이 needs a 받침 before it and 페 has none,
+    # so 이 there is not a 조사 at all and no reading was ever available.
+    # The rule is the FST's own, not the split list's, so the number stays
+    # independent of the thing it is measuring.
+    fst = ParticleFST()
+    particle_endings = sorted(PARTICLES, key=len, reverse=True)
+
+    def _ends_in_particle(name: str) -> str | None:
+        for p in particle_endings:
+            if not name.endswith(p) or len(name) <= len(p):
+                continue
+            prev = name[-len(p) - 1]
+            if any(x.grammatical for x in fst.parse_full(p, prev)):
+                return p
+        return None
+
     mentions = 0
     wider_surface = 0
+    name_ends_in_particle = 0
+    particle_inside_name: collections.Counter = collections.Counter()
     commits = 0
     tail_classes: collections.Counter = collections.Counter()
     identities: collections.Counter = collections.Counter()
@@ -69,6 +95,10 @@ def audit(corpus: list[dict], limit: int | None = None) -> dict:
             if not fs:
                 continue
             wider_surface += 1
+            hit = _ends_in_particle(fs["surface"])
+            if hit:
+                name_ends_in_particle += 1
+                particle_inside_name[hit] += 1
             identities[fs["identity"]] += 1
             tail_classes[fs.get("tail_class") or "NONE"] += 1
             relations[m["core_link"]["relation"]] += 1
@@ -91,6 +121,14 @@ def audit(corpus: list[dict], limit: int | None = None) -> dict:
         "surface_wider_than_core": wider_surface,
         "share_of_mentions": (round(wider_surface / mentions, 4)
                               if mentions else None),
+        # §16: a 조사 is grammar, so a `full_surface` ending in one is
+        # reporting a name that does not exist. Not a contract — some of
+        # these endings are also ordinary name-final syllables and stay on
+        # purpose (`공항철도`, `카카오게임`) — but the number should fall
+        # when the tail parser learns where a name stops.
+        "name_ends_in_particle": name_ends_in_particle,
+        "name_ends_in_particle_by_ending":
+            dict(particle_inside_name.most_common(12)),
         "identity": dict(identities.most_common()),
         "tail_class": dict(tail_classes.most_common()),
         "core_relation": dict(relations.most_common()),
@@ -132,6 +170,9 @@ def write_markdown(treatment: dict, control: dict | None,
             f"| {t['resolved_commits']:,} |",
             f"| core보다 넓은 표면형 | {control['surface_wider_than_core']:,} "
             f"| {t['surface_wider_than_core']:,} |",
+            f"| 이름 안에 조사가 들어간 것 | "
+            f"{control.get('name_ends_in_particle', 0):,} "
+            f"| {t['name_ends_in_particle']:,} |",
             f"| commit 보류된 후보 슬롯 | "
             f"{sum(control['commit_blocked'].values()):,} "
             f"| {sum(t['commit_blocked'].values()):,} |",
@@ -147,6 +188,12 @@ def write_markdown(treatment: dict, control: dict | None,
             f"**({(t['share_of_mentions'] or 0) * 100:.1f}%)이 core보다 넓은"
             " 표면형을 가진다.",
             f"- RESOLVED 확정 {t['resolved_commits']:,}건.",
+            f"- 그중 이름이 조사로 끝나는 것 **{t['name_ends_in_particle']:,}건**"
+            " — §16이 조사를 이름 밖으로 두기로 했으므로, 존재하지 않는 이름을"
+            " 가리키는 span이다. 남는 것은 이름의 끝음절이기도 한 조사들이다: "
+            + (", ".join(f"`{k}` {n}" for k, n
+                         in t["name_ends_in_particle_by_ending"].items())
+               or "없음"),
             "",
         ]
 
