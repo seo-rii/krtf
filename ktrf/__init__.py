@@ -34,6 +34,9 @@ def __getattr__(name):
     if name == "CorrectionStore":
         from .corrections import CorrectionStore
         return CorrectionStore
+    if name in ("VariantMiner", "MiningReport", "SuffixGap", "NameGap"):
+        from . import mining as m
+        return getattr(m, name)
     if name in ("TunedCalibrator", "fit_calibrator", "empirical_coverage"):
         from . import calibration as m
         return getattr(m, name)
