@@ -23,6 +23,7 @@
 | [reports/COMPOSITION_AUDIT.md](../reports/COMPOSITION_AUDIT.md) | core_link/full_surface 표면형 합성 감사 (M2) | 생성 리포트 |
 | [reports/VARIANT_MINING.md](../reports/VARIANT_MINING.md) | 미등록 변형 채굴 백로그 (M4) | 생성 리포트 |
 | [reports/DOCLOCAL_AUDIT.md](../reports/DOCLOCAL_AUDIT.md) | 문서 내 정의 감사 — 별칭·미등록 이름 (M6) | 생성 리포트 |
+| [reports/LATENCY_SLO.md](../reports/LATENCY_SLO.md) | 지연·메모리·동시성 측정, degradation onset | 생성 리포트 |
 
 리포트 재생성: `python -m eval.run_eval` / `run_benchmarks` / `run_wild` / `run_neural_eval`.
 
@@ -172,6 +173,38 @@ AMBIGUOUS로 바꾸는 동안 `snapshot_id`는 그대로였고,
 - `SnapshotRegistry.activate()`가 그것을 부른다 — loader가 정적으로 강제하는
   등식(§47.3)을, 모든 요청이 읽게 될 객체에 대해 묻는 자리다
 
+**추가 반영 (2026-09-03) — 멈추는 지점을 재고, 스레드를 실제로 돌렸다:**
+
+`reports/LATENCY_SLO.md`(측정)와 `tests/test_concurrency_and_swap.py`(정확성).
+게이트는 일부러 **상대적**이다 — 절대 SLO는 §53 기준 하드웨어를 지목해야 하고
+그것이 없는 상태에서 CI 머신 임계값은 계약의 얼굴을 한 동전 던지기다.
+
+- **동기 API가 받는 크기와 온전히 처리하는 크기가 54배 차이 난다.**
+  `sync_max_input_bytes`는 65,536바이트(한글 약 21,845자)인데, 응답이 항상
+  `degraded`로 돌아오기 시작하는 지점은 **400자**다. entity 200·1,000·3,000
+  전부 같은 400자이므로 이것은 **사전 규모가 아니라 문서의 성질**이다.
+  300자 0/3 → 350자 2/3 → 400자 3/3.
+- **그 위의 지연이 평탄한 것은 빨라서가 아니라 멈춰서다.** 큰 문서의 p95를
+  인용하는 것은 잘린 답의 지연을 인용하는 것이다.
+- **`degraded`는 응답당 불리언 하나**이고 mention은 자기 몫의 표시를 갖지
+  않는다. 후보 pool 하나가 잘리면 문서 전체가 의심 대상이 되고, 소비자는 어느
+  답을 믿지 말아야 하는지 알 수 없다 — context-pack 백로그 3의 자리다.
+- **활성화 비용을 표에 넣었다.** `activate()`의 `verify_integrity()`는 사전
+  규모에 비례한다(entity 3,000에서 p50 약 136ms). 락 바깥이라 진행 중인 읽기를
+  막지는 않지만, 무결성 게이트의 대가는 놀라움이 아니라 수치여야 한다.
+- **정확성은 테스트가 고정한다**: 교차 읽기 중 hot swap이 섞인 답을 내지
+  않는다, 거부된 활성화가 이전 snapshot을 유지한다(INV-014 — 지금까지 계약
+  문서에만 있었다), rollback은 반대 방향의 같은 연산이다, tenant는 서로를
+  보지 않는다.
+
+측정을 만들며 세 번 틀렸고 셋 다 리포트에 적었다: **반복으로 채운 문서는
+캐시를 잰다**(텍스트 7배에 시간 1.8배가 나왔다), **한 번씩만 잰 순차/병렬 두
+팔은 경합이 아니라 드리프트를 잰다**(순차 팔이 자기 p50의 두 배를 보고했다),
+그리고 **비교 게이트를 주기 전에 노이즈 바닥을 먼저 재야 한다** — 같은
+commit·같은 머신의 두 실행이 p50에서 최대 26% 어긋났으므로, 셀마다 반복을
+번갈아 두 블록으로 나눠 잰 드리프트를 함께 싣고 `--compare` 표가 그보다 작은
+차이를 `드리프트 이하`로 판정한다.
+
 **남은 백로그 (우선순위순):**
 
 0. `WILD_CORPUS.md` 전체 재생성 (114,605문장 ×6 pass ≈ 6시간). 현재는
@@ -180,8 +213,9 @@ AMBIGUOUS로 바꾸는 동안 `snapshot_id`는 그대로였고,
 1. ✅ snapshot 불변화 — `RuntimePolicy`/`CandidateBudget` frozen, `Snapshot.seal()`, `verify_integrity()`, 활성화 게이트 (아래)
 2. human-gold 평가셋: 문서 단위 exhaustive annotation, 2인 주석 + adjudication,
    slice당 n≥200 — silver 근사와 분리 보고
-3. latency/memory hard gate (p95/p99, 문서 크기·entity 규모별 SLO), 동시성·
-   hot-swap·rollback 부하 테스트
+3. ◐ latency/memory — **측정과 동시성 정확성 테스트 완료**(아래). 남은 것:
+   §53 기준 하드웨어 확정과 그 위의 절대 SLO, 그리고 `degraded`를 mention
+   단위로 국소화하는 `resolution_quality` 블록
 4. ◐ 평가 데이터/모델 버전 고정 — **corpus SHA-256과 dirty 작업 트리는
    반영 완료**(아래). 남은 것: HF dataset revision 고정(`SOURCES`에 revision
    인자), 모델 digest를 리포트 manifest에 기록, cluster-aware CI
