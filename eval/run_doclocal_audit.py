@@ -41,7 +41,7 @@ from ktrf.glossary import load_glossary
 from ktrf.snapshot import compile_snapshot
 
 from .metrics import provenance_line
-from .wild_data import load_corpus
+from .wild_data import corpus_fingerprint, load_corpus
 
 ROOT = Path(__file__).resolve().parent.parent
 SEED = 20260831
@@ -80,6 +80,7 @@ def audit(rows: list) -> dict:
              for (s, c), n in terms.most_common()]
     return {
         "sentences": len(rows),
+        "corpus": corpus_fingerprint(),
         "elapsed_seconds": round(time.perf_counter() - t0, 1),
         "patterns_matched": matched,
         "patterns_by_kind": dict(by_pattern),
@@ -194,6 +195,14 @@ def write_markdown(t: dict, control: dict | None, out_path: Path) -> None:
         lines.append(f"| `{g['surface']}` | {g['canonical']} |"
                      f" {g['occurrences']} | {g['documents']} |")
 
+    if c and (c.get("corpus") or {}).get("sha256") != \
+            (t.get("corpus") or {}).get("sha256"):
+        lines += [
+            "",
+            "> **두 팔이 서로 다른 코퍼스를 읽었다.** 아래 비교는 변경의"
+            " 효과가 아니라 데이터 차이를 포함한다 — 같은 캐시로 다시"
+            " 재야 한다.",
+        ]
     if c:
         lines += [
             "",

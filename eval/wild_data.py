@@ -19,6 +19,7 @@ own license, so the repo ships the downloader, not the text).
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import time
@@ -159,16 +160,43 @@ def download(force: bool = False, verbose: bool = True) -> Path:
     return CACHE
 
 
+# What the last :func:`load_corpus` in this process actually read. A report
+# has to be able to name its *data*, not only its code: two runs at the same
+# commit against different caches produce different numbers and identical
+# provenance lines, which is the stale-report failure one level down. Recording
+# it here rather than asking each harness to declare it means the stamp says
+# what was read instead of what someone remembered to pass along.
+_LOADED: dict | None = None
+
+
+def corpus_fingerprint() -> dict | None:
+    """Identity of the corpus loaded in this process, or None if none was."""
+    return dict(_LOADED) if _LOADED else None
+
+
 def load_corpus() -> list[dict]:
     """Load cached sentences, downloading on first use."""
+    global _LOADED
     path = download(verbose=True)
+    digest = hashlib.sha256()
+    meta: dict = {}
     out = []
     with open(path, encoding="utf-8") as f:
         for i, line in enumerate(f):
+            digest.update(line.encode("utf-8"))
             d = json.loads(line)
             if i == 0 and "meta" in d:
+                meta = d["meta"]
                 continue
             out.append(d)
+    _LOADED = {
+        "sha256": digest.hexdigest()[:16],
+        "sentences": len(out),
+        # the recorded count and the row count disagreeing means a truncated
+        # or hand-edited cache, which is worth seeing in the footer
+        "declared_sentences": meta.get("sentences"),
+        "sources": len(meta.get("by_source") or {}),
+    }
     return out
 
 

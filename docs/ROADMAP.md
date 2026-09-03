@@ -133,6 +133,24 @@ M1 작업 중 드러난 세 가지는 resolver가 아니라 **평가 쪽 결함*
   매칭된다 — 제품 오타가 아닌 **구성 오류가 FP로 집계**되던 것.
   → 정규화 공간에서 검사하도록 수정(`eval/synthetic.py::absent_bindings_only`)
 
+**추가 반영 (2026-09-03) — 리포트가 자기 데이터를 말한다:**
+
+리포트 footer는 측정 commit을 박지만 두 가지를 말하지 않았고, 둘 다 이 저장소가
+이미 겪은 실패의 한 단계 아래다.
+
+- **작업 트리가 더러워도 commit을 박았다.** 코드를 커밋하기 전에 리포트를
+  재생성하면 *부모* commit이 찍히고 문서는 권위 있게 보인다 — 그 수치는 어떤
+  commit에도 없는 코드의 것이다. `git_commit()`이 추적 파일 변경 시 `-dirty`를
+  붙이고 footer가 경고를 싣는다. 추적되지 않는 스크래치는 세지 않는다.
+- **데이터 신원이 어디에도 없었다.** 같은 commit에서 서로 다른 코퍼스 캐시로
+  돌린 두 실행은 수치가 다르고 provenance는 같다. `load_corpus()`가 읽으면서
+  SHA-256을 계산하고, footer는 **선언이 아니라 질의로** 그것을 싣는다 — 합성
+  입력만 쓰는 하네스는 코퍼스 줄이 없고, 실제로 읽은 하네스는 빠뜨릴 수 없다.
+  캐시가 선언한 문장 수와 실제 행 수가 어긋나면 그것도 footer에 뜬다.
+- **쌍 측정이 서로 다른 코퍼스를 읽어도 조용했다.** 대조군 arm은 보통 별도
+  worktree의 캐시 복사본을 읽는다. 이제 각 arm의 payload가 지문을 싣고,
+  `--compare` 렌더러가 지문이 다르면 비교표 위에 경고를 단다.
+
 **남은 백로그 (우선순위순):**
 
 0. `WILD_CORPUS.md` 전체 재생성 (114,605문장 ×6 pass ≈ 6시간). 현재는
@@ -143,8 +161,10 @@ M1 작업 중 드러난 세 가지는 resolver가 아니라 **평가 쪽 결함*
    slice당 n≥200 — silver 근사와 분리 보고
 3. latency/memory hard gate (p95/p99, 문서 크기·entity 규모별 SLO), 동시성·
    hot-swap·rollback 부하 테스트
-4. 평가 데이터/모델 버전 고정 (dataset revision·corpus SHA-256·모델 digest를
-   리포트 manifest에 기록), cluster-aware CI (문서/entity 단위 bootstrap)
+4. ◐ 평가 데이터/모델 버전 고정 — **corpus SHA-256과 dirty 작업 트리는
+   반영 완료**(아래). 남은 것: HF dataset revision 고정(`SOURCES`에 revision
+   인자), 모델 digest를 리포트 manifest에 기록, cluster-aware CI
+   (문서/entity 단위 bootstrap)
 5. 원격 배포 시 manifest 서명, 1-byte tamper sweep의 hard-gate 편입
 
 ## LLM Grounding — Terminology Context Pack (`ktrf/context.py`)

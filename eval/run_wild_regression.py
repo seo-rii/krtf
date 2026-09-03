@@ -26,7 +26,7 @@ from pathlib import Path
 from ktrf.snapshot import RuntimePolicy
 
 from .run_wild import run_fake_glossary_fp, run_silver_and_tails
-from .wild_data import load_corpus
+from .wild_data import corpus_fingerprint, load_corpus
 
 ROOT = Path(__file__).resolve().parent.parent
 SEED = 20260830
@@ -73,6 +73,11 @@ def main():
         policy = RuntimePolicy(max_segmentation_paths=args.paths)
         t0 = time.perf_counter()
         arm = {"sample_sentences": len(sample), "seed": args.seed,
+               # the two arms of a paired run are separate processes, often in
+               # separate worktrees with their own copy of the cache. Without
+               # this a comparison across different corpora looks identical to
+               # a comparison across the same one.
+               "corpus": corpus_fingerprint(),
                "max_segmentation_paths": args.paths,
                **_summary(run_silver_and_tails(sample, policy=policy),
                           run_fake_glossary_fp(sample, policy=policy)),
@@ -96,7 +101,8 @@ def main():
     out = ROOT / "eval" / "out"
     out.mkdir(parents=True, exist_ok=True)
     (out / "wild_regression.json").write_text(
-        json.dumps({"sample_sentences": len(sample), "seed": SEED, **arms},
+        json.dumps({"sample_sentences": len(sample), "seed": SEED,
+                    "corpus": corpus_fingerprint(), **arms},
                    ensure_ascii=False, indent=2), encoding="utf-8")
 
     print("\nkey                       control -> treatment")

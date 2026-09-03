@@ -96,29 +96,67 @@ class EvalReport:
 
 
 def git_commit(repo_root=None) -> str | None:
-    """Short HEAD SHA, or None outside a repo.
+    """Short HEAD SHA, ``-dirty`` if tracked files differ, None outside a repo.
 
     Every generated report stamps this. Without it a report and the code that
     produced it drift silently: a resolver change makes the committed numbers
     unreproducible, and nothing in the file says so.
+
+    The suffix matters as much as the SHA. A report regenerated before its code
+    was committed stamps the *parent* commit and looks authoritative — the
+    numbers describe code that no commit contains. Only tracked files count;
+    untracked scratch beside the repo is not part of what ran.
     """
     import subprocess
 
-    try:
-        out = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
-                             cwd=str(repo_root) if repo_root else None,
-                             capture_output=True, text=True, timeout=10)
-    except (OSError, subprocess.SubprocessError):
+    def _git(*args) -> str | None:
+        try:
+            out = subprocess.run(["git", *args],
+                                 cwd=str(repo_root) if repo_root else None,
+                                 capture_output=True, text=True, timeout=10)
+        except (OSError, subprocess.SubprocessError):
+            return None
+        return out.stdout if out.returncode == 0 else None
+
+    head = _git("rev-parse", "--short", "HEAD")
+    if not head or not head.strip():
         return None
-    return out.stdout.strip() or None
+    status = _git("status", "--porcelain", "--untracked-files=no")
+    dirty = "-dirty" if status and status.strip() else ""
+    return head.strip() + dirty
+
+
+def data_provenance() -> str:
+    """Identity of the wild corpus, when this process actually loaded one.
+
+    Asked rather than declared: a harness that never read the corpus stamps
+    nothing, and one that did cannot forget to. Harnesses whose inputs are
+    synthetic have no data line, which is the honest result for them.
+    """
+    try:
+        from .wild_data import corpus_fingerprint
+    except Exception:  # eval/ importable without its data module
+        return ""
+    fp = corpus_fingerprint()
+    if not fp:
+        return ""
+    line = (f" · 코퍼스 `{fp['sha256']}` ({fp['sentences']:,}문장,"
+            f" {fp['sources']}개 출처)")
+    declared = fp.get("declared_sentences")
+    if declared is not None and declared != fp["sentences"]:
+        line += f" **캐시가 선언한 {declared:,}문장과 불일치**"
+    return line
 
 
 def provenance_line(repo_root=None, extra: str = "") -> str:
-    """Markdown footer naming the code and date a report was measured at."""
+    """Markdown footer naming the code and data a report was measured at."""
     import time
 
     commit = git_commit(repo_root) or "unknown"
     stamp = time.strftime("%Y-%m-%d")
     tail = f" · {extra}" if extra else ""
-    return (f"*측정 시점: commit `{commit}`, {stamp}{tail}. "
+    warn = (" **작업 트리가 커밋과 다르다 — 이 수치는 어떤 커밋에도 없는"
+            " 코드의 것이다.**" if commit.endswith("-dirty") else "")
+    return (f"*측정 시점: commit `{commit}`, {stamp}{tail}"
+            f"{data_provenance()}.{warn} "
             "리포트와 코드가 어긋나면 코드가 맞다 — 재생성해서 확인할 것.*")

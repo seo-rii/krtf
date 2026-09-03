@@ -96,3 +96,95 @@ def test_coverage_verdict_is_three_valued():
             assert lo < v["target"] <= hi
         # pooled over trials, not a single draw that seed noise can swing
         assert v["trials"] >= 4 and v["n_holdout_pooled"] > 1000
+
+
+# ---------------------------------------------------------------------------
+# provenance: a report has to name its code *and* its data
+# ---------------------------------------------------------------------------
+
+
+def _init_repo(path):
+    import subprocess
+
+    def git(*a):
+        subprocess.run(["git", *a], cwd=str(path), capture_output=True,
+                       check=True)
+    git("init", "-q")
+    git("config", "user.email", "t@example.com")
+    git("config", "user.name", "t")
+    (path / "a.txt").write_text("one", encoding="utf-8")
+    git("add", "a.txt")
+    git("commit", "-qm", "first")
+    return git
+
+
+def test_a_dirty_tree_is_named_in_the_stamp(tmp_path):
+    """A report regenerated before its code was committed stamps the parent
+    commit and looks authoritative. The suffix is what says otherwise."""
+    from eval.metrics import git_commit
+
+    git = _init_repo(tmp_path)
+    clean = git_commit(tmp_path)
+    assert clean and not clean.endswith("-dirty")
+
+    (tmp_path / "a.txt").write_text("two", encoding="utf-8")
+    assert git_commit(tmp_path) == clean + "-dirty"
+
+    git("add", "a.txt")
+    assert git_commit(tmp_path) == clean + "-dirty"  # staged is still not HEAD
+
+
+def test_untracked_scratch_does_not_make_a_tree_dirty(tmp_path):
+    """Review notes and scratch files beside the repo are not what ran."""
+    from eval.metrics import git_commit
+
+    _init_repo(tmp_path)
+    clean = git_commit(tmp_path)
+    (tmp_path / "NOTES.md").write_text("scratch", encoding="utf-8")
+    assert git_commit(tmp_path) == clean
+
+
+def test_the_footer_warns_when_the_numbers_match_no_commit(tmp_path):
+    from eval.metrics import provenance_line
+
+    _init_repo(tmp_path)
+    assert "작업 트리가 커밋과 다르다" not in provenance_line(tmp_path)
+    (tmp_path / "a.txt").write_text("two", encoding="utf-8")
+    assert "작업 트리가 커밋과 다르다" in provenance_line(tmp_path)
+
+
+def test_the_data_line_is_asked_for_not_declared(monkeypatch):
+    """A harness with synthetic inputs stamps no corpus; one that read the
+    corpus cannot forget to. The stamp says what was read."""
+    from eval import metrics, wild_data
+
+    monkeypatch.setattr(wild_data, "_LOADED", None)
+    assert metrics.data_provenance() == ""
+
+    monkeypatch.setattr(wild_data, "_LOADED", {
+        "sha256": "abc123", "sentences": 1000,
+        "declared_sentences": 1000, "sources": 3})
+    line = metrics.data_provenance()
+    assert "abc123" in line and "1,000" in line and "3개 출처" in line
+    assert "불일치" not in line
+
+
+def test_a_truncated_cache_is_visible_in_the_footer(monkeypatch):
+    """Row count against the count the cache declares — a hand-edited or
+    half-written cache otherwise reads as a smaller corpus on purpose."""
+    from eval import metrics, wild_data
+
+    monkeypatch.setattr(wild_data, "_LOADED", {
+        "sha256": "abc123", "sentences": 900,
+        "declared_sentences": 1000, "sources": 3})
+    assert "불일치" in metrics.data_provenance()
+
+
+def test_corpus_fingerprint_is_a_copy(monkeypatch):
+    from eval import wild_data
+
+    monkeypatch.setattr(wild_data, "_LOADED", {"sha256": "x", "sentences": 1,
+                                               "sources": 1})
+    fp = wild_data.corpus_fingerprint()
+    fp["sha256"] = "tampered"
+    assert wild_data.corpus_fingerprint()["sha256"] == "x"
