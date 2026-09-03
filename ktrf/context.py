@@ -714,6 +714,14 @@ def validate_llm_grounding(llm_output: dict, context_pack: dict) -> dict:
         m["surface"]: c["entity_id"]
         for c in context_pack["resolved_terms"] for m in c["mentions"]}
     known = resolved_ids | {e for s in amb_by_surface.values() for e in s}
+    # every surface the pack actually offered. A selection outside this set
+    # is a mention the pack never contained: the entity id checks below only
+    # constrain a surface they already know about, so a fabricated surface
+    # carrying a real entity id passed with no violation at all.
+    known_surfaces = set(resolved_by_surface) | set(amb_by_surface)
+    known_surfaces |= {u["surface"] for u in
+                       context_pack.get("unknown_mentions", [])
+                       if u.get("surface")}
 
     violations = []
     for sel in llm_output.get("selections", []):
@@ -721,6 +729,10 @@ def validate_llm_grounding(llm_output: dict, context_pack: dict) -> dict:
         surface = sel.get("surface", "")
         if eid not in known:
             violations.append({"kind": "unknown_entity_id",
+                               "entity_id": eid, "surface": surface})
+            continue
+        if surface not in known_surfaces:
+            violations.append({"kind": "unknown_surface",
                                "entity_id": eid, "surface": surface})
             continue
         if surface in amb_by_surface and eid not in amb_by_surface[surface]:

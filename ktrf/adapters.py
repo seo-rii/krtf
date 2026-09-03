@@ -30,14 +30,32 @@ class AdapterResidencyManager:
         self._gpu: OrderedDict[str, object] = OrderedDict()
         self._refcounts: dict[str, int] = {}
         self._pinned: set[str] = set()
+        # resident copies superseded by a re-registration while in use
+        self._stale: set[str] = set()
         self._lock = RLock()
         self.stats = {"promotions": 0, "demotions": 0,
                       "demotion_skipped_refcount": 0}
 
     def register(self, tenant_id: str, adapter) -> None:
-        """Adapters enter at the CPU tier (§32.3 기본 CPU 상주)."""
+        """Adapters enter at the CPU tier (§32.3 기본 CPU 상주).
+
+        Re-registering replaces the tenant's adapter, so any copy already
+        resident on the GPU is a superseded version and must not be served
+        again. Without this a tenant who updated their adapter kept being
+        answered by the previous one for as long as it stayed resident —
+        silently, and indefinitely under a steady request rate, since every
+        use refreshed its LRU position.
+        """
         with self._lock:
             self._cpu[tenant_id] = adapter
+            if tenant_id in self._gpu:
+                if self._refcounts.get(tenant_id, 0) > 0:
+                    # in flight: swapping now would demote an adapter out
+                    # from under a live request, so mark it for replacement
+                    self._stale.add(tenant_id)
+                else:
+                    self._to_cpu(self._gpu.pop(tenant_id))
+                    self._stale.discard(tenant_id)
 
     def unregister(self, tenant_id: str) -> None:
         with self._lock:
@@ -46,6 +64,7 @@ class AdapterResidencyManager:
                     f"adapter {tenant_id!r} is in use and cannot be removed")
             self._cpu.pop(tenant_id, None)
             self._gpu.pop(tenant_id, None)
+            self._stale.discard(tenant_id)
 
     def pin(self, tenant_id: str) -> None:
         with self._lock:
@@ -77,12 +96,20 @@ class AdapterResidencyManager:
 
     def _promote(self, tenant_id: str):
         with self._lock:
-            if tenant_id in self._gpu:
+            if tenant_id in self._gpu and tenant_id not in self._stale:
                 self._gpu.move_to_end(tenant_id)
             else:
                 if tenant_id not in self._cpu:
                     raise KeyError(f"no adapter registered for {tenant_id!r}")
-                self._evict_for_slot()
+                if tenant_id in self._gpu:
+                    # superseded copy: it already holds the slot, so take it
+                    # back rather than evicting someone else for a new one
+                    old = self._gpu.pop(tenant_id)
+                    if self._refcounts.get(tenant_id, 0) == 0:
+                        self._to_cpu(old)
+                    self._stale.discard(tenant_id)
+                else:
+                    self._evict_for_slot()
                 self._gpu[tenant_id] = self._to_gpu(self._cpu[tenant_id])
                 self.stats["promotions"] += 1
                 if self.metrics is not None:
