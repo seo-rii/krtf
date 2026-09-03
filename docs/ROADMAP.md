@@ -22,6 +22,7 @@
 | [reports/SEGMENTATION_AB.md](../reports/SEGMENTATION_AB.md) | 공유 segmentation 쌍 표본 A/B (M1) | 생성 리포트 |
 | [reports/COMPOSITION_AUDIT.md](../reports/COMPOSITION_AUDIT.md) | core_link/full_surface 표면형 합성 감사 (M2) | 생성 리포트 |
 | [reports/VARIANT_MINING.md](../reports/VARIANT_MINING.md) | 미등록 변형 채굴 백로그 (M4) | 생성 리포트 |
+| [reports/DOCLOCAL_AUDIT.md](../reports/DOCLOCAL_AUDIT.md) | 문서 내 정의 감사 — 별칭·미등록 이름 (M6) | 생성 리포트 |
 
 리포트 재생성: `python -m eval.run_eval` / `run_benchmarks` / `run_wild` / `run_neural_eval`.
 
@@ -263,6 +264,32 @@ XML/text 렌더러까지 이어져 LLM이 실제로 보는 경로에서도 파�
 채굴기가 지어낼 수 없다. 등록은 `COMPOSES_TO`까지 함께 하므로 불변조건 ③이
 그 표면형에 이름을 주고, 다음 채굴에서 백로그가 **줄어드는 것**이 루프가
 닫혔다는 증거다. 수치는 [VARIANT_MINING.md](../reports/VARIANT_MINING.md).
+
+**M6 (문서 내 정의 → 새 entity 제안)** — ◐ 제안 경로 완료. 시작 전에 §18
+문서 내 정의 경로를 실텍스트에서 재봤고, **측정이 먼저 찾은 것은 결함**이었다.
+114,605문장에서 정의 패턴 2,346건이 일치하는 동안 별칭은 6건 나왔다.
+`extract()`가 **긴 이름이 이미 등록돼 있어야** 별칭을 만드는데, 문서가
+`X(Y)`를 쓰는 이유는 정확히 독자가 가지고 있지 않은 이름을 소개하기 위해서다.
+조건이 목적과 반대로 걸려 있어 이 모듈은 아무것도 더해주지 않는 경우에만
+발동할 수 있었다. REQ-LOC-001/002를 고정한 테스트 두 개는 **둘 다 "덮어쓰지
+않는다"**만 검사했고, 그것은 아무 일도 하지 않는 모듈이 완벽히 통과하는
+성질이다.
+
+그 6건을 하나씩 읽은 것이 두 번째 결함을 찾았다 — **3건이 틀렸고** 틀린 쪽은
+reversed 갈래(`Y(X)`)에 몰려 있었다. 그 갈래의 유일한 증거는 괄호 안이 더
+길다는 것뿐이었고, 세 번 발동해 세 번 틀렸다: `노선영(강원도청)`은 선수(소속팀),
+`현대캐피탈(현대자동차그룹)`은 자회사(모기업)다. 각각이 이름 아닌 표면형을
+entity에 묶고 `+0.20` 점수 보정까지 얹었다. 이제 한글 약칭은 `AbbrevAligner`와
+같은 부분수열 정렬을 보여야 하고(오탐 3건 전부 제거, `한전(한국전력공사)`은 통과),
+라틴 두문자만 관습을 증거로 인정한다 — `KIST`는 로마자화에서 만들어진 것이고
+이 라이브러리는 그것을 계산할 수 없다.
+
+버려지던 정의는 `extract_new_terms()`가 `NewTermDefinition`으로 보고해
+`ktrf.registry.proposals`로 보낸다. 등록된 entity가 없으면 묶을 곳도 없으므로
+resolver는 관여하지 않고, 그래서 기존 수치는 움직이지 않는다. M4와 다른 점은
+**canonical을 문서가 직접 준다**는 것이다 — 그것이 정의를 정의이게 하는
+성질이다. 다만 문서는 그것이 무엇인지는 말하지 않으므로 `short_definition`은
+사람 몫으로 남는다. 수치는 [DOCLOCAL_AUDIT.md](../reports/DOCLOCAL_AUDIT.md).
 
 ## Pi Extension 통합 (PLAN_PI.md, 6단계)
 

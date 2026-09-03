@@ -70,11 +70,18 @@ implemented:
             tests/test_segmentation.py::test_guard_blocks_a_core_too_short_to_carry_identity]
 
   # --- doc-local ---
+  # Both requirements were pinned only by "does not overwrite" tests, which a
+  # module that does nothing satisfies perfectly — and over the wild corpus it
+  # very nearly did nothing. The positive cases are part of the contract now.
   - req: REQ-LOC-001
     tests: [tests/test_fuzzy_doclocal_abbrev.py::test_doclocal_no_global_overwrite,
-            tests/test_resolver_api.py::test_doclocal_boost_without_overwrite]
+            tests/test_resolver_api.py::test_doclocal_boost_without_overwrite,
+            tests/test_doclocal_definitions.py::test_the_detector_writes_to_no_glossary,
+            tests/test_doclocal_definitions.py::test_korean_apposition_is_not_a_definition]
   - req: REQ-LOC-002
-    tests: [tests/test_fuzzy_doclocal_abbrev.py::test_doclocal_no_global_overwrite]
+    tests: [tests/test_fuzzy_doclocal_abbrev.py::test_doclocal_no_global_overwrite,
+            tests/test_doclocal_definitions.py::test_a_registered_long_form_stays_an_alias_not_a_proposal,
+            tests/test_doclocal_definitions.py::test_a_latin_acronym_may_define_by_convention]
   # --- candidates ---
   - req: REQ-CAND-001
     tests: [tests/test_resolver_api.py::test_exact_pool_budget_exempt,

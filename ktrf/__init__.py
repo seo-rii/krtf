@@ -37,6 +37,9 @@ def __getattr__(name):
     if name in ("VariantMiner", "MiningReport", "SuffixGap", "NameGap"):
         from . import mining as m
         return getattr(m, name)
+    if name in ("NewTermDefinition", "align_definition"):
+        from . import doclocal as m
+        return getattr(m, name)
     if name in ("TunedCalibrator", "fit_calibrator", "empirical_coverage"):
         from . import calibration as m
         return getattr(m, name)
