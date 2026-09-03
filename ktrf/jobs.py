@@ -60,19 +60,42 @@ def _shift_span(span: dict, omap: OffsetMap, cp_shift: int) -> dict:
     return omap.span_dict(cp["start"] + cp_shift, cp["end"] + cp_shift)
 
 
+_SPAN_KEYS = frozenset({"byte", "codepoint", "utf16"})
+
+
+def _is_span(value) -> bool:
+    """A span is the three-encoding record :meth:`OffsetMap.span_dict` makes."""
+    return (isinstance(value, dict) and _SPAN_KEYS <= set(value)
+            and isinstance(value.get("codepoint"), dict)
+            and "start" in value["codepoint"] and "end" in value["codepoint"])
+
+
 def _globalize_mention(m: dict, omap: OffsetMap, cp_shift: int) -> dict:
-    out = dict(m)
-    for key in ("span", "full_span"):
-        if key in out:
-            out[key] = _shift_span(out[key], omap, cp_shift)
-    if "prefix" in out and out["prefix"].get("span"):
-        p = dict(out["prefix"])
-        p["span"] = _shift_span(p["span"], omap, cp_shift)
-        out["prefix"] = p
-    if "matched_segments" in out:
+    """Move every span in a chunk-local mention into document coordinates.
+
+    This used to name the fields it shifted — `span`, `full_span`,
+    `prefix.span`, `matched_segments` — and so it silently stopped covering
+    the response when M2 added `core_link.span` and `full_surface.span`. A
+    mention then carried a correct top-level span beside nested spans still
+    measured from the start of its chunk, pointing at unrelated text.
+    Recognising a span by its shape means a new one is covered the day it is
+    added rather than the day someone remembers this function.
+    """
+    def walk(value):
+        if _is_span(value):
+            return _shift_span(value, omap, cp_shift)
+        if isinstance(value, dict):
+            return {k: walk(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [walk(v) for v in value]
+        return value
+
+    out = {k: walk(v) for k, v in m.items()}
+    # plain {start, end} pairs are not span records and keep their own handling
+    if "matched_segments" in m:
         out["matched_segments"] = [
             {"start": seg["start"] + cp_shift, "end": seg["end"] + cp_shift}
-            for seg in out["matched_segments"]
+            for seg in m["matched_segments"]
         ]
     return out
 
@@ -87,11 +110,45 @@ class ResolveJob:
     context: dict
     chunks: list[tuple[int, int]]
     status: str = "QUEUED"  # QUEUED|RUNNING|SUCCEEDED|FAILED|CANCELLED
-    chunks_done: int = 0
-    mentions: list[dict] = field(default_factory=list)
+    # PENDING -> CLAIMED -> DONE, one per chunk. A shared `chunks_done`
+    # counter cannot express "someone else is already on chunk 3", which is
+    # how two workers both took chunk 0 and the job still reported success.
+    chunk_state: list[str] = field(default_factory=list)
+    chunk_results: list[list | None] = field(default_factory=list)
     degraded: bool = False
     error: dict | None = None
-    _seen_spans: set = field(default_factory=set)
+
+    def __post_init__(self):
+        if not self.chunk_state:
+            self.chunk_state = ["PENDING"] * len(self.chunks)
+        if not self.chunk_results:
+            self.chunk_results = [None] * len(self.chunks)
+
+    @property
+    def chunks_done(self) -> int:
+        return sum(1 for st in self.chunk_state if st == "DONE")
+
+    @property
+    def mentions(self) -> list[dict]:
+        """Committed chunks in document order, deduplicated across overlaps.
+
+        Assembled on read rather than appended during processing: mention ids
+        then depend on the document, not on which worker happened to finish
+        first.
+        """
+        seen: set[tuple[int, int]] = set()
+        out: list[dict] = []
+        for chunk in self.chunk_results:
+            for m in chunk or ():
+                key = (m["span"]["codepoint"]["start"],
+                       m["span"]["codepoint"]["end"])
+                if key in seen:
+                    continue          # §20.3 duplicate merge across overlap
+                seen.add(key)
+                m = dict(m)
+                m["mention_id"] = f"m{len(out) + 1}"
+                out.append(m)
+        return out
 
 
 class ResolveJobManager:
@@ -155,43 +212,63 @@ class ResolveJobManager:
         job = self._get(job_id)
         if job.status in ("SUCCEEDED", "FAILED", "CANCELLED"):
             return self.status(job_id)
-        job.status = "RUNNING"
+        with self._lock:
+            if job.status == "QUEUED":
+                job.status = "RUNNING"
         omap = OffsetMap(job.text)
         opts = dict(job.options)
         opts["return_all_mentions"] = job.options.get("return_all_mentions",
                                                       False)
         budget = max_chunks if max_chunks is not None else len(job.chunks)
         try:
-            while job.chunks_done < len(job.chunks) and budget > 0:
+            while budget > 0:
                 if job.status == "CANCELLED":
                     return self.status(job_id)
-                start, end = job.chunks[job.chunks_done]
+                # claim one chunk: the read and the mark are one step, so two
+                # workers cannot both decide that chunk i is next
+                with self._lock:
+                    idx = next((i for i, st in enumerate(job.chunk_state)
+                                if st == "PENDING"), None)
+                    if idx is None:
+                        break          # nothing left to claim
+                    job.chunk_state[idx] = "CLAIMED"
+                start, end = job.chunks[idx]
                 # §28.3 overlap window recovers boundary-straddling mentions
                 ext_end = min(len(job.text), end + self.overlap_chars)
                 chunk_text = job.text[start:ext_end]
-                resp = resolve(job.snapshot, chunk_text, mode=job.mode,
-                               context=job.context, options=opts)
-                job.degraded |= resp["degraded"]
+                try:
+                    resp = resolve(job.snapshot, chunk_text, mode=job.mode,
+                                   context=job.context, options=opts)
+                except BaseException:
+                    with self._lock:
+                        if job.chunk_state[idx] == "CLAIMED":
+                            job.chunk_state[idx] = "PENDING"
+                    raise
+                found = []
                 for m in resp["mentions"]:
                     cp = m["span"]["codepoint"]
                     if cp["start"] + start >= end:
                         continue  # belongs to the next chunk's window
-                    g = _globalize_mention(m, omap, start)
-                    key = (g["span"]["codepoint"]["start"],
-                           g["span"]["codepoint"]["end"])
-                    if key in job._seen_spans:
-                        continue  # §20.3 duplicate merge across overlap
-                    job._seen_spans.add(key)
-                    g["mention_id"] = f"m{len(job.mentions) + 1}"
-                    job.mentions.append(g)
-                job.chunks_done += 1
+                    found.append(_globalize_mention(m, omap, start))
+                # commit exactly once: a chunk no longer CLAIMED was taken
+                # over (cancelled, or reset by a failure) and its result is
+                # not ours to record
+                with self._lock:
+                    if job.chunk_state[idx] != "CLAIMED":
+                        continue
+                    job.degraded |= resp["degraded"]
+                    job.chunk_results[idx] = found
+                    job.chunk_state[idx] = "DONE"
                 budget -= 1
         except KtrfApiError as e:
-            job.status = "FAILED"
-            job.error = e.to_dict()["error"]
+            with self._lock:
+                job.status = "FAILED"
+                job.error = e.to_dict()["error"]
             return self.status(job_id)
-        if job.chunks_done >= len(job.chunks):
-            job.status = "SUCCEEDED"
+        with self._lock:
+            if (job.status == "RUNNING"
+                    and all(st == "DONE" for st in job.chunk_state)):
+                job.status = "SUCCEEDED"
         return self.status(job_id)
 
     def status(self, job_id: str) -> dict:
