@@ -87,6 +87,11 @@ class TunedCalibrator:
     group_counts: dict[str, int]
     n_min: int
     version: str = "cal-1"
+    # False when the fit had to reuse rows across the Platt/conformal
+    # split. The sets are then not disjoint, so `set_confidence` is a
+    # nominal level and not a finite-sample guarantee — a consumer has
+    # to be able to tell the two apart.
+    split_disjoint: bool = True
 
     @property
     def set_confidence(self) -> float:
@@ -120,6 +125,7 @@ class TunedCalibrator:
             "global_quantile": self.global_quantile,
             "fallback_quantile": self.fallback_quantile,
             "group_counts": self.group_counts, "n_min": self.n_min,
+            "split_disjoint": self.split_disjoint,
         }
 
     @classmethod
@@ -131,6 +137,7 @@ class TunedCalibrator:
             fallback_quantile=d.get("fallback_quantile", d["global_quantile"]),
             group_counts=dict(d["group_counts"]), n_min=d["n_min"],
             version=d.get("version", "cal-1"),
+            split_disjoint=d.get("split_disjoint", True),
         )
 
 
@@ -147,7 +154,15 @@ def fit_calibrator(examples: list[TrainingExample], alpha: float = 0.05,
     guarantee. Examples are therefore split deterministically in half:
     even-indexed examples fit Platt scaling, odd-indexed positives form the
     conformal calibration set. (Callers who can group by document/entity
-    should pre-order examples so correlated rows land on one side.)
+    should pre-order examples so correlated rows land on one side — the
+    split is by row index, so correlated rows are only separated if the
+    caller arranged for it.)
+
+    A degenerate label distribution forces rows to be reused across the
+    split. That is not a detail to absorb silently: the result carries
+    ``split_disjoint=False``, and every prediction set built from it reports
+    ``coverage_valid=False``, so a nominal confidence level is never
+    presented as a finite-sample guarantee.
     """
     if len(examples) < 10 or not any(e.label for e in examples):
         raise ValueError(
@@ -155,19 +170,28 @@ def fit_calibrator(examples: list[TrainingExample], alpha: float = 0.05,
         )
     fit_half = examples[0::2]
     conf_half = examples[1::2]
+    split_disjoint = True
     if not any(e.label for e in fit_half) or not any(
             e.label for e in conf_half):
         # tiny/degenerate label distribution: fall back to the full set for
-        # Platt but KEEP the halves disjoint for the quantiles
+        # Platt. That is a real loss of the guarantee rather than a
+        # detail — the probability map has now seen the conformal
+        # rows — so it is recorded instead of described in a comment.
         fit_half = examples
+        split_disjoint = False
     a, b = _fit_platt([e.ranking_score for e in fit_half],
                       [e.label for e in fit_half])
 
     def marginal(score: float) -> float:
         return 1.0 / (1.0 + math.exp(-(a * score + b)))
 
-    positives = [e for e in conf_half if e.label == 1] or \
-        [e for e in examples if e.label == 1]
+    positives = [e for e in conf_half if e.label == 1]
+    if not positives:
+        # no positive on the conformal side: the quantiles then come
+        # from rows the Platt map was fit on, voiding disjointness the
+        # other way round
+        positives = [e for e in examples if e.label == 1]
+        split_disjoint = False
     by_group: dict[str, list[float]] = {}
     for e in positives:
         by_group.setdefault(e.group, []).append(1.0 - marginal(e.ranking_score))
@@ -180,6 +204,7 @@ def fit_calibrator(examples: list[TrainingExample], alpha: float = 0.05,
         fallback_quantile=_conformal_quantile(all_scores, alpha / 2),
         group_counts={g: len(lst) for g, lst in by_group.items()},
         n_min=n_min,
+        split_disjoint=split_disjoint,
     )
 
 

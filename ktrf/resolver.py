@@ -1043,6 +1043,10 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
         m["prediction_set"]["truncated"] = True
         if calibrator is not None:
             m["prediction_set"]["coverage_valid"] = False
+    if calibrator is not None and not calibrator.split_disjoint:
+        # the calibrator was fit without a disjoint split, so set_confidence
+        # is a nominal level for every set it produces, cut or not (§25.2)
+        m["prediction_set"]["coverage_valid"] = False
     if calibration_fallback:
         # REQ-CAL-002: group sample below n_min → pooled-quantile fallback
         m["prediction_set"]["calibration_fallback"] = True
