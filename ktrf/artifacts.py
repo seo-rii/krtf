@@ -36,6 +36,7 @@ from .candidates import CandidateBudget
 from .corrections import CorrectionStore
 from .errors import KtrfApiError
 from .glossary import glossary_to_dict, load_glossary
+from .segmentation import ResolutionGuard
 from .snapshot import (RuntimePolicy, Snapshot, compile_snapshot,
                        compute_snapshot_id, _hash)
 
@@ -63,6 +64,22 @@ def save_snapshot(snapshot: Snapshot, out_dir: str | Path) -> Path:
         json.dumps(_policy_to_dict(snapshot.policy), indent=2),
         encoding="utf-8",
     )
+    # the guard changes resolution and is hashed into the manifest, so it
+    # has to travel with the bundle; without it load recompiled the default
+    # and the bundle advertised a guard it was not using
+    (out / "guard.json").write_text(
+        json.dumps(dataclasses.asdict(snapshot.guard), indent=2),
+        encoding="utf-8",
+    )
+    # a bundle is the snapshot, not the union of every snapshot written here:
+    # an optional artifact left by a previous save would be picked up by load
+    for optional, present in (
+        ("calibrator.json", snapshot.calibrator is not None),
+        ("entity-vectors.json", snapshot.dense is not None),
+        ("fusion.json", snapshot.fusion is not None),
+    ):
+        if not present:
+            (out / optional).unlink(missing_ok=True)
     manifest = dict(snapshot.manifest)
     if snapshot.calibrator is not None:
         cal = snapshot.calibrator.to_dict()
@@ -112,10 +129,20 @@ def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False,
         raise KtrfApiError("SNAPSHOT_UNAVAILABLE",
                            f"unreadable bundle {d}: {e}") from e
 
+    guard_path = d / "guard.json"
+    guard = None
+    if guard_path.exists():
+        try:
+            guard = ResolutionGuard(
+                **json.loads(guard_path.read_text(encoding="utf-8")))
+        except (ValueError, TypeError) as e:
+            raise KtrfApiError("SNAPSHOT_UNAVAILABLE",
+                               f"unreadable guard in bundle {d}: {e}") from e
     snap = compile_snapshot(
         glossary,
         tenant_id=manifest.get("tenant_id", "default"),
         policy=policy,
+        guard=guard,
         run_conformance=run_conformance,
         seal=False,   # the bundle's own identity is restored below, then sealed
     )
@@ -124,7 +151,8 @@ def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False,
     # with glossary.yaml (any field, descriptions included) or policy.json
     # produces a mismatch and the bundle is refused
     for key in ("compatibility_id", "normalizer_hash",
-                "morphology_rules_hash", "entities_hash", "policy_hash"):
+                "morphology_rules_hash", "entities_hash", "policy_hash",
+                "segmentation_guard_hash"):
         if snap.manifest.get(key) != manifest.get(key):
             raise KtrfApiError(
                 "SNAPSHOT_UNAVAILABLE",
