@@ -195,8 +195,12 @@ def write_markdown(t: dict, control: dict | None, out_path: Path) -> None:
         lines.append(f"| `{g['surface']}` | {g['canonical']} |"
                      f" {g['occurrences']} | {g['documents']} |")
 
-    if c and (c.get("corpus") or {}).get("sha256") != \
-            (t.get("corpus") or {}).get("sha256"):
+    _cc = (c or {}).get("corpus") or {}
+    _tc = t.get("corpus") or {}
+    # only when both arms recorded one: a control payload from before
+    # the fingerprint existed is unknown, not different
+    if _cc.get("sha256") and _tc.get("sha256") and \
+            _cc["sha256"] != _tc["sha256"]:
         lines += [
             "",
             "> **두 팔이 서로 다른 코퍼스를 읽었다.** 아래 비교는 변경의"
