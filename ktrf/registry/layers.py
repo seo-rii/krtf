@@ -190,8 +190,9 @@ def compile_layered_snapshot(layers: list[TermLayer], *,
     if strict_conflicts and result.conflicts:
         raise SimpleTermsError(
             f"layer conflicts require override: true — {result.conflicts}")
+    # the manifest gains layer provenance below, so identity is not final yet
     snapshot = compile_snapshot(load_glossary(result.glossary_dict),
-                                **compile_kwargs)
+                                seal=False, **compile_kwargs)
     snapshot.manifest["layers"] = [
         {"scope": lyr.scope, "source": lyr.source, "trusted": lyr.trusted}
         for lyr in sorted(layers, key=lambda x: _RANK[x.scope])]
@@ -200,4 +201,5 @@ def compile_layered_snapshot(layers: list[TermLayer], *,
     # recomputed — a stored id that does not match its manifest is refused
     # at load time (§47.3), and that equation must hold here too
     snapshot.snapshot_id = compute_snapshot_id(snapshot.manifest)
+    snapshot.seal()
     return snapshot, result

@@ -151,12 +151,33 @@ M1 작업 중 드러난 세 가지는 resolver가 아니라 **평가 쪽 결함*
   worktree의 캐시 복사본을 읽는다. 이제 각 arm의 payload가 지문을 싣고,
   `--compare` 렌더러가 지문이 다르면 비교표 위에 경고를 단다.
 
+**추가 반영 (2026-09-03) — 살아 있는 snapshot도 자기 id를 지킨다:**
+
+`snapshot_id`는 "다르게 동작하는 두 artifact는 반드시 다르게 해시된다"(§11.2,
+INV-015)를 선언하는데, **메모리 위의 snapshot에서는 그것이 사실이 아니었다.**
+`snap.policy.resolve_threshold = 0.99` 한 줄이 같은 문장의 답을 RESOLVED에서
+AMBIGUOUS로 바꾸는 동안 `snapshot_id`는 그대로였고,
+`glossary.entities[0].canonical`을 바꿔도 마찬가지였다. 저장된 번들은 loader가
+모든 hash를 재검증하므로 안전했지만, **요청마다 공유되고 hot-swap을 넘어 살아
+있는 것은 메모리 쪽 사본**이다.
+
+- `RuntimePolicy`·`CandidateBudget`은 frozen (저장소 어디서도 변경하지 않는다)
+- `Snapshot.seal()` — 컴파일은 순서가 있는 절차이고 identity는 **마지막에**
+  붙는다. id가 덮는 것은 그 순간부터 바뀌면 안 되므로 그때 닫는다. 번들 loader와
+  계층 컴파일러만 `seal=False`로 이어서 짓고 각자 마지막에 닫는다
+- `Snapshot.verify_integrity()` — 봉인은 재바인딩을 막을 뿐 참조를 통한 변경
+  (`manifest["x"]=1`)은 막지 못한다. Python에 값싼 deep freeze는 없으므로
+  **주장을 검사 가능하게** 만들었다: 살아 있는 객체에서 `entities_hash`·
+  `policy_hash`·`snapshot_id`를 다시 계산해 비교한다
+- `SnapshotRegistry.activate()`가 그것을 부른다 — loader가 정적으로 강제하는
+  등식(§47.3)을, 모든 요청이 읽게 될 객체에 대해 묻는 자리다
+
 **남은 백로그 (우선순위순):**
 
 0. `WILD_CORPUS.md` 전체 재생성 (114,605문장 ×6 pass ≈ 6시간). 현재는
    20,000문장 표본 쌍 비교(`eval.run_wild_regression`)로 대체했고
    리포트 상단에 경고를 붙였다
-1. snapshot 중첩 구조의 깊은 불변화 (frozen dataclass / read-only mapping)
+1. ✅ snapshot 불변화 — `RuntimePolicy`/`CandidateBudget` frozen, `Snapshot.seal()`, `verify_integrity()`, 활성화 게이트 (아래)
 2. human-gold 평가셋: 문서 단위 exhaustive annotation, 2인 주석 + adjudication,
    slice당 n≥200 — silver 근사와 분리 보고
 3. latency/memory hard gate (p95/p99, 문서 크기·entity 규모별 SLO), 동시성·

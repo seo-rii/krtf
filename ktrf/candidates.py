@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 
-@dataclass
+@dataclass(frozen=True)
 class CandidateBudget:
     max_exact_senses: int = 4096  # safety limit, §21.5 procedure beyond
     max_non_exact_candidates: int = 256

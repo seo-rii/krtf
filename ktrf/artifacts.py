@@ -117,6 +117,7 @@ def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False,
         tenant_id=manifest.get("tenant_id", "default"),
         policy=policy,
         run_conformance=run_conformance,
+        seal=False,   # the bundle's own identity is restored below, then sealed
     )
     # content-hash verification against the stored manifest (§47.3): the
     # digests are recomputed from the loaded glossary/policy, so tampering
@@ -187,6 +188,7 @@ def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False,
     # keep the persisted identity and conformance record
     snap.manifest = manifest
     snap.snapshot_id = manifest.get("snapshot_id", snap.snapshot_id)
+    snap.seal()
     return snap
 
 

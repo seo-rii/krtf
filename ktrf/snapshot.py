@@ -46,7 +46,7 @@ NORMALIZER_VERSION = "nrm-2"
 TAIL_GRAMMAR_VERSION = "tail-2"
 
 
-@dataclass
+@dataclass(frozen=True)
 class RuntimePolicy:
     sync_max_input_bytes: int = 65536  # §27.2, REQ-API-003
     max_total_mention_proposals: int = 512
@@ -87,9 +87,59 @@ class Snapshot:
     reranker: object | None = None  # cross-encoder backend (§22.3)
     fusion: object | None = None  # learned FusionModel (§23, V2)
 
+    # Deliberately not a dataclass field: it is machinery, not content, and
+    # must stay out of `asdict`, `repr` and every digest computed over them.
+    _sealed = False
+
     @property
     def glossary_version(self) -> str:
         return self.glossary.version
+
+    def seal(self) -> None:
+        """Close the snapshot to further rebinding (§11.2, INV-015).
+
+        Compiling is a sequence — indexes, then dense artifacts, then the
+        conformance record — and identity is assigned last, because the id
+        names the finished artifact. Everything the id covers therefore has to
+        stop changing at that moment, and until now nothing said so: assigning
+        `snap.policy.resolve_threshold = 0.99` turned a RESOLVED answer into an
+        AMBIGUOUS one while `snapshot_id` kept asserting the artifact was the
+        same one. A persisted bundle was safe — the loader re-verifies every
+        stored hash — but a live snapshot is shared across requests and
+        survives hot-swaps, so the in-memory object was the unguarded copy.
+
+        Sealing stops rebinding. It cannot stop mutation *through* a reference
+        (`manifest["x"] = 1`, `glossary.entities[0].canonical = ...`); Python
+        has no cheap deep freeze. That is what :meth:`verify_integrity` is for,
+        and why activation calls it.
+        """
+        object.__setattr__(self, "_sealed", True)
+
+    def __setattr__(self, name, value):
+        if getattr(self, "_sealed", False):
+            raise AttributeError(
+                f"snapshot {self.snapshot_id} is sealed: {name!r} is covered "
+                "by snapshot_id, so rebinding it would make the id describe "
+                "an artifact that no longer exists. Compile a new snapshot "
+                "(ktrf.compile_snapshot / ktrf.finetune) instead.")
+        object.__setattr__(self, name, value)
+
+    def verify_integrity(self) -> list[str]:
+        """Names of digests that no longer match the live objects.
+
+        The seal guards rebinding; this catches everything reached through a
+        reference. Empty means the artifact is still the one its id names.
+        """
+        broken = []
+        if _hash(glossary_to_dict(self.glossary)) != \
+                self.manifest.get("entities_hash"):
+            broken.append("entities_hash")
+        if _hash(dataclasses.asdict(self.policy)) != \
+                self.manifest.get("policy_hash"):
+            broken.append("policy_hash")
+        if compute_snapshot_id(self.manifest) != self.snapshot_id:
+            broken.append("snapshot_id")
+        return broken
 
 
 def _hash(obj) -> str:
@@ -187,6 +237,7 @@ def compile_snapshot(
     encoder=None,
     reranker=None,
     guard: ResolutionGuard | None = None,
+    seal: bool = True,
 ) -> Snapshot:
     """Compile a glossary into an immutable snapshot (§11.4 steps 1-5).
 
@@ -285,6 +336,10 @@ def compile_snapshot(
     # identity is assigned only after every manifest field — including the
     # conformance record — is final (§11.2: the id names the whole artifact)
     snapshot.snapshot_id = compute_snapshot_id(manifest)
+    # `seal=False` is for the two callers that keep building on the result —
+    # the bundle loader and the layered compiler — and both seal it themselves.
+    if seal:
+        snapshot.seal()
     return snapshot
 
 
@@ -322,6 +377,14 @@ class SnapshotRegistry:
         if conf is not None and conf.get("failed"):
             raise KtrfApiError(
                 "SNAPSHOT_UNAVAILABLE", "conformance failures block activation")
+        # the same equation the bundle loader enforces at rest (§47.3), asked
+        # of the live object: a snapshot mutated through a reference since it
+        # was compiled must not become the one every request then reads
+        broken = snapshot.verify_integrity()
+        if broken:
+            raise KtrfApiError(
+                "SNAPSHOT_UNAVAILABLE",
+                f"snapshot content no longer matches its id: {broken}")
         with self._lock:
             self._active[snapshot.tenant_id] = snapshot
 
