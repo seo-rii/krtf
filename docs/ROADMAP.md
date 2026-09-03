@@ -24,8 +24,11 @@
 | [reports/VARIANT_MINING.md](../reports/VARIANT_MINING.md) | 미등록 변형 채굴 백로그 (M4) | 생성 리포트 |
 | [reports/DOCLOCAL_AUDIT.md](../reports/DOCLOCAL_AUDIT.md) | 문서 내 정의 감사 — 별칭·미등록 이름 (M6) | 생성 리포트 |
 | [reports/LATENCY_SLO.md](../reports/LATENCY_SLO.md) | 지연·메모리·동시성 측정, degradation onset | 생성 리포트 |
+| [reports/DOCLOCAL_AUDIT_HOLDOUT.md](../reports/DOCLOCAL_AUDIT_HOLDOUT.md), [_HOLDOUT2](../reports/DOCLOCAL_AUDIT_HOLDOUT2.md) | 같은 감사를 **held-out 코퍼스**에 돌린 것 | 생성 리포트 |
 
 리포트 재생성: `python -m eval.run_eval` / `run_benchmarks` / `run_wild` / `run_neural_eval`.
+
+코퍼스는 이름으로 고른다: `--corpus wild|holdout|holdout2` (`eval.wild_data`의 `CORPORA`). `wild`는 공개 리포트가 재는 코퍼스이므로 도메인을 함부로 더하지 않는다 — 더하면 모든 수치가 변경과 무관한 이유로 움직인다.
 
 ## 마일스톤 현황 (스펙 §51)
 

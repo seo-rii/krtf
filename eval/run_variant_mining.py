@@ -218,9 +218,13 @@ def main():
     ap.add_argument("--json", type=str, default=None)
     ap.add_argument("--compare", type=str, default=None)
     ap.add_argument("--render-only", type=str, default=None)
+    ap.add_argument("--corpus", type=str, default="wild",
+                    help="wild (what the reports measure) or a held-out "
+                         "corpus the miner's gates were not chosen against")
     args = ap.parse_args()
 
-    out_md = ROOT / "reports" / "VARIANT_MINING.md"
+    out_md = ROOT / "reports" / (f"VARIANT_MINING_{args.corpus.upper()}.md" if args.corpus != "wild"
+                                 else "VARIANT_MINING.md")
     control = (json.loads(Path(args.compare).read_text(encoding="utf-8"))
                if args.compare else None)
 
@@ -230,13 +234,15 @@ def main():
         print(f"rendered {out_md} from {args.render_only}")
         return
 
-    corpus = load_corpus()
+    corpus = load_corpus(args.corpus)
     sample = random.Random(SEED).sample(corpus,
                                         min(args.sentences, len(corpus)))
     print(f"sample: {len(sample)} of {len(corpus)} sentences")
     payload = mine(sample)
 
-    out_json = ROOT / "eval" / "out" / "variant_mining.json"
+    out_json = ROOT / "eval" / "out" / (
+        f"variant_mining_{args.corpus}.json" if args.corpus != "wild"
+        else "variant_mining.json")
     out_json.parent.mkdir(parents=True, exist_ok=True)
     body = json.dumps(payload, ensure_ascii=False, indent=1)
     out_json.write_text(body, encoding="utf-8")

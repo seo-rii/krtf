@@ -251,9 +251,13 @@ def main():
     ap.add_argument("--json", type=str, default=None)
     ap.add_argument("--compare", type=str, default=None)
     ap.add_argument("--render-only", type=str, default=None)
+    ap.add_argument("--corpus", type=str, default="wild",
+                    help="wild (what the reports measure) or a held-out "
+                         "corpus the alignment gates were not chosen against")
     args = ap.parse_args()
 
-    out_md = ROOT / "reports" / "DOCLOCAL_AUDIT.md"
+    out_md = ROOT / "reports" / (f"DOCLOCAL_AUDIT_{args.corpus.upper()}.md" if args.corpus != "wild"
+                                 else "DOCLOCAL_AUDIT.md")
     control = (json.loads(Path(args.compare).read_text(encoding="utf-8"))
                if args.compare else None)
 
@@ -263,13 +267,15 @@ def main():
         print(f"rendered {out_md} from {args.render_only}")
         return
 
-    corpus = load_corpus()
+    corpus = load_corpus(args.corpus)
     rows = (corpus if not args.sentences else
             random.Random(SEED).sample(corpus, min(args.sentences, len(corpus))))
     print(f"sample: {len(rows)} of {len(corpus)} sentences")
     payload = audit(rows)
 
-    out_json = ROOT / "eval" / "out" / "doclocal_audit.json"
+    out_json = ROOT / "eval" / "out" / (
+        f"doclocal_audit_{args.corpus}.json" if args.corpus != "wild"
+        else "doclocal_audit.json")
     out_json.parent.mkdir(parents=True, exist_ok=True)
     body = json.dumps(payload, ensure_ascii=False, indent=1)
     out_json.write_text(body, encoding="utf-8")

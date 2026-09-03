@@ -245,3 +245,29 @@ def test_korean_apposition_is_not_a_definition(detector, text, alias):
     """Longer is not evidence. Each of these bound a surface to an entity it
     does not name, and handed it a scoring boost."""
     assert not any(b.alias_surface == alias for b in detector.extract(text))
+
+
+# ---------------------------------------------------------------------------
+# the press-release shape, found by a held-out corpus
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("long_form,short,canonical", [
+    ("한국콘텐츠진흥원 원장 조현래", "한콘진", "한국콘텐츠진흥원"),
+    ("코리아스타트업포럼 의장 박재욱", "코스포", "코리아스타트업포럼"),
+])
+def test_a_title_and_a_name_may_follow_the_name(long_form, short, canonical):
+    """Korean press writing introduces a body as `기관명(직책 이름, 이하 약칭)`.
+    A corpus that strips the parentheses leaves the title and person in front
+    of the marker; the name still ends where its 어절 does."""
+    found = align_definition(long_form, short)
+    assert found is not None
+    assert found.canonical == canonical
+
+
+def test_an_alignment_spread_over_words_still_refuses_a_trailing_phrase():
+    """The narrowing is only for an alignment inside one 어절. Scattered
+    across several words with more words after it is a sentence, not a name."""
+    assert align_definition(
+        "미사일에 대한 국제사회와 트럼프대통령과 트럼프행정부", "미국") is None
+    assert align_definition("혈구는 호흡 색소 검사", "혈색소") is None

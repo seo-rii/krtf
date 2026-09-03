@@ -67,6 +67,56 @@ LICENSES = {
     "wikimedia/wikipedia": "CC BY-SA 4.0 (Wikipedia)",
     "skt/kobest_v1": "CC BY-SA 4.0 (KoBEST)",
 }
+# --- held-out corpus ---------------------------------------------------
+#
+# A second, entirely separate corpus. Not appended to SOURCES on purpose: the
+# published reports are measured against the corpus above and adding domains
+# to it would move every number for a reason unrelated to any change.
+#
+# It exists because the recent findings were all *chosen* against the corpus
+# above. The alignment gates in `ktrf.doclocal` in particular were picked by
+# reading twenty-odd rows, which is exactly the shape of an overfit rule. A
+# corpus the rules were never looked at through is the only thing that can
+# say whether they generalise.
+#
+# Both domains are deliberately unlike the five above: long-form news bodies
+# (the existing news is Yonhap *headlines*, one sentence each) and informal
+# social comments (nothing here is informal). LLM-generated corpora were
+# considered and rejected — synthetic prose cannot falsify a rule about how
+# people actually write.
+HOLDOUT_SOURCES = [
+    ("daekeun-ml/naver-news-summarization-ko", "default", "train", "document",
+     2500, True, 22000, 0),
+    ("jeanlee/kmhas_korean_hate_speech", "default", "train", "text",
+     8000, False, 8000, 0),
+]
+HOLDOUT_CACHE = DATA_DIR / "wild_holdout.jsonl"
+HOLDOUT_LICENSES = {
+    "daekeun-ml/naver-news-summarization-ko": "Apache-2.0 (dataset card)",
+    "jeanlee/kmhas_korean_hate_speech": "CC BY-SA 4.0 (K-MHaS)",
+}
+
+# A second held-out slice: the same news source at a disjoint offset range,
+# so the articles are ones nothing here has been read against. Same
+# distribution as `holdout` on purpose — its job is narrower. When a rule is
+# adjusted after reading held-out rows, those rows stop being held out, and
+# the question left over is whether the adjustment generalises past the
+# handful that motivated it. That needs unseen rows, not a new genre.
+HOLDOUT2_SOURCES = [
+    ("daekeun-ml/naver-news-summarization-ko", "default", "train", "document",
+     2500, True, 18000, 9000),
+]
+HOLDOUT2_CACHE = DATA_DIR / "wild_holdout2.jsonl"
+
+# Named corpora. `wild` is what every published report measures against and
+# must not gain domains casually — doing so moves every number for a reason
+# unrelated to any change.
+CORPORA = {
+    "wild": (SOURCES, CACHE, LICENSES),
+    "holdout": (HOLDOUT_SOURCES, HOLDOUT_CACHE, HOLDOUT_LICENSES),
+    "holdout2": (HOLDOUT2_SOURCES, HOLDOUT2_CACHE, HOLDOUT_LICENSES),
+}
+
 PAGE = 100
 
 _SENT_SPLIT = re.compile(r"(?<=[.!?])\s+|\n+")
@@ -95,14 +145,19 @@ def _fetch_page(dataset: str, config: str, split: str, offset: int) -> dict:
         return json.loads(resp.read().decode("utf-8"))
 
 
-def download(force: bool = False, verbose: bool = True) -> Path:
-    if CACHE.exists() and not force:
-        return CACHE
+def download(force: bool = False, verbose: bool = True,
+             sources=None, cache: Path | None = None,
+             licenses: dict | None = None) -> Path:
+    sources = SOURCES if sources is None else sources
+    cache = CACHE if cache is None else cache
+    licenses = LICENSES if licenses is None else licenses
+    if cache.exists() and not force:
+        return cache
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     rows: list[dict] = []
     seen: set[str] = set()
     for (dataset, config, split, field, max_rows, do_split,
-         max_keep, start_offset) in SOURCES:
+         max_keep, start_offset) in sources:
         fetched = 0
         kept = 0
         offset = start_offset
@@ -148,16 +203,16 @@ def download(force: bool = False, verbose: bool = True) -> Path:
     by_source: dict[str, int] = {}
     for r in rows:
         by_source[r["source"]] = by_source.get(r["source"], 0) + 1
-    with open(CACHE, "w", encoding="utf-8") as f:
-        f.write(json.dumps({"meta": {"licenses": LICENSES,
+    with open(cache, "w", encoding="utf-8") as f:
+        f.write(json.dumps({"meta": {"licenses": licenses,
                                      "sentences": len(rows),
                                      "by_source": by_source}},
                            ensure_ascii=False) + "\n")
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
     if verbose:
-        print(f"  cached {len(rows)} unique sentences -> {CACHE}")
-    return CACHE
+        print(f"  cached {len(rows)} unique sentences -> {cache}")
+    return cache
 
 
 # What the last :func:`load_corpus` in this process actually read. A report
@@ -174,10 +229,20 @@ def corpus_fingerprint() -> dict | None:
     return dict(_LOADED) if _LOADED else None
 
 
-def load_corpus() -> list[dict]:
-    """Load cached sentences, downloading on first use."""
+def load_corpus(name: str = "wild") -> list[dict]:
+    """Load a named corpus, downloading on first use.
+
+    ``wild`` is the corpus every published report measures against.
+    ``holdout`` and ``holdout2`` are separate and were not used to choose any
+    rule in this repository — see :data:`CORPORA`.
+    """
     global _LOADED
-    path = download(verbose=True)
+    if name not in CORPORA:
+        raise ValueError(f"unknown corpus {name!r}; "
+                         f"expected one of {sorted(CORPORA)}")
+    sources, cache, licenses = CORPORA[name]
+    path = download(verbose=True, sources=sources, cache=cache,
+                    licenses=licenses)
     digest = hashlib.sha256()
     meta: dict = {}
     out = []
@@ -190,6 +255,7 @@ def load_corpus() -> list[dict]:
                 continue
             out.append(d)
     _LOADED = {
+        "name": name,
         "sha256": digest.hexdigest()[:16],
         "sentences": len(out),
         # the recorded count and the row count disagreeing means a truncated
@@ -201,4 +267,11 @@ def load_corpus() -> list[dict]:
 
 
 if __name__ == "__main__":
-    download(force=True)
+    import sys
+
+    which = "wild"
+    for arg in sys.argv[1:]:
+        if arg.startswith("--corpus="):
+            which = arg.split("=", 1)[1]
+    sources, cache, licenses = CORPORA[which]
+    download(force=True, sources=sources, cache=cache, licenses=licenses)

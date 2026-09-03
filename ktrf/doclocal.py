@@ -208,7 +208,24 @@ def align_definition(long_form: str, short: str, *,
     if pos[-1] - pos[0] + 1 == len(compact):
         return _no("contiguous_substring")
     if " " in y[pos[-1]:]:
-        return _no("name_does_not_end_there")
+        # Words trailing the alignment usually mean it crossed a sentence
+        # rather than covered a name — `미국` "abbreviating"
+        # `미사일에 대한 국제사회와 트럼프대통령과 트럼프행정부`.
+        #
+        # One shape is not that. Korean press writing introduces a body as
+        # `기관명(직책 이름, 이하 약칭)`, and a corpus that strips the
+        # parentheses leaves `기관명 직책 이름` in front of the marker. There
+        # the alignment sits entirely inside the first 어절 and what trails is
+        # a separate phrase, so the name simply ends where the 어절 does:
+        # `한국콘텐츠진흥원 원장 조현래` → `한콘진` names 한국콘텐츠진흥원.
+        #
+        # An alignment scattered over several words with more words after it
+        # stays refused. That split was checked against the corpus these gates
+        # were chosen on, where it changes nothing at all (15 findings before
+        # and after), and against unseen articles.
+        if " " in y[pos[0]:pos[-1] + 1]:
+            return _no("name_does_not_end_there")
+        y = y[:y.index(" ", pos[-1])]
     canonical = y[pos[0]:].strip(" ·-")
     if not canonical or canonical == x:
         return _no("degenerate")

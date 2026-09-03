@@ -155,7 +155,9 @@ def data_provenance(fingerprint: dict | None = None) -> str:
         fp = corpus_fingerprint()
     if not fp:
         return ""
-    line = (f" · 코퍼스 `{fp['sha256']}` ({fp['sentences']:,}문장,"
+    name = fp.get("name") or "wild"
+    label = "held-out 코퍼스" if name == "holdout" else "코퍼스"
+    line = (f" · {label} `{fp['sha256']}` ({fp['sentences']:,}문장,"
             f" {fp['sources']}개 출처)")
     declared = fp.get("declared_sentences")
     if declared is not None and declared != fp["sentences"]:
