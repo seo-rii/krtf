@@ -14,6 +14,7 @@ opts in via ``evidence_text`` and policy allows it.
 
 from __future__ import annotations
 
+import copy
 import itertools
 from dataclasses import dataclass, field
 
@@ -51,17 +52,20 @@ class Correction:
     review: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
+        # deep copies on the way out as well: `export_accepted` feeds
+        # calibration training (INV-018), and a consumer holding a live
+        # reference into the store could rewrite an approved record
         return {
             "correction_id": self.correction_id,
             "tenant_id": self.tenant_id,
-            "request_ref": self.request_ref,
+            "request_ref": copy.deepcopy(self.request_ref),
             "correction_type": self.correction_type,
-            "corrected": self.corrected,
-            "verifier": self.verifier,
-            "mention_state": self.mention_state,
+            "corrected": copy.deepcopy(self.corrected),
+            "verifier": copy.deepcopy(self.verifier),
+            "mention_state": copy.deepcopy(self.mention_state),
             "comment": self.comment,
             "status": self.status,
-            "review": self.review,
+            "review": copy.deepcopy(self.review),
         }
 
 
@@ -87,8 +91,13 @@ class CorrectionStore:
     ) -> Correction:
         if correction_type not in CORRECTION_TYPES:
             raise CorrectionError(f"unknown correction_type {correction_type!r}")
-        corrected = corrected or {}
-        verifier = verifier or {"kind": "USER", "principal_ref": "anonymous"}
+        # take a snapshot of the caller's payload before validating it, so
+        # what is checked is what is stored — and so a later edit to the
+        # dicts the caller still holds cannot reach an approved record
+        corrected = copy.deepcopy(corrected) if corrected else {}
+        verifier = (copy.deepcopy(verifier) if verifier
+                    else {"kind": "USER", "principal_ref": "anonymous"})
+        mention_state = copy.deepcopy(mention_state)
         if verifier.get("kind") not in VERIFIER_KINDS:
             raise CorrectionError(f"unknown verifier kind {verifier.get('kind')!r}")
         if correction_type == "MISSED_MENTION" and not corrected.get("span"):
@@ -104,7 +113,7 @@ class CorrectionStore:
         c = Correction(
             correction_id=f"cor-{next(self._ids):06d}",
             tenant_id=tenant_id,
-            request_ref=dict(request_ref),
+            request_ref=copy.deepcopy(request_ref),
             correction_type=correction_type,
             corrected=corrected,
             verifier=verifier,
