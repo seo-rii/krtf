@@ -201,3 +201,24 @@ def test_a_rerendered_report_keeps_the_corpus_that_produced_it(monkeypatch):
              "declared_sentences": 114605, "sources": 11}
     assert "deadbeef" not in metrics.provenance_line(".", "표본")
     assert "deadbeef" in metrics.provenance_line(".", "표본", corpus=saved)
+
+
+def test_writing_a_report_does_not_make_the_stamp_cry_wolf(tmp_path):
+    """Regenerating a report modifies a tracked file. Without excluding
+    generated output every report would stamp itself as proof the code had
+    diverged, and an alarm that fires every run says nothing on the run that
+    matters."""
+    from eval.metrics import git_commit
+
+    git = _init_repo(tmp_path)
+    (tmp_path / "reports").mkdir()
+    (tmp_path / "reports" / "R.md").write_text("v1", encoding="utf-8")
+    git("add", "reports/R.md")
+    git("commit", "-qm", "report")
+    clean = git_commit(tmp_path)
+
+    (tmp_path / "reports" / "R.md").write_text("v2", encoding="utf-8")
+    assert git_commit(tmp_path) == clean          # output, not an input
+
+    (tmp_path / "a.txt").write_text("changed", encoding="utf-8")
+    assert git_commit(tmp_path) == clean + "-dirty"   # anything else counts

@@ -106,6 +106,12 @@ def git_commit(repo_root=None) -> str | None:
     was committed stamps the *parent* commit and looks authoritative — the
     numbers describe code that no commit contains. Only tracked files count;
     untracked scratch beside the repo is not part of what ran.
+
+    ``reports/`` is excluded, and not as a convenience. Writing a report
+    modifies a tracked file, so without the exclusion every regenerated report
+    would stamp *itself* as proof the code had diverged — an alarm that fires
+    on every run says nothing on the run that matters. Generated output cannot
+    change what was measured; everything else can, and still counts.
     """
     import subprocess
 
@@ -122,8 +128,9 @@ def git_commit(repo_root=None) -> str | None:
     if not head or not head.strip():
         return None
     status = _git("status", "--porcelain", "--untracked-files=no")
-    dirty = "-dirty" if status and status.strip() else ""
-    return head.strip() + dirty
+    changed = [ln for ln in (status or "").splitlines()
+               if ln.strip() and not ln[3:].lstrip('"').startswith("reports/")]
+    return head.strip() + ("-dirty" if changed else "")
 
 
 def data_provenance(fingerprint: dict | None = None) -> str:
