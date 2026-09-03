@@ -234,3 +234,74 @@ def test_doclocal_boost_without_overwrite(snap):
     ids = {x.get("entity_id") for x in late[0]["prediction_set"]["members"]}
     assert "ORG_KEPCO" in ids  # doc-local candidate added
     assert {"NETWORK_ACCESS_POINT", "WORKFLOW_APPROVAL_PROCESS"} <= ids  # kept
+
+
+# ---------------------------------------------------------------------------
+# REQ-BUD-001 / REQ-API-005: what was cut, and whether it mattered
+# ---------------------------------------------------------------------------
+
+
+def _long_document(snapshot, chars: int) -> str:
+    """Enough varied text to exhaust `max_fuzzy_windows` (96 core queries),
+    with registered surfaces spread through it so mentions land on both sides
+    of the cutoff.
+
+    The filler clauses are distinct on purpose — repeating one would be
+    answered out of the caches and never reach the budget.
+    """
+    surfaces = [b.surface for b in snapshot.glossary.alias_bindings]
+    parts = []
+    for i in range(chars // 18 + 2):
+        parts.append(f"{i}번째 사안에 관하여 협의가 이어졌다고 한다.")
+        parts.append(f"{surfaces[i % len(surfaces)]}은 이에 관해 밝혔다.")
+    return " ".join(parts)[:chars]
+
+
+def test_the_response_names_the_stage_it_omitted(snap):
+    """REQ-BUD-001 asks for the omitted stage to be exposed. The reasons were
+    collected into an internal trace and dropped, so a consumer could see
+    that something had been cut and never what."""
+    short = resolve(snap, "한전이 발표했다", mode="commit")
+    assert short["limits"] == []
+    assert short["degraded"] is False
+
+    long_doc = resolve(snap, _long_document(snap, 4000), mode="commit")
+    assert long_doc["degraded"] is True
+    assert "fuzzy_window_budget" in long_doc["limits"]
+
+
+def test_a_mention_says_when_a_channel_was_not_offered_to_it(snap):
+    """The fuzzy budget stops the scan partway through the text, so mentions
+    after that point are exact-only. That is a property of those mentions,
+    not of the whole response."""
+    resp = resolve(snap, _long_document(snap, 4000), mode="commit")
+    bounded = [m for m in resp["mentions"] if m.get("channels_bounded")]
+    unbounded = [m for m in resp["mentions"] if not m.get("channels_bounded")]
+    assert bounded and unbounded, "expected the cutoff to fall inside the text"
+    # and it falls in text order: everything after the cutoff is bounded
+    last_free = max(m["span"]["codepoint"]["start"] for m in unbounded)
+    first_bounded = min(m["span"]["codepoint"]["start"] for m in bounded)
+    assert first_bounded > last_free
+
+
+def test_a_capped_level_b_channel_does_not_veto_a_level_a_commit(snap):
+    """§27.8/REQ-API-005 downgrades a mention whose candidate generation was
+    incomplete. A missing fuzzy pass is not that when the answer rests on an
+    exact match — Level A is complete by construction and fuzzy is additive
+    recall. Lifting the budget changed 0 of 207 decisions in the wild, while
+    downgrading everything past the cutoff cost 26 of 31 commits."""
+    resp = resolve(snap, _long_document(snap, 4000), mode="commit")
+    for m in resp["mentions"]:
+        if m.get("channels_bounded") and m["link_decision"] == "RESOLVED":
+            # allowed precisely because an exact candidate anchors it
+            assert "exact" in m.get("generation_channels", []), m["surface"]
+            assert not m.get("degraded")
+
+
+def test_a_mention_resting_on_the_cut_channel_is_downgraded(snap):
+    """The other half: no exact anchor plus a cut channel means candidate
+    generation really was incomplete for that answer."""
+    resp = resolve(snap, _long_document(snap, 4000), mode="commit")
+    for m in resp["mentions"]:
+        if m.get("degraded"):
+            assert m["link_decision"] != "RESOLVED"

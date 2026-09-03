@@ -130,8 +130,13 @@ implemented:
     tests: [tests/test_resolver_api.py::test_input_too_large]
   - req: REQ-API-004
     tests: [tests/test_resolver_api.py::test_error_schema_shape]
+  # Pinned only by the overflow path, which never fires in the wild; the
+  # budget that actually fires (max_fuzzy_windows, from ~400 chars) reached
+  # no mention at all until the two tests below.
   - req: REQ-API-005
-    tests: [tests/test_resolver_api.py::test_exact_overflow_degrades_to_ambiguous]
+    tests: [tests/test_resolver_api.py::test_exact_overflow_degrades_to_ambiguous,
+            tests/test_resolver_api.py::test_a_capped_level_b_channel_does_not_veto_a_level_a_commit,
+            tests/test_resolver_api.py::test_a_mention_resting_on_the_cut_channel_is_downgraded]
   - req: REQ-API-006
     tests: [tests/test_jobs_tiers_metrics.py::test_job_pins_snapshot_across_activation]
   # --- memory tiers ---
@@ -139,9 +144,12 @@ implemented:
     tests: [tests/test_jobs_tiers_metrics.py::test_refcount_blocks_eviction,
             tests/test_jobs_tiers_metrics.py::test_pinned_tenant_never_evicted]
   # --- budget ---
+  # "생략 stage 노출" — the omitted stage, not only the boolean.
   - req: REQ-BUD-001
     tests: [tests/test_resolver_api.py::test_exact_overflow_degrades_to_ambiguous,
-            tests/test_candidates_injection.py::test_budget_never_cuts_exact]
+            tests/test_candidates_injection.py::test_budget_never_cuts_exact,
+            tests/test_resolver_api.py::test_the_response_names_the_stage_it_omitted,
+            tests/test_resolver_api.py::test_a_mention_says_when_a_channel_was_not_offered_to_it]
   # --- tenant ---
   - req: REQ-TEN-001
     tests: [tests/test_snapshot.py::test_forbidden_glossary_outside_tenant_scope]

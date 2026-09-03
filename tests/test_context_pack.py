@@ -301,3 +301,29 @@ def test_json_render_round_trips(snap):
     assert json.loads(render_context_pack(pack, "json")) == pack
     with pytest.raises(KtrfApiError):
         render_context_pack(pack, "yaml")
+
+
+def test_the_pack_says_which_stage_the_resolver_omitted():
+    """The pack recorded that a request had been degraded and never what was
+    cut, so a host judging the coverage had to reach into resolver internals.
+    """
+    from ktrf.context import build_context_pack
+    from ktrf.glossary import load_glossary
+    from ktrf.resolver import resolve
+    from ktrf.snapshot import compile_snapshot
+
+    snap = compile_snapshot(load_glossary("examples/demo_glossary.yaml"))
+    surfaces = [b.surface for b in snap.glossary.alias_bindings]
+    parts = []
+    for i in range(220):
+        parts.append(f"{i}번째 사안에 관하여 협의가 이어졌다고 한다.")
+        parts.append(f"{surfaces[i % len(surfaces)]}은 이에 관해 밝혔다.")
+    long_doc = " ".join(parts)[:4000]
+
+    short = build_context_pack(snap, resolve(snap, "한전KDN은 밝혔다",
+                                             mode="commit"))
+    assert short["coverage"]["resolver_limits"] == []
+
+    pack = build_context_pack(snap, resolve(snap, long_doc, mode="commit"))
+    assert pack["coverage"]["resolver_degraded"] is True
+    assert "fuzzy_window_budget" in pack["coverage"]["resolver_limits"]

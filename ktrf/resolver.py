@@ -220,6 +220,7 @@ def resolve(
     # ---- fuzzy channels (Pass 1, not in fast: §26.1) ----
     exact_spans = [n.core_span for n in nodes.values()
                    if n.pool.exact]
+    generation_cutoff: int | None = None
     if mode != "fast":
         trace["channels"].extend(["jamo", "keyboard"])
         windows = 0
@@ -248,6 +249,13 @@ def resolve(
                 if windows >= policy.max_fuzzy_windows:
                     degraded = True
                     trace["drops"].append("fuzzy_window_budget")
+                    # everything from here to the end of the text is scanned
+                    # by the exact channel alone: the loop breaks out, so no
+                    # later token is offered to fuzzy or keyboard. Remember
+                    # where that happened so the mentions it affects can say
+                    # so (§27.8/REQ-API-005) instead of the whole response
+                    # carrying one undifferentiated boolean.
+                    generation_cutoff = span[0]
                     budget_hit = True
                     break
                 windows += 1
@@ -423,11 +431,18 @@ def resolve(
     for i, n in enumerate(included):
         m = _mention_response(n, i, snapshot, omap, text, mode, max_set,
                               return_features,
-                              options.get("return_eval_trace", False))
+                              options.get("return_eval_trace", False),
+                              generation_cutoff)
         m["primary"] = n.core_span in primary_spans
         if n.pool.truncated or n.pool.exact_overflow:
             degraded = True
         mentions.append(m)
+
+    # REQ-BUD-001 asks for the omitted stage to be *exposed*, not only for a
+    # boolean. The reasons were already being collected and then dropped on
+    # the floor with the internal trace, so a consumer could see that
+    # something had been cut and never what.
+    limits = list(dict.fromkeys(trace["drops"]))
 
     resp = {
         "snapshot": {
@@ -439,6 +454,7 @@ def resolve(
         },
         "mode": mode,
         "degraded": degraded,
+        "limits": limits,
         "mentions": mentions,
     }
     if options.get("return_trace"):
@@ -836,7 +852,8 @@ def _surface_record(node: MentionNode, snapshot: Snapshot, omap: OffsetMap,
 def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
                       omap: OffsetMap, text: str, mode: str,
                       max_set: int, return_features: bool = False,
-                      return_eval_trace: bool = False) -> dict:
+                      return_eval_trace: bool = False,
+                      generation_cutoff: int | None = None) -> dict:
     s, e = node.core_span
     check_span_invariant(text, s, e, node.surface)  # INV-002
     cands = node.pool.all_candidates()
@@ -946,7 +963,26 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
         kb_p = round(min(0.9, max(0.05, 0.8 - (top_p or 0))), 3)
         kb_member = {"kind": "KB_MISSING", "calibrated_probability": kb_p}
 
-    node_degraded = node.pool.truncated or node.pool.exact_overflow
+    # A global budget can stop a channel partway through the text, and
+    # `max_fuzzy_windows` is exhausted from about 400 characters — after which
+    # every remaining mention is offered to the exact channel alone. Report
+    # that on the mention (below); it is real and a consumer should see it.
+    bounded = (generation_cutoff is not None
+               and node.core_span[0] >= generation_cutoff)
+
+    # §27.8/REQ-API-005 downgrades a mention whose candidate *generation* was
+    # incomplete. Pool truncation is that. A missing fuzzy pass is not, when
+    # the answer rests on an exact match: Level A is complete by construction
+    # and fuzzy is additive recall, so letting a capped Level B channel veto a
+    # Level A commit inverts the layering.
+    #
+    # Measured rather than argued. Re-running these documents with the budget
+    # lifted changed 0 of 207 decisions, while downgrading every mention past
+    # the cutoff would have cost 26 of 31 commits at 3,200 characters. The
+    # requirement is honoured where the cut channel is the one the answer
+    # stands on, and nowhere else.
+    node_degraded = (node.pool.truncated or node.pool.exact_overflow
+                     or (bounded and not any(c.is_exact for c in cands)))
 
     set_members = []
     for c in members:
@@ -1012,6 +1048,11 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
         m["prediction_set"]["calibration_fallback"] = True
     if node_degraded:
         m["degraded"] = True
+    if bounded:
+        # distinct from `degraded`: a channel was not offered this mention,
+        # which a consumer should know even when the answer does not rest on
+        # it. Reads alongside `generation_channels`.
+        m["channels_bounded"] = True
     if return_eval_trace:
         m["eval_trace"] = _eval_trace(node, ranked, members, set_truncated)
     return m

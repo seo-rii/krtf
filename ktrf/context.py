@@ -398,6 +398,12 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
             "unknown_mentions": len(unknown),
             "omitted": len(omissions),
             "resolver_degraded": bool(resolve_response.get("degraded")),
+            # which stage the resolver omitted, not merely that it omitted
+            # one. Until the resolver published this the pack could say a
+            # request had been cut short and never what was cut, so a host
+            # deciding whether to trust the coverage had to reach into
+            # resolver internals or guess.
+            "resolver_limits": list(resolve_response.get("limits") or []),
             "budget_truncated": False,
             "complete": not omissions,
         },

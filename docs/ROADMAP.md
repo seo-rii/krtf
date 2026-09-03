@@ -213,14 +213,49 @@ commit·같은 머신의 두 실행이 p50에서 최대 26% 어긋났으므로, 
 1. ✅ snapshot 불변화 — `RuntimePolicy`/`CandidateBudget` frozen, `Snapshot.seal()`, `verify_integrity()`, 활성화 게이트 (아래)
 2. human-gold 평가셋: 문서 단위 exhaustive annotation, 2인 주석 + adjudication,
    slice당 n≥200 — silver 근사와 분리 보고
-3. ◐ latency/memory — **측정과 동시성 정확성 테스트 완료**(아래). 남은 것:
-   §53 기준 하드웨어 확정과 그 위의 절대 SLO, 그리고 `degraded`를 mention
-   단위로 국소화하는 `resolution_quality` 블록
+3. ◐ latency/memory — **측정과 동시성 정확성 테스트 완료**(아래).
+   `degraded`의 국소화도 완료(`limits`·`channels_bounded`). 남은 것: §53 기준
+   하드웨어 확정과 그 위의 절대 SLO
 4. ◐ 평가 데이터/모델 버전 고정 — **corpus SHA-256과 dirty 작업 트리는
    반영 완료**(아래). 남은 것: HF dataset revision 고정(`SOURCES`에 revision
    인자), 모델 digest를 리포트 manifest에 기록, cluster-aware CI
    (문서/entity 단위 bootstrap)
 5. 원격 배포 시 manifest 서명, 1-byte tamper sweep의 hard-gate 편입
+
+## 응답이 생략한 것을 말한다 (2026-09-03)
+
+지연 측정이 찾은 것은 지연이 아니라 **계약 두 개가 실제로는 걸려 있지
+않다**는 것이었다.
+
+- **REQ-BUD-001은 "생략 stage 노출"을 요구한다.** resolver는 그 이유를
+  `trace["drops"]`로 **이미 모으고 있었고**, 응답에는 싣지 않고 버렸다.
+  소비자는 무언가 잘렸다는 것만 알고 무엇이 잘렸는지는 알 수 없었다.
+  → 응답에 `limits`.
+- **REQ-API-005는 후보 생성이 불완전한 mention을 RESOLVED로 확정하지 말라고
+  한다.** 구현은 `node.pool.truncated or exact_overflow`에만 걸려 있었는데,
+  실제로 발동하는 것은 그것이 아니라 `max_fuzzy_windows`(96)다. 400자부터
+  fuzzy 스캔이 텍스트 중간에서 끊기고, **그 뒤의 mention은 전부 exact 전용**이
+  되는데도 아무 표시가 없었다. REQ-LOC-001/002와 같은 모양이다 — 계약이
+  일어나지 않는 경우를 고정하는 테스트로 걸려 있었다.
+
+**그런데 문자 그대로 고치면 안 됐다.** cutoff 뒤의 mention을 전부 하향하는
+버전을 먼저 만들어 재봤더니 3,200자에서 확정이 **31 → 5**로 무너졌다. 그래서
+반대쪽을 쟀다 — 예산을 풀고 fuzzy를 끝까지 돌리면 결정이 몇 개나 바뀌는가.
+**207개 중 0개**였다. 잘린 채널은 그 답들에 아무 영향도 주지 않았고, 문자
+그대로의 준수는 멀쩡한 확정 26건을 없애는 일이었다.
+
+그래서 규칙을 좁혔다: **잘린 채널이 그 답이 딛고 선 채널일 때만** 하향한다.
+exact가 받치고 있으면 Level A는 구성상 완전하고 fuzzy는 가산적 recall이므로,
+예산에 걸린 Level B가 Level A 확정을 거부하게 두는 것은 계층을 뒤집는 것이다.
+결과: 확정 **31 → 31**(손실 0), AMBIGUOUS 5건이 UNCERTAIN으로 내려간다 —
+§415(c)가 말하는 "degraded로 후보 생성이 불완전해 set 보장을 주장할 수 없는"
+바로 그 상태다.
+
+관측 가능성은 하향과 분리했다. `channels_bounded`는 cutoff 뒤의 **모든**
+mention에 붙어 "이 mention에는 제공되지 않은 채널이 있다"고 말하고,
+`degraded`는 그것이 답을 바꿀 수 있을 때만 붙는다. ContextPack의 coverage는
+`resolver_limits`로 그 이유를 그대로 받는다 — 호스트가 coverage를 믿을지
+판단하려고 resolver 내부를 들여다볼 필요가 없어진다.
 
 ## LLM Grounding — Terminology Context Pack (`ktrf/context.py`)
 
@@ -265,8 +300,8 @@ clearance 필터·validator).
 2. relation 확장(allowlist·depth 1·entity당 2개 상한), semantic relevance
    (기존 encoder 재사용), multi-turn context delta, 2단계 캐시
    (resolve cache + pack cache)
-3. resolver 응답에 `resolution_quality` 블록 공식화 (integration layer의
-   내부 구현 의존 제거), document-local 정의 원문 span 추출
+3. ◐ 응답이 **무엇을 생략했는지** 말한다 (`limits`, `channels_bounded` —
+   아래). 남은 것: document-local 정의 원문 span 추출
 4. 모델별 TokenCounter 주입 가이드, JSON Schema 파일 발행, prompt-injection
    A/B (raw vs escape vs pack+policy) 자동화
 

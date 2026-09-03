@@ -355,11 +355,14 @@ def write_markdown(t: dict, control: dict | None, out_path: Path) -> None:
 
     lines += [
         "",
-        "> `degraded`는 **응답 전체에 하나뿐인 불리언**이고, mention은 자기"
-        " 몫의 표시를 갖지 않는다. 3,200자 문서에서 후보 pool 하나가 잘리면"
-        " 19개 mention 전부가 의심 대상이 되고, 소비자는 어느 답을 믿지 말아야"
-        " 하는지 알 방법이 없다. `resolution_quality` 블록 공식화(context-pack"
-        " 백로그 3)가 이 자리다.",
+        "> 이 측정이 계약 두 개가 걸려 있지 않다는 것을 찾았고, 그 뒤에"
+        " 고쳤다. 응답은 이제 `limits`로 **어느 stage가 생략됐는지**"
+        " 말하고(REQ-BUD-001), cutoff 뒤의 mention은 `channels_bounded`로"
+        " 자기에게 제공되지 않은 채널이 있음을 말한다. 하향(REQ-API-005)은"
+        " **잘린 채널이 그 답이 딛고 선 채널일 때만** 적용한다 — 전부"
+        " 하향하는 버전은 3,200자에서 확정을 31에서 5로 무너뜨렸고, 예산을"
+        " 풀고 재보니 결정은 207개 중 0개만 달라졌다. 자세한 것은"
+        " ROADMAP.",
         "",
         "## 2. resolve 지연 — 두 축을 동시에",
         "",
