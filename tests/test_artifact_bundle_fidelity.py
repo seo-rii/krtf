@@ -99,3 +99,83 @@ def test_saving_over_a_bundle_clears_artifacts_that_no_longer_apply(
     assert not (bundle / "entity-vectors.json").exists()
     assert not (bundle / "calibrator.json").exists()
     load_snapshot(bundle)   # and the bundle is loadable, not half-refused
+
+
+# ---------------------------------------------------------------------------
+# vectors decide retrieval, so the manifest has to vouch for them
+# ---------------------------------------------------------------------------
+
+
+class _StubEncoder:
+    encoder_id = "stub-enc-1"
+
+    def encode_queries(self, texts):
+        return [[1.0, 0.0] for _ in texts]
+
+    def encode_passages(self, texts):
+        return [[1.0, 0.0] for _ in texts]
+
+    def encode_query(self, text):
+        return [1.0, 0.0]
+
+
+def _dense_bundle(glossary, tmp_path):
+    from ktrf.dense import DenseArtifacts, VectorIndex
+
+    snap = compile_snapshot(glossary, seal=False)
+    snap.dense = DenseArtifacts(
+        _StubEncoder(),
+        VectorIndex(["ORG_KEPCO", "ORG_FSS"], [[1.0, 0.0], [0.0, 1.0]]))
+    bundle = tmp_path / "bundle"
+    save_snapshot(snap, bundle)
+    return bundle
+
+
+def test_edited_entity_vectors_are_refused(glossary, tmp_path):
+    """`entity_encoder_hash` names who produced the vectors and says nothing
+    about what the file holds, so repointing one entity's vector at another
+    entity loaded clean — silently changing dense retrieval under an
+    unchanged snapshot id."""
+    bundle = _dense_bundle(glossary, tmp_path)
+    load_snapshot(bundle, encoder=_StubEncoder())     # clean bundle loads
+
+    vectors = json.loads((bundle / "entity-vectors.json").read_text(
+        encoding="utf-8"))
+    vectors["vectors"][0] = [0.0, 1.0]                # KEPCO -> FSS's vector
+    (bundle / "entity-vectors.json").write_text(json.dumps(vectors),
+                                                encoding="utf-8")
+
+    with pytest.raises(KtrfApiError) as excinfo:
+        load_snapshot(bundle, encoder=_StubEncoder())
+    assert "entity_vectors_hash" in str(excinfo.value)
+
+
+def test_vectors_with_no_hash_in_the_manifest_are_refused(glossary, tmp_path):
+    """An unverifiable vector file is the case the check exists for, so it
+    is refused rather than trusted for being old."""
+    bundle = _dense_bundle(glossary, tmp_path)
+    manifest = json.loads((bundle / "manifest.json").read_text(
+        encoding="utf-8"))
+    manifest.pop("entity_vectors_hash")
+    (bundle / "manifest.json").write_text(json.dumps(manifest),
+                                          encoding="utf-8")
+
+    with pytest.raises(KtrfApiError):
+        load_snapshot(bundle, encoder=_StubEncoder())
+
+
+def test_the_snapshot_id_covers_the_vectors(glossary, tmp_path):
+    from ktrf.dense import DenseArtifacts, VectorIndex
+
+    def _id_for(vectors):
+        snap = compile_snapshot(glossary, seal=False)
+        snap.dense = DenseArtifacts(
+            _StubEncoder(),
+            VectorIndex(["ORG_KEPCO", "ORG_FSS"], vectors))
+        out = tmp_path / f"b{abs(hash(str(vectors)))}"
+        save_snapshot(snap, out)
+        return json.loads((out / "manifest.json").read_text(
+            encoding="utf-8"))["snapshot_id"]
+
+    assert _id_for([[1.0, 0.0], [0.0, 1.0]]) != _id_for([[0.0, 1.0],
+                                                         [1.0, 0.0]])

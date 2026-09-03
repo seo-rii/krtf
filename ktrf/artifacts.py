@@ -91,6 +91,10 @@ def save_snapshot(snapshot: Snapshot, out_dir: str | Path) -> Path:
         (out / "entity-vectors.json").write_text(json.dumps(vec),
                                                  encoding="utf-8")
         manifest["entity_encoder_hash"] = snapshot.dense.encoder_id
+        # the encoder id names who produced the vectors; it says nothing
+        # about what the file now contains. Vectors decide dense retrieval,
+        # so they are content-hashed like the calibrator and fusion files.
+        manifest["entity_vectors_hash"] = _hash(vec)
         manifest["vector_dimension"] = snapshot.dense.index.dim
         manifest["index_type"] = "flat_ip"
     if snapshot.fusion is not None:
@@ -192,11 +196,23 @@ def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False,
             )
         from .dense import DenseArtifacts, VectorIndex
 
-        snap.dense = DenseArtifacts(
-            encoder,
-            VectorIndex.from_dict(
-                json.loads(vec_path.read_text(encoding="utf-8"))),
-        )
+        vec_dict = json.loads(vec_path.read_text(encoding="utf-8"))
+        stored_vec_hash = manifest.get("entity_vectors_hash")
+        if stored_vec_hash is None:
+            # a vector file the manifest cannot vouch for is exactly the
+            # case this check exists for, so it is refused rather than
+            # trusted for being old
+            raise KtrfApiError(
+                "SNAPSHOT_UNAVAILABLE",
+                "bundle carries entity vectors with no entity_vectors_hash "
+                "in its manifest; it cannot be verified (§47.3)",
+            )
+        if stored_vec_hash != _hash(vec_dict):
+            raise KtrfApiError(
+                "SNAPSHOT_UNAVAILABLE",
+                "bundle verification failed: entity_vectors_hash mismatch",
+            )
+        snap.dense = DenseArtifacts(encoder, VectorIndex.from_dict(vec_dict))
     fus_path = d / "fusion.json"
     if fus_path.exists():
         from .fusion import FusionModel

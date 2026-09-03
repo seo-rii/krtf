@@ -298,6 +298,9 @@ def compile_snapshot(
         "calibrator_hash": None,
         # V2 dense retrieval artifact identity (§11.2); null = Level A-only
         "entity_encoder_hash": None,
+        # content hash of the vectors themselves: the encoder id says who
+        # produced them, not what the file holds (§11.2/§47.3)
+        "entity_vectors_hash": None,
         "vector_dimension": None,
         "index_type": None,
         "reranker_id": None,
@@ -310,6 +313,7 @@ def compile_snapshot(
 
         snapshot.dense = DenseArtifacts.build(glossary, encoder)
         manifest["entity_encoder_hash"] = encoder.encoder_id
+        manifest["entity_vectors_hash"] = _hash(snapshot.dense.index.to_dict())
         manifest["vector_dimension"] = snapshot.dense.index.dim
         manifest["index_type"] = "flat_ip"
     if reranker is not None:
