@@ -188,3 +188,16 @@ def test_corpus_fingerprint_is_a_copy(monkeypatch):
     fp = wild_data.corpus_fingerprint()
     fp["sha256"] = "tampered"
     assert wild_data.corpus_fingerprint()["sha256"] == "x"
+
+
+def test_a_rerendered_report_keeps_the_corpus_that_produced_it(monkeypatch):
+    """`--render-only` re-renders markdown from a saved payload and loads
+    nothing, so asking this process would quietly drop the data line from a
+    report that certainly had one. The payload carries the answer."""
+    from eval import metrics, wild_data
+
+    monkeypatch.setattr(wild_data, "_LOADED", None)
+    saved = {"sha256": "deadbeef", "sentences": 114605,
+             "declared_sentences": 114605, "sources": 11}
+    assert "deadbeef" not in metrics.provenance_line(".", "표본")
+    assert "deadbeef" in metrics.provenance_line(".", "표본", corpus=saved)

@@ -202,7 +202,8 @@ def write_markdown(t: dict, control: dict | None, out_path: Path) -> None:
         "- **core 매칭이 옳았는지.** 이름 공백의 core는 확정된 것도 있고 후보에"
         " 그친 것도 있다. 확정 정확도는 `WILD_CORPUS.md`가 잰다.",
         "",
-        provenance_line(ROOT, f"표본 {t['sentences']:,}문장"),
+        provenance_line(ROOT, f"표본 {t['sentences']:,}문장",
+                        corpus=t.get("corpus")),
     ]
     out_path.write_text("\n".join(lines), encoding="utf-8")
 

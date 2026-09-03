@@ -234,7 +234,8 @@ def write_markdown(t: dict, control: dict | None, out_path: Path) -> None:
         " reversed 갈래 수정은 문서 내 별칭을 없애므로 해석을 **바꾼다**;"
         " 그쪽은 `eval.run_wild_regression`의 쌍 측정이 잰다.",
         "",
-        provenance_line(ROOT, f"표본 {t['sentences']:,}문장"),
+        provenance_line(ROOT, f"표본 {t['sentences']:,}문장",
+                        corpus=t.get("corpus")),
     ]
     out_path.write_text("\n".join(lines), encoding="utf-8")
 

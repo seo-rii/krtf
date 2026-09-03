@@ -126,18 +126,26 @@ def git_commit(repo_root=None) -> str | None:
     return head.strip() + dirty
 
 
-def data_provenance() -> str:
-    """Identity of the wild corpus, when this process actually loaded one.
+def data_provenance(fingerprint: dict | None = None) -> str:
+    """Identity of the wild corpus behind a report.
 
     Asked rather than declared: a harness that never read the corpus stamps
     nothing, and one that did cannot forget to. Harnesses whose inputs are
     synthetic have no data line, which is the honest result for them.
+
+    A ``--render-only`` pass re-renders markdown from a saved payload without
+    loading anything, so asking this process would drop the data line from a
+    report that certainly had one. Those callers pass the fingerprint their
+    payload recorded: the footer then names the corpus that produced the
+    numbers, not whatever this process happens to hold.
     """
-    try:
-        from .wild_data import corpus_fingerprint
-    except Exception:  # eval/ importable without its data module
-        return ""
-    fp = corpus_fingerprint()
+    fp = fingerprint
+    if fp is None:
+        try:
+            from .wild_data import corpus_fingerprint
+        except Exception:  # eval/ importable without its data module
+            return ""
+        fp = corpus_fingerprint()
     if not fp:
         return ""
     line = (f" · 코퍼스 `{fp['sha256']}` ({fp['sentences']:,}문장,"
@@ -148,7 +156,8 @@ def data_provenance() -> str:
     return line
 
 
-def provenance_line(repo_root=None, extra: str = "") -> str:
+def provenance_line(repo_root=None, extra: str = "",
+                    corpus: dict | None = None) -> str:
     """Markdown footer naming the code and data a report was measured at."""
     import time
 
@@ -158,5 +167,5 @@ def provenance_line(repo_root=None, extra: str = "") -> str:
     warn = (" **작업 트리가 커밋과 다르다 — 이 수치는 어떤 커밋에도 없는"
             " 코드의 것이다.**" if commit.endswith("-dirty") else "")
     return (f"*측정 시점: commit `{commit}`, {stamp}{tail}"
-            f"{data_provenance()}.{warn} "
+            f"{data_provenance(corpus)}.{warn} "
             "리포트와 코드가 어긋나면 코드가 맞다 — 재생성해서 확인할 것.*")
