@@ -378,6 +378,14 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
     for card in ordered[policy.max_entities:]:
         omissions.append({"entity_id": card["entity_id"],
                           "reason": "max_entities"})
+    if unknown and not policy.include_unknown_mentions:
+        # the pack is withholding mentions the resolver did report. The
+        # count stays in `coverage`, but a host reading `omissions` to see
+        # what was left out found nothing there, and `complete` said yes —
+        # so a pack missing content still described itself as whole.
+        omissions.extend({"mention_id": u.get("mention_id"),
+                          "reason": "unknown_mentions_excluded"}
+                         for u in unknown)
 
     pack = {
         "schema_version": SCHEMA_VERSION,

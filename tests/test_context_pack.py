@@ -327,3 +327,35 @@ def test_the_pack_says_which_stage_the_resolver_omitted():
     pack = build_context_pack(snap, resolve(snap, long_doc, mode="commit"))
     assert pack["coverage"]["resolver_degraded"] is True
     assert "fuzzy_window_budget" in pack["coverage"]["resolver_limits"]
+
+
+def test_policy_hidden_unknowns_are_recorded_as_omissions():
+    """The default policy withholds unknown mentions. The pack still called
+    itself complete and listed no omission, so a host reading `omissions` to
+    learn what was left out found nothing — a pack missing content
+    describing itself as whole (external review).
+    """
+    snap = compile_snapshot(load_glossary("examples/realorg_glossary.yaml"))
+    resp = {
+        "mentions": [{
+            "mention_id": "m1", "surface": "무명기관",
+            "link_decision": "KB_MISSING",
+            "span": {"codepoint": {"start": 0, "end": 4},
+                     "byte": {"start": 0, "end": 12},
+                     "utf16": {"start": 0, "end": 4}},
+        }],
+        "snapshot": {}, "degraded": False,
+    }
+
+    hidden = build_context_pack(snap, resp, policy=ContextPolicy())
+    assert hidden["unknown_mentions"] == []
+    assert hidden["coverage"]["unknown_mentions"] == 1
+    assert [o["reason"] for o in hidden["omissions"]] == [
+        "unknown_mentions_excluded"]
+    assert hidden["coverage"]["complete"] is False
+
+    shown = build_context_pack(
+        snap, resp, policy=ContextPolicy(include_unknown_mentions=True))
+    assert len(shown["unknown_mentions"]) == 1
+    assert shown["omissions"] == []
+    assert shown["coverage"]["complete"] is True
