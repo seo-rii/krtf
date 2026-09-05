@@ -30,7 +30,8 @@ from .calibration import (
     TunedCalibrator,
     TrainingExample,
     derive_training_examples,
-    fit_calibrator,
+    fit_with_folds,
+    split_examples,
 )
 from .candidates import CandidateBudget
 from .corrections import CorrectionStore
@@ -241,10 +242,15 @@ def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False,
 # ---------------------------------------------------------------------------
 
 
-def _fusion_rows(correction: dict) -> list[tuple[dict, int, str]]:
-    """(features, label, calibration_group) rows from one ACCEPTED
-    correction whose mention_state members carry feature vectors."""
-    from .calibration import calibration_group
+def _fusion_rows(correction: dict) -> list[tuple[dict, int, str, dict]]:
+    """(features, label, calibration_group, groups) rows from one ACCEPTED
+    correction whose mention_state members carry feature vectors.
+
+    The group identities travel with the row rather than being recovered by
+    position later: fusion rows and calibration rows are filtered by different
+    predicates, so the two lists are not index-aligned and never were.
+    """
+    from .calibration import calibration_group, correction_groups
 
     state = correction.get("mention_state") or {}
     members = [m for m in state.get("prediction_set", {}).get("members", [])
@@ -254,11 +260,40 @@ def _fusion_rows(correction: dict) -> list[tuple[dict, int, str]]:
         return []
     gold = (correction.get("corrected") or {}).get("entity_id")
     n = len(members)
+    groups = correction_groups(correction)
     return [
         (m["features"], int(m.get("entity_id") == gold),
-         calibration_group(set(m.get("generation_channels", [])), n))
+         calibration_group(set(m.get("generation_channels", [])), n),
+         dict(groups))
         for m in members
     ]
+
+
+#: Four folds when a ranker is being trained; three when there is none and the
+#: 40% would otherwise sit idle. The locked fold is reserved either way — it is
+#: the only data left that no part of the fit has seen.
+_FOUR_WAY = {"ranker": 0.4, "platt": 0.2, "conformal": 0.2, "test": 0.2}
+_THREE_WAY = {"platt": 0.4, "conformal": 0.4, "test": 0.2}
+
+
+def _locked_coverage(calibrator, locked: list[TrainingExample],
+                     alpha: float) -> dict:
+    """Coverage on rows no part of the fit touched.
+
+    The only coverage figure in the system that is measured rather than
+    assumed, so it is recorded whether or not it flatters the fit.
+    """
+    positives = [e for e in locked if e.label == 1]
+    covered = sum(
+        int(calibrator.in_prediction_set(
+            calibrator.calibrate_marginal(e.ranking_score), e.group)[0])
+        for e in positives)
+    return {
+        "n": len(positives),
+        "coverage": (round(covered / len(positives), 4) if positives else None),
+        "target": round(1.0 - alpha, 4),
+        "basis": calibrator.split_basis,
+    }
 
 
 def finetune(
@@ -293,20 +328,36 @@ def finetune(
 
     fusion = snapshot.fusion
     manifest = dict(snapshot.manifest)
+    shares = _THREE_WAY
     if fit_fusion_model:
         # learned fusion (§23, V2) — needs feature-bearing mention states
         # (responses produced with options.return_features)
         from .fusion import fit_fusion
 
-        fusion = fit_fusion([(f, y) for f, y, _ in fusion_rows])
+        # §25.2: the ranker gets a fold of its own. Fitting fusion on every
+        # row and then calibrating on the fusion's output for those same rows
+        # calibrates a model against its own training data; the probabilities
+        # come out overconfident, and a conformal quantile measured on the
+        # same rows cannot see it.
+        shares = _FOUR_WAY
+        examples = [TrainingExample(0.0, group, y, groups=dict(g))
+                    for _f, y, group, g in fusion_rows]
+        split = split_examples(examples, shares=shares)
+        fusion = fit_fusion([(fusion_rows[i][0], fusion_rows[i][1])
+                             for i in split.folds["ranker"]])
         manifest["fusion_hash"] = _hash(fusion.to_dict())
-        # the ranking_score scale changed: refit calibration on the fusion
-        # model's own outputs so Platt + conformal stay consistent
+        # the ranking_score scale changed: re-express every row through the
+        # fusion model so Platt and conformal share one scale. Row order and
+        # group identities are untouched, so the split below reproduces the
+        # same folds and the ranker's own rows stay out of the calibration.
         examples = [
-            TrainingExample(fusion.predict(f), group, y)
-            for f, y, group in fusion_rows
+            TrainingExample(fusion.predict(f), group, y, groups=dict(g))
+            for f, y, group, g in fusion_rows
         ]
-    calibrator = fit_calibrator(examples, alpha=alpha, n_min=n_min)
+    fitted = fit_with_folds(examples, alpha=alpha, n_min=n_min, shares=shares)
+    calibrator = fitted.calibrator
+    manifest["calibration_holdout"] = _locked_coverage(
+        calibrator, fitted.locked, alpha)
 
     manifest["calibrator_hash"] = _hash(calibrator.to_dict())
     candidate = dataclasses.replace(

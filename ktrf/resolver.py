@@ -947,7 +947,13 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
         members = [c for c in ranked
                    if (c.calibrated_probability or 0)
                    >= snapshot.policy.prediction_set_min_p]
-    if top is not None and top not in members:
+    # "always offer at least the top candidate" is a usability contract, not
+    # the conformal one: this member is in the set because the caller needs an
+    # answer, not because the quantile admitted it. Adding it cannot lower
+    # coverage, but it does mean the set is no longer the conformal set, and
+    # anything measuring set size has to be able to tell (review P0-3).
+    forced_top = top is not None and top not in members
+    if forced_top:
         members = [top] + members
     # truncation drops tail members from a conformal set — the coverage
     # guarantee no longer holds for a cut set, and we must say so instead
@@ -1043,10 +1049,21 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
         m["prediction_set"]["truncated"] = True
         if calibrator is not None:
             m["prediction_set"]["coverage_valid"] = False
-    if calibrator is not None and not calibrator.split_disjoint:
-        # the calibrator was fit without a disjoint split, so set_confidence
-        # is a nominal level for every set it produces, cut or not (§25.2)
+    if calibrator is not None and (not calibrator.split_disjoint
+                                   or calibrator.split_basis == "row_fallback"):
+        # Either the calibrator was fit without a disjoint split, or the rows
+        # were known to be correlated and were split by row anyway. Both mean
+        # set_confidence is a nominal level for every set it produces, cut or
+        # not (§25.2).
         m["prediction_set"]["coverage_valid"] = False
+    if calibrator is not None:
+        # Disjointness is not the whole claim. A split by row index can be
+        # perfectly disjoint and still put the same document on both sides,
+        # which is the leak the guarantee actually rests on. Say which kind of
+        # split produced this set instead of leaving a consumer to assume.
+        m["prediction_set"]["coverage_basis"] = calibrator.split_basis
+    if forced_top:
+        m["prediction_set"]["forced_top"] = True
     if calibration_fallback:
         # REQ-CAL-002: group sample below n_min → pooled-quantile fallback
         m["prediction_set"]["calibration_fallback"] = True

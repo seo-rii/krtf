@@ -249,7 +249,15 @@ def test_empirical_coverage():
         ]}},
     }
     r = empirical_coverage([good, miss, {"correction_type": "FALSE_MENTION"}])
-    assert r == {"labeled": 2, "coverage": 0.5, "mean_set_size": 1.5}
+    assert r["labeled"] == 2
+    assert r["coverage"] == 0.5
+    assert r["mean_set_size"] == 1.5
+    # marginal coverage alone hides which slice is failing, so the report
+    # carries set-size spread, a cluster-resampled interval and conditional
+    # coverage alongside it
+    assert r["median_set_size"] == 1.5 and r["p95_set_size"] == 2.0
+    assert r["n_clusters"] == 2
+    assert set(r["conditional"]) == {"group", "alias_type", "entity_frequency"}
     assert empirical_coverage([])["coverage"] is None
 
 
