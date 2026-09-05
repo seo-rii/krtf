@@ -8,7 +8,7 @@ Runs, per glossary size × seed:
   unicode fuzz · pathological inputs
 plus a calibration holdout-coverage benchmark, and aggregates across seeds.
 
-Writes eval/out/benchmarks.json and BENCHMARKS.md.
+Writes eval/out/benchmarks.json and reports/BENCHMARKS.md.
 
 Hard gates (violations of Level A / commit contracts — must be 0 at every
 size and seed): boundary-trap hits, sense loss, arbitrary multi-sense
@@ -415,7 +415,10 @@ def main():
                       "composed_recall": agg["composed_transform_recall"],
                       "negative_fp": agg["negative_fp_per_1k_chars"]},
                      indent=2))
-    print(f"\nwrote {out / 'benchmarks.json'} and {ROOT / 'BENCHMARKS.md'}")
+    # the file goes to reports/; saying otherwise sends a reader to a path
+    # that does not exist and makes them doubt the run rather than the message
+    print(f"\nwrote {out / 'benchmarks.json'} and "
+          f"{ROOT / 'reports' / 'BENCHMARKS.md'}")
 
 
 if __name__ == "__main__":
