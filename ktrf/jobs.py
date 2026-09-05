@@ -11,6 +11,7 @@ chunks.
 
 from __future__ import annotations
 
+import dataclasses
 import itertools
 from dataclasses import dataclass, field
 from threading import Lock
@@ -109,6 +110,10 @@ class ResolveJob:
     options: dict
     context: dict
     chunks: list[tuple[int, int]]
+    # §18 definitions found in the whole document, shared by every chunk.
+    # A definition is a property of the document, not of the piece it happens
+    # to fall in.
+    doc_local_bindings: list = field(default_factory=list)
     status: str = "QUEUED"  # QUEUED|RUNNING|SUCCEEDED|FAILED|CANCELLED
     # PENDING -> CLAIMED -> DONE, one per chunk. A shared `chunks_done`
     # counter cannot express "someone else is already on chunk 3", which is
@@ -198,6 +203,9 @@ class ResolveJobManager:
             options=dict(options or {}),
             context=dict(context or {}),
             chunks=_chunk_boundaries(text, self.max_chunk_bytes),
+            # extracted once, from the whole text, against the pinned
+            # snapshot (INV-017) — the same bindings every chunk will see
+            doc_local_bindings=snapshot.doclocal.extract(text),
         )
         with self._lock:
             self._jobs[job.job_id] = job
@@ -239,12 +247,31 @@ class ResolveJobManager:
                         break          # nothing left to claim
                     job.chunk_state[idx] = "CLAIMED"
                 start, end = job.chunks[idx]
-                # §28.3 overlap window recovers boundary-straddling mentions
+                # §28.3 overlap on BOTH sides. The forward window recovers a
+                # mention straddling the end; the backward one gives a mention
+                # near the start the left context the scorer reads. With only
+                # the forward half, the same sentence scored lower purely
+                # because a chunk boundary fell in front of it — the context
+                # bonus is computed from a window that was cut off.
+                ext_start = max(0, start - self.overlap_chars)
                 ext_end = min(len(job.text), end + self.overlap_chars)
-                chunk_text = job.text[start:ext_end]
+                chunk_text = job.text[ext_start:ext_end]
                 try:
+                    # The bindings are in document coordinates and the chunk
+                    # is resolved in its own, so `definition_span` has to be
+                    # translated with the text it describes. Without this the
+                    # "skip the defining occurrence" rule reads a document
+                    # offset against a chunk offset and silently drops the
+                    # first use in every later chunk. A definition in another
+                    # chunk lands outside this one's range, which is exactly
+                    # what should happen.
+                    local = [dataclasses.replace(
+                        b, definition_span=(b.definition_span[0] - ext_start,
+                                            b.definition_span[1] - ext_start))
+                        for b in job.doc_local_bindings]
                     resp = resolve(job.snapshot, chunk_text, mode=job.mode,
-                                   context=job.context, options=opts)
+                                   context=job.context, options=opts,
+                                   doc_local_bindings=local)
                 except BaseException:
                     with self._lock:
                         if job.chunk_state[idx] == "CLAIMED":
@@ -253,9 +280,13 @@ class ResolveJobManager:
                 found = []
                 for m in resp["mentions"]:
                     cp = m["span"]["codepoint"]
-                    if cp["start"] + start >= end:
-                        continue  # belongs to the next chunk's window
-                    found.append(_globalize_mention(m, omap, start))
+                    global_start = cp["start"] + ext_start
+                    # a mention belongs to the chunk its start falls in, so
+                    # every position belongs to exactly one chunk: nothing in
+                    # either overlap window is counted twice or dropped
+                    if not (start <= global_start < end):
+                        continue
+                    found.append(_globalize_mention(m, omap, ext_start))
                 # commit exactly once: a chunk no longer CLAIMED was taken
                 # over (cancelled, or reset by a failure) and its result is
                 # not ours to record

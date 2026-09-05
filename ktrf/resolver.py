@@ -186,6 +186,7 @@ def resolve(
     context: dict | None = None,
     options: dict | None = None,
     metrics=None,
+    doc_local_bindings=None,
 ) -> dict:
     import time as _time
 
@@ -268,7 +269,15 @@ def resolve(
         ))
 
     # ---- doc-local channel (§18) ----
-    local_bindings = snapshot.doclocal.extract(text)
+    # `doc_local_bindings` lets a caller that is resolving one *piece* of a
+    # document supply the definitions found in the whole of it. Without it the
+    # async API loses the channel exactly where it matters most: a document
+    # that defines its own abbreviation in the first paragraph and uses it
+    # throughout gets the definition in chunk 0 and nothing in the rest, so
+    # the same sentence scores differently depending on how the document was
+    # cut. Occurrences are still located in the text actually being resolved.
+    local_bindings = (list(doc_local_bindings) if doc_local_bindings is not None
+                      else snapshot.doclocal.extract(text))
     if local_bindings:
         trace["channels"].append("doc_local")
     for occ in snapshot.doclocal.find_occurrences(text, local_bindings):
