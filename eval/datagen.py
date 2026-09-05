@@ -38,6 +38,91 @@ class EvalExample:
     gold: list[GoldMention] = field(default_factory=list)
     forbidden_entities: list[str] = field(default_factory=list)
     expect_no_mention: bool = False
+    # True only when every mention in this text is annotated, so a commit
+    # outside the gold spans is a false positive and can be scored as one.
+    # False means the opposite of "correct": it means unjudgeable. Precision
+    # over documents like that is an upper bound, and §38.1 UNLABELED says so.
+    exhaustive: bool = False
+
+
+def _residual(text: str, gold: list[GoldMention]) -> str:
+    """The text with the annotated spans cut out.
+
+    Newlines replace them so no substring can form across a cut and be
+    mistaken for an unannotated mention.
+    """
+    out, last = [], 0
+    for g in sorted(gold, key=lambda g: g.span):
+        out.append(text[last:g.span[0]])
+        last = max(last, g.span[1])
+    out.append(text[last:])
+    return "\n".join(out)
+
+
+def _catalog_keys(glossary: Glossary) -> dict[str, tuple[object, set[str], int]]:
+    """{profile key: (profile, normalized alias keys, longest key)}."""
+    by_profile: dict[str, tuple[object, set[str], int]] = {}
+    for b in glossary.alias_bindings:
+        prof = glossary.binding_profile(b)
+        pkey = repr(prof)
+        key = normalize_alias(b.surface, prof)
+        if not key:
+            continue
+        prof_obj, keys, longest = by_profile.get(pkey, (prof, set(), 0))
+        keys.add(key)
+        by_profile[pkey] = (prof_obj, keys, max(longest, len(key)))
+    return by_profile
+
+
+def verify_exhaustive(example: EvalExample, catalog, _cache=None) -> bool:
+    """True when nothing outside the annotated spans normalises to an alias.
+
+    This is *catalog*-exhaustive, not human-exhaustive: it cannot see mentions
+    of entities the glossary has never heard of. That is the right bar for the
+    question it is asked, though — a commit names an entity, so it can only
+    ever be a commit to something in the catalog, and a document with no
+    unannotated catalog occurrence leaves no commit unjudged.
+
+    Two things it deliberately does not do: match across a cut span boundary,
+    and reason about boundary policy. Both make it answer "not exhaustive"
+    more often than strictly necessary, which is the safe direction — marking
+    a document exhaustive when it is not would turn a real false positive into
+    a silent pass.
+    """
+    cache = _cache if _cache is not None else {}
+    residual = _residual(example.text, example.gold)
+    for pkey, (prof, keys, longest) in catalog.items():
+        hit = cache.get((residual, pkey))
+        if hit is None:
+            norm = normalize_alias(residual, prof)
+            hit = False
+            for i in range(len(norm)):
+                for j in range(i + 1, min(len(norm), i + longest) + 1):
+                    if norm[i:j] in keys:
+                        hit = True
+                        break
+                if hit:
+                    break
+            cache[(residual, pkey)] = hit
+        if hit:
+            return False
+    return True
+
+
+def mark_exhaustive(examples: list[EvalExample], glossary: Glossary) -> int:
+    """Flag every example whose annotation covers the whole document.
+
+    Returns how many were flagged. Templates share their filler text, so the
+    scan is cached on the residual and costs a few dozen normalisations for a
+    corpus of thousands.
+    """
+    catalog = _catalog_keys(glossary)
+    cache: dict = {}
+    n = 0
+    for ex in examples:
+        ex.exhaustive = verify_exhaustive(ex, catalog, cache)
+        n += int(ex.exhaustive)
+    return n
 
 
 def _gold(text: str, start: int, surface: str, entity_id: str) -> GoldMention:
@@ -215,4 +300,8 @@ def generate(glossary: Glossary) -> list[EvalExample]:
               "보고서 제출 기한은 다음 주 금요일이다."]:
         add(t, "negative_plain", "A", none=True)
 
+    # Exhaustiveness is verified against the catalog, never assumed from the
+    # fact that a generator built the text: a filler phrase can contain an
+    # alias, and a document where it does cannot judge a commit made there.
+    mark_exhaustive(examples, glossary)
     return examples

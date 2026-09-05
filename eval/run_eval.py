@@ -42,6 +42,13 @@ RELEASE_GATE = {
     "resolved_precision_ci_lower_min": 0.96,
     # an always-abstaining system must not pass on vacuous precision
     "resolved_min_commits": 25,
+    # A commit on an unannotated part of a partly-labelled document cannot be
+    # judged, so it is neither correct nor incorrect — it is missing evidence.
+    # Precision computed while dropping those is an upper bound, and gating on
+    # an upper bound is gating on the best case. This is a bar on the
+    # evaluation data, not on the resolver: it is cleared by annotating whole
+    # documents, which is the point.
+    "unlabeled_commits_max": 0,
     "forbidden_entity_hits_max": 0,
     "offset_invariant_failures_max": 0,
 }
@@ -77,7 +84,7 @@ def run(glossary_path: str) -> dict:
     # ---- corpus metrics ----
     examples = generate(glossary)
     counters: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
-    resolved_total = resolved_correct = 0
+    resolved_total = resolved_correct = unlabeled_commits = 0
     forbidden_hits = 0
     offset_failures = 0
     fast_a_total = fast_a_detected = 0
@@ -125,8 +132,18 @@ def run(glossary_path: str) -> dict:
                 elif span in gold_by_span:
                     resolved_total += 1
                     resolved_correct += int(gold_by_span[span].entity_id == eid)
-                # RESOLVED on non-gold spans of positive examples is not
-                # counted: gold annotation there is partial (§38.1 UNLABELED)
+                elif ex.exhaustive:
+                    # every mention in this document is annotated, so a commit
+                    # anywhere else is a false positive and is scored as one
+                    resolved_total += 1
+                else:
+                    # §38.1 UNLABELED: the annotation cannot say whether this
+                    # commit is right. Scoring it correct inflates precision
+                    # and scoring it wrong invents a failure, so it is counted
+                    # as unjudged — and reported, because a precision computed
+                    # over a corpus with unjudged commits is an upper bound
+                    # and has to be labelled as one.
+                    unlabeled_commits += 1
             ids = _mention_entities(m)
             forbidden_hits += len(ids & set(ex.forbidden_entities))
             if ex.expect_no_mention and m.get("link_decision") == "RESOLVED":
@@ -190,6 +207,9 @@ def run(glossary_path: str) -> dict:
         resolved_total=resolved_total,
         forbidden_entity_hits=forbidden_hits,
         offset_invariant_failures=offset_failures,
+        unlabeled_commits=unlabeled_commits,
+        exhaustive_documents=sum(1 for e in examples if e.exhaustive),
+        total_documents=len(examples),
     )
 
     return {
@@ -204,12 +224,16 @@ def run(glossary_path: str) -> dict:
 
 def compute_gate(*, conformance_failures, golden_violations, recall_metric,
                  in_set_metric, resolved_correct, resolved_total,
-                 forbidden_entity_hits, offset_invariant_failures) -> dict:
+                 forbidden_entity_hits, offset_invariant_failures,
+                 unlabeled_commits=0, exhaustive_documents=None,
+                 total_documents=None) -> dict:
     """§44 release gate as a pure function so its edge cases are testable.
 
     Every criterion is an explicit named check; 0 commits yields precision
     ``None`` (never a vacuous 1.0) and fails the gate; point estimates must
-    also clear Wilson-lower-bound floors (§43.8).
+    also clear Wilson-lower-bound floors (§43.8); and a commit the annotation
+    cannot judge is reported rather than dropped, because dropping it turns
+    precision into an upper bound without saying so.
     """
     from .metrics import wilson_interval
     recall_m = recall_metric
@@ -230,6 +254,15 @@ def compute_gate(*, conformance_failures, golden_violations, recall_metric,
         "resolved_commits": resolved_total,
         "forbidden_entity_hits": forbidden_entity_hits,
         "offset_invariant_failures": offset_invariant_failures,
+        "unlabeled_commits": unlabeled_commits,
+        # the honest name for what the number above does to precision
+        "resolved_precision_is_upper_bound": unlabeled_commits > 0,
+        "exhaustive_documents": exhaustive_documents,
+        "total_documents": total_documents,
+        "exhaustive_document_share": (
+            round(exhaustive_documents / total_documents, 4)
+            if exhaustive_documents is not None and total_documents
+            else None),
     }
     # every criterion is an explicit named check so the report can show
     # per-row pass/fail honestly instead of a decorative checkmark
@@ -260,6 +293,9 @@ def compute_gate(*, conformance_failures, golden_violations, recall_metric,
         "offset_invariant_failures":
             offset_invariant_failures
             <= RELEASE_GATE["offset_invariant_failures_max"],
+        # precision has to be a measurement, not a ceiling
+        "precision_is_measurable":
+            unlabeled_commits <= RELEASE_GATE["unlabeled_commits_max"],
     }
     return {"criteria": RELEASE_GATE, "values": gate_values,
             "checks": gate_checks, "pass": all(gate_checks.values())}
@@ -359,10 +395,26 @@ def write_markdown(result: dict, out_path: Path) -> None:
         ("offset invariant failures",
          f"≤ {crit['offset_invariant_failures_max']}",
          vals["offset_invariant_failures"], "offset_invariant_failures"),
+        # a row for the gate criterion that is about the evaluation data
+        # rather than the resolver — without it the table can read as all
+        # green beside a FAIL verdict, which is how a gate stops being read
+        ("판정 불가 확정 (unlabeled commits)",
+         f"≤ {crit['unlabeled_commits_max']}",
+         f"{vals['unlabeled_commits']} "
+         f"(전수 주석 문서 {vals['exhaustive_documents']}/"
+         f"{vals['total_documents']})",
+         "precision_is_measurable"),
     ]
     for name, target, val, key in rows:
         mark = "✅" if checks.get(key) else "❌"
         lines.append(f"| {name} | {target} | {val} | {mark} |")
+    if vals.get("resolved_precision_is_upper_bound"):
+        lines.append("")
+        lines.append(
+            f"> ⚠ 확정 {vals['unlabeled_commits']}건이 주석되지 않은 위치에 있어 "
+            "정오를 판정할 수 없다. 위 precision은 그 건들을 **제외한** 값이므로 "
+            "실제 precision의 **상한**이다 (§38.1 UNLABELED). 문서 단위 전수 주석을 "
+            "마치면 이 수치는 측정값이 된다.")
     lines += [
         "",
         f"**게이트 판정: {'PASS' if gate['pass'] else 'FAIL'}**",
