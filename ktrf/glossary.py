@@ -155,9 +155,24 @@ class Glossary:
     def family(self, family_id: str) -> AliasFamily | None:
         return self._family_index.get(family_id)
 
+    def binding(self, alias_id: str) -> AliasBinding | None:
+        """Look up a binding by alias id.
+
+        Scope adjustment needs this once per candidate, and did it with a
+        linear scan over every binding in the glossary — 6,261 bindings times
+        1,070 candidates was 6.7M comparisons per 3,200-character document.
+        Built here alongside the other two indexes because it is derived data,
+        so it costs nothing in the snapshot id.
+        """
+        return self._binding_index.get(alias_id)
+
     def __post_init__(self):
         self._entity_index = {e.entity_id: e for e in self.entities}
         self._family_index = {f.family_id: f for f in self.alias_families}
+        # first wins, matching the scan this replaced
+        self._binding_index: dict[str, AliasBinding] = {}
+        for b in self.alias_bindings:
+            self._binding_index.setdefault(b.alias_id, b)
 
     def binding_profile(self, binding: AliasBinding) -> NormalizationProfile:
         """Effective profile: binding override > family profile > default (REQ-NRM-001)."""

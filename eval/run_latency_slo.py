@@ -58,6 +58,13 @@ SEED = 20260903
 ONSET_STEPS = (50, 100, 150, 200, 250, 300, 350, 400, 500, 600, 800,
                1200, 1600, 2400, 3200)
 
+#: Concurrency levels for the sweep. Every level does the SAME total work, so
+#: the comparison is "the same requests, arranged differently" rather than
+#: "more threads, more requests" — otherwise the arms are not comparable and
+#: the wall clock says nothing.
+CONCURRENCY_LEVELS = (1, 10, 100)
+SWEEP_RESOLVES = 100
+
 # Smallest `--compare` difference worth reading, as a fraction of the control.
 #
 # Measured, not chosen: two full runs of this harness at the same commit on the
@@ -147,11 +154,87 @@ def _degradation_onset(snap, docs: _Documents) -> dict:
     return {"first_always_degraded_chars": first, "ladder": seen}
 
 
+def _concurrency_sweep(snap, text: str,
+                       levels=CONCURRENCY_LEVELS) -> list[dict]:
+    """The same work at 1, 10 and 100 concurrent callers.
+
+    Under the GIL this is not a throughput claim. What it can answer is
+    whether contention degrades the tail or breaks anything — a p95 that
+    collapses at 100 callers, or a single error, is the finding.
+    """
+    out = []
+    for level in levels:
+        per = max(1, SWEEP_RESOLVES // level)
+        lock = threading.Lock()
+        samples: list[float] = []
+        errors: list[Exception] = []
+
+        def worker():
+            try:
+                mine = _time_resolves(snap, text, per)
+            except Exception as exc:            # noqa: BLE001 - reported
+                with lock:
+                    errors.append(exc)
+                return
+            with lock:
+                samples.extend(mine)
+
+        pool = [threading.Thread(target=worker) for _ in range(level)]
+        t0 = time.perf_counter()
+        for t in pool:
+            t.start()
+        for t in pool:
+            t.join()
+        wall = time.perf_counter() - t0
+        done = per * level
+        out.append({
+            "concurrency": level,
+            "resolves": done,
+            "wall_s": round(wall, 2),
+            "throughput_per_s": round(done / wall, 1) if wall else None,
+            "p50_ms": _pct(samples, 0.50),
+            "p95_ms": _pct(samples, 0.95),
+            "max_ms": round(max(samples), 1) if samples else None,
+            "errors": len(errors),
+        })
+    return out
+
+
+def _deadline_effect(snap, text: str, unbounded: list[float],
+                     repeats: int) -> dict:
+    """What a wall-clock budget actually buys on the tail.
+
+    The budget is set at the unbounded p50, so half the requests would have
+    finished inside it anyway and the interesting half is the other one. The
+    floor is not zero and is not meant to be: Level A always runs, so a budget
+    below the exact pass buys nothing further, and the overshoot is reported
+    rather than smoothed away.
+    """
+    budget = max(1, int(_pct(unbounded, 0.50)))
+    samples, shed = [], 0
+    for _ in range(repeats):
+        t0 = time.perf_counter()
+        resp = resolve(snap, text, mode="commit",
+                       options={"deadline_ms": budget})
+        samples.append((time.perf_counter() - t0) * 1000)
+        shed += int(bool(resp.get("deadline", {}).get("skipped_stages")))
+    return {
+        "budget_ms": budget,
+        "unbounded_p95_ms": _pct(unbounded, 0.95),
+        "unbounded_max_ms": round(max(unbounded), 1),
+        "bounded_p95_ms": _pct(samples, 0.95),
+        "bounded_max_ms": round(max(samples), 1),
+        "shed_rate": round(shed / repeats, 3) if repeats else None,
+    }
+
+
 def measure(scales, sizes, repeats, threads) -> dict:
     corpus = [r["text"] if isinstance(r, dict) else r for r in load_corpus()]
     docs = _Documents(random.Random(SEED).sample(corpus, min(6000,
                                                              len(corpus))))
     rows, build, memory, concurrency, onsets = [], [], [], [], []
+    deadlines: list[dict] = []
+    sweeps: list[dict] = []
 
     for n in scales:
         doc, _meta = build_synthetic_glossary(n, seed=SEED)
@@ -163,6 +246,14 @@ def measure(scales, sizes, repeats, threads) -> dict:
         compile_ms = (time.perf_counter() - t0) * 1000
         _cur, compile_peak = tracemalloc.get_traced_memory()
         tracemalloc.stop()
+
+        # Cold: the first resolve a freshly compiled snapshot ever serves.
+        # Taken here, before anything else touches the snapshot, because
+        # every later measurement in this loop is warm by construction.
+        cold_text = docs.of(sizes[len(sizes) // 2])
+        _t = time.perf_counter()
+        resolve(snap, cold_text, mode="commit")
+        cold_ms = (time.perf_counter() - _t) * 1000
 
         reg = SnapshotRegistry()
         # measured apart from compile: this is what a hot swap costs, and it
@@ -182,6 +273,8 @@ def measure(scales, sizes, repeats, threads) -> dict:
             "verify_integrity_ms_p50": round(statistics.median(ver), 1),
             "activate_ms_p50": round(statistics.median(act), 1),
             "compile_peak_mb": round(compile_peak / 1e6, 1),
+            "cold_resolve_ms": round(cold_ms, 1),
+            "cold_doc_chars": sizes[len(sizes) // 2],
         })
 
         for size in sizes:
@@ -205,6 +298,21 @@ def measure(scales, sizes, repeats, threads) -> dict:
             })
 
         onsets.append({"entities": n, **_degradation_onset(snap, docs)})
+
+        # the budget is exercised at the largest size, where the tail is
+        largest = docs.of(sizes[-1])
+        # fewer repeats than a latency cell: this arm is asking whether the
+        # budget bites, not publishing a percentile, and the largest document
+        # at the largest scale is the most expensive sample in the harness
+        budget_repeats = max(8, repeats // 3)
+        unbounded, _drift = _timed_halves(snap, largest, budget_repeats)
+        deadlines.append({"entities": n, "doc_chars": sizes[-1],
+                          **_deadline_effect(snap, largest, unbounded,
+                                             budget_repeats)})
+        # the sweep uses the smallest document: it is asking about contention,
+        # not about how long one document takes
+        sweeps.append({"entities": n, "doc_chars": sizes[0],
+                       "levels": _concurrency_sweep(snap, docs.of(sizes[0]))})
 
         mid = docs.of(sizes[len(sizes) // 2])
         tracemalloc.start()
@@ -278,6 +386,8 @@ def measure(scales, sizes, repeats, threads) -> dict:
         "memory": memory,
         "degradation": onsets,
         "concurrency": concurrency,
+        "concurrency_sweep": sweeps,
+        "deadline": deadlines,
     }
 
 
@@ -402,14 +512,81 @@ def write_markdown(t: dict, control: dict | None, out_path: Path) -> None:
         " 놀라움이 아니라 표에 있어야 한다. 락 바깥에서 계산하므로 진행 중인"
         " 읽기를 막지는 않는다.",
         "",
-        "| entity | compile (ms) | verify_integrity p50 | activate p50 |"
-        " compile 최대 메모리 |",
-        "|---:|---:|---:|---:|---:|",
+        "`cold`는 갓 컴파일된 snapshot이 **처음** 응답한 한 건이고, 2절의"
+        " p50은 예열 뒤의 정상 상태다. 배포 직후·hot swap 직후에 서비스가"
+        " 겪는 것은 앞의 값이므로 따로 싣는다.",
+        "",
+        "다만 **한 건은 한 건이다** — 이 머신은 같은 커밋에서 두 번 돌린"
+        " 결과가 26% 어긋난다. 아래 값이 warm p50보다 낮게 나오더라도 그것은"
+        " cold가 더 빠르다는 뜻이 아니라 **측정 가능한 cold 페널티가 없다**는"
+        " 뜻으로 읽어야 한다. 인덱스는 compile에서 만들어지고 그 비용은 왼쪽"
+        " 열에 이미 있다.",
+        "",
+        "| entity | compile (ms) | cold resolve 1건 | verify_integrity p50 |"
+        " activate p50 | compile 최대 메모리 |",
+        "|---:|---:|---:|---:|---:|---:|",
     ]
     for r in t["build"]:
+        cold = r.get("cold_resolve_ms")
         lines.append(f"| {r['entities']:,} | {r['compile_ms']} |"
+                     f" {cold if cold is not None else '—'}"
+                     f" ({r.get('cold_doc_chars', '?')}자) |"
                      f" {r['verify_integrity_ms_p50']} |"
                      f" {r['activate_ms_p50']} | {r['compile_peak_mb']} MB |")
+
+    if t.get("deadline"):
+        lines += [
+            "",
+            "## 3.5 마감 시간(deadline)이 실제로 꼬리를 자르는가",
+            "",
+            "이 리포트의 원래 약점은 지연을 **재기만** 했다는 것이다. 느린"
+            " 응답을 어떻게 할 것인가에 대한 답이 없었다. `deadline_ms`는"
+            " 선택 단계(fuzzy → dense → rerank)를 순서대로 버리고, 무엇을"
+            " 버렸는지 응답에 적는다.",
+            "",
+            "**바닥은 0이 아니다.** Level A는 결정적 보장이지 best-effort"
+            " 단계가 아니므로 exact 패스는 어떤 예산에서도 돌아간다. 따라서"
+            " exact 패스 비용 아래로는 예산을 줄여도 더 빨라지지 않으며, 아래"
+            " 표의 초과분은 감추지 않고 그대로 적는다.",
+            "",
+            "예산은 **무제한 p50**으로 잡았다 — 절반은 원래 그 안에 끝났을"
+            " 요청이고, 볼 값은 나머지 절반이다.",
+            "",
+            "| entity | 문서 | 예산 | 무제한 p95 / 최대 | 예산 p95 / 최대 |"
+            " 단계 버린 비율 |",
+            "|---:|---:|---:|---:|---:|---:|",
+        ]
+        for r in t["deadline"]:
+            lines.append(
+                f"| {r['entities']:,} | {r['doc_chars']:,}자 |"
+                f" {r['budget_ms']}ms |"
+                f" {r['unbounded_p95_ms']} / {r['unbounded_max_ms']} |"
+                f" {r['bounded_p95_ms']} / {r['bounded_max_ms']} |"
+                f" {r['shed_rate']:.0%} |")
+
+    if t.get("concurrency_sweep"):
+        lines += [
+            "",
+            "## 5.5 동시 요청 1 / 10 / 100",
+            "",
+            "**모든 수준이 같은 총량을 처리한다** — 스레드가 늘면 스레드당"
+            " 건수가 줄어든다. 그래야 두 팔이 같은 일을 다르게 배치한 것이"
+            " 되고, 벽시계가 의미를 갖는다.",
+            "",
+            "GIL 아래에서 처리량이 늘 것을 기대하는 표가 아니다. 여기서 읽을"
+            " 것은 **꼬리가 무너지는가**와 **오류가 나는가** 둘이다.",
+            "",
+            "| entity | 동시 | 건수 | 벽시계 | 처리량/s | p50 | p95 | 최대 |"
+            " 오류 |",
+            "|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        ]
+        for grp in t["concurrency_sweep"]:
+            for r in grp["levels"]:
+                lines.append(
+                    f"| {grp['entities']:,} | {r['concurrency']} |"
+                    f" {r['resolves']} | {r['wall_s']}s |"
+                    f" {r['throughput_per_s']} | {r['p50_ms']} |"
+                    f" {r['p95_ms']} | {r['max_ms']} | {r['errors']} |")
 
     lines += [
         "",

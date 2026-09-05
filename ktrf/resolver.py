@@ -99,6 +99,11 @@ _OPTION_SCHEMA = {
     "return_eval_trace": (bool, None),
     "detect_unregistered_mentions": (bool, None),
     "max_prediction_set": (int, lambda v: 1 <= v <= 500),
+    # §31 wall-clock budget. Level A never yields to it — the deterministic
+    # catalog guarantee is not a best-effort stage — so the floor is whatever
+    # the exact pass costs, and the deadline governs the optional Level B
+    # stages above it.
+    "deadline_ms": (int, lambda v: 1 <= v <= 600_000),
 }
 
 
@@ -156,6 +161,23 @@ def resolve(
             f"input is {nbytes} bytes; sync limit is {policy.sync_max_input_bytes}",
             details={"hint": "use the async document resolve API (§28)"},
         )
+
+    # §31: a wall-clock budget over the optional stages. Nothing here can
+    # stop the exact pass — Level A is a guarantee, not a best-effort stage —
+    # so the deadline governs fuzzy, dense and rerank, in the order they run.
+    # Each stage is checked before it is entered rather than interrupted
+    # part-way, so a skipped stage is skipped whole and the response can name
+    # it instead of returning half of one.
+    deadline_ms = options.get("deadline_ms")
+    deadline_at = (_t0 + deadline_ms / 1000.0) if deadline_ms else None
+    deadline_skipped: list[str] = []
+
+    def _past_deadline(stage: str) -> bool:
+        if deadline_at is None or _time.perf_counter() < deadline_at:
+            return False
+        if stage not in deadline_skipped:
+            deadline_skipped.append(stage)
+        return True
 
     trace: dict = {"channels": [], "pass2_executed": False, "drops": []}
     degraded = False
@@ -230,6 +252,15 @@ def resolve(
                 break
             span = m.span()
             token = m.group()
+            if _past_deadline("fuzzy"):
+                # same shape as exhausting the window budget: everything from
+                # here on is seen by the exact channel alone, and the mentions
+                # that affects say so rather than the whole response carrying
+                # one undifferentiated boolean (§27.8/REQ-API-005)
+                degraded = True
+                trace["drops"].append("deadline_fuzzy")
+                generation_cutoff = span[0]
+                break
             if len(token) < 2:
                 continue
             if any(span[0] < e and s < span[1] for s, e in exact_spans):
@@ -295,6 +326,11 @@ def resolve(
             """Pass-2 dense retrieval (§21.6, V2 bi-encoder §22.3)."""
             nonlocal pass2, dense_queries, degraded
             if snapshot.dense is None:
+                return
+            if _past_deadline("dense"):
+                if "deadline_dense" not in trace["drops"]:
+                    trace["drops"].append("deadline_dense")
+                    degraded = True  # INV-013: a cut generation stage degrades
                 return
             if dense_queries >= policy.max_dense_queries_per_request:
                 if "dense_query_budget" not in trace["drops"]:
@@ -414,8 +450,14 @@ def resolve(
 
         # ---- conditional cross-encoder rerank (§22.3-22.4, V3 stage) ----
         if snapshot.reranker is not None:
-            degraded |= _rerank(nodes, snapshot, text, context, mode,
-                                policy, trace)
+            if _past_deadline("rerank"):
+                trace["drops"].append("deadline_rerank")
+                # rerank only re-scores candidates it never removes (INV-010),
+                # so skipping it leaves the answer whole but less separated —
+                # reported, and not counted as a cut generation stage
+            else:
+                degraded |= _rerank(nodes, snapshot, text, context, mode,
+                                    policy, trace)
 
     # ---- decisions + response assembly ----
     ordered = sorted(nodes.values(), key=lambda n: (n.core_span[0],
@@ -457,6 +499,15 @@ def resolve(
         "limits": limits,
         "mentions": mentions,
     }
+    if deadline_ms:
+        # what the budget actually bought, whether or not it was exceeded: a
+        # deadline that silently changed the answer would be worse than none
+        resp["deadline"] = {
+            "budget_ms": deadline_ms,
+            "elapsed_ms": round(1000 * (_time.perf_counter() - _t0), 3),
+            "exceeded": bool(deadline_skipped),
+            "skipped_stages": list(deadline_skipped),
+        }
     if options.get("return_trace"):
         resp["trace"] = trace
     if metrics is not None:
@@ -685,8 +736,7 @@ def _scope_adjust(cand: Candidate, snapshot: Snapshot, context: dict,
                   node: MentionNode) -> float:
     if cand.alias_id is None:
         return 0.0
-    binding = next((b for b in snapshot.glossary.alias_bindings
-                    if b.alias_id == cand.alias_id), None)
+    binding = snapshot.glossary.binding(cand.alias_id)
     if binding is None:
         return 0.0
     adj = 0.0
