@@ -107,6 +107,49 @@ _OPTION_SCHEMA = {
 }
 
 
+def _validate_context(context: dict) -> None:
+    """§12/§27.2: the scope context is schema-checked like the options are.
+
+    An unrecognised key here used to be silently ignored, which is worse than
+    an unrecognised option: the glossary side of a scope rule is spelled
+    ``departments`` and the request side is spelled ``department``, so the
+    likeliest mistake in the whole API is a plural that resolves to nothing.
+    Nothing failed, no scope adjustment happened, and the answer changed —
+    which is precisely the "설정 오류가 품질 문제로" case the review names.
+    """
+    known = set(_SCOPE_DIMS.values())
+    for key, value in context.items():
+        if key not in known:
+            raise KtrfApiError("INVALID_REQUEST",
+                               f"unknown context key {key!r}",
+                               details={"known": sorted(known)})
+        if isinstance(value, dict):
+            unknown = set(value) - {"value", "trust"}
+            if unknown:
+                raise KtrfApiError(
+                    "INVALID_REQUEST",
+                    f"unknown field(s) {sorted(unknown)} in context {key!r}",
+                    details={"known": ["value", "trust"]})
+            if not isinstance(value.get("value"), str):
+                raise KtrfApiError(
+                    "INVALID_REQUEST",
+                    f"context {key!r} needs a string 'value'")
+            trust = value.get("trust", "USER_PROVIDED")
+            if trust not in TRUST_LEVELS:
+                # an unknown trust level fell through every branch and was
+                # treated as UNTRUSTED — the safe-looking direction, and a
+                # silent downgrade of a scope rule the caller meant to enforce
+                raise KtrfApiError(
+                    "INVALID_REQUEST",
+                    f"unknown trust level {trust!r} in context {key!r}",
+                    details={"known": list(TRUST_LEVELS)})
+        elif not isinstance(value, str):
+            raise KtrfApiError(
+                "INVALID_REQUEST",
+                f"context {key!r} must be a string or "
+                "{'value': ..., 'trust': ...}")
+
+
 def _validate_options(options: dict) -> None:
     """§27.2: every runtime option is schema-checked; misconfiguration is a
     typed API error, never a silent quality change or a raw TypeError."""
@@ -144,6 +187,7 @@ def resolve(
     context = context or {}
     policy = snapshot.policy
     _validate_options(options)
+    _validate_context(context)
 
     # ---- input validation (§13.6, §27.2) ----
     if isinstance(text, bytes):

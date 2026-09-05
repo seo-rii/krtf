@@ -17,7 +17,7 @@ from threading import Lock
 
 from .errors import KtrfApiError
 from .offsets import OffsetMap
-from .resolver import resolve
+from .resolver import _validate_context, _validate_options, resolve
 from .snapshot import Snapshot
 
 DEFAULT_ASYNC_MAX_INPUT_BYTES = 10 * 1024 * 1024  # §28.1
@@ -184,6 +184,12 @@ class ResolveJobManager:
             )
         if mode not in ("fast", "aggressive", "commit"):
             raise KtrfApiError("INVALID_REQUEST", f"unknown mode {mode!r}")
+        # Validate here, not on the first chunk. Otherwise a typo in the
+        # options is accepted, a job id is handed back, and the job fails
+        # somewhere in a worker later — the caller has already moved on, and
+        # what should have been a rejected request became a failed job.
+        _validate_options(options or {})
+        _validate_context(context or {})
         job = ResolveJob(
             job_id=f"job-{next(self._ids):06d}",
             snapshot=snapshot,  # single pin for the whole job (REQ-API-006)

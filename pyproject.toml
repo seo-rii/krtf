@@ -27,7 +27,10 @@ classifiers = [
 # the build rather than quietly dropping the field.
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "build>=1.2"]
+# hypothesis drives the request-validation property test: the invariant
+# is that no option or context value produces an untyped exception,
+# and enumerating the ways to break that by hand is how the gaps got in
+dev = ["pytest>=8.0", "build>=1.2", "hypothesis>=6.0"]
 # M4 neural runtime (bi-encoder/cross-encoder ONNX backends). Weights are
 # NOT installed by this extra - see docs/PACKAGING.md.
 neural = ["numpy", "onnxruntime>=1.24", "tokenizers", "huggingface_hub"]
