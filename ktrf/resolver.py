@@ -1065,9 +1065,15 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
                   and top is not None and top not in members)
     if forced_top:
         members = [top] + members
-    # truncation drops tail members from a conformal set — the coverage
-    # guarantee no longer holds for a cut set, and we must say so instead
-    # of exposing set_confidence as if it were still valid (§25.2)
+    # Truncation is a *display* limit, and it stops here. Everything the
+    # decision rests on — how many senses cleared the bar, and how far the
+    # runner-up is behind — is read from `decision_members`, which is never
+    # cut. Reading them from the cut list let `max_prediction_set=1` turn two
+    # candidates tied at 0.99 into a RESOLVED commit: the second sense
+    # vanished, the margin test found a singleton, and the mention committed
+    # to whichever of the two sorted first. A response option must not be
+    # able to decide which entity a document is about.
+    decision_members = list(members)
     set_truncated = len(members) > max_set
     members = members[:max_set]
 
@@ -1116,13 +1122,17 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
         set_members.append(kb_member)
 
     policy = snapshot.policy
-    second_p = (members[1].calibrated_probability
-                if len(members) > 1 else 0.0) or 0.0
+    # the runner-up as the *set* saw it, not as the display did
+    second_p = (decision_members[1].calibrated_probability
+                if len(decision_members) > 1 else 0.0) or 0.0
+    # a set is a singleton because one sense cleared the bar, never because
+    # the caller asked to see one member
+    decision_singleton = (len(decision_members) + (1 if kb_member else 0)) == 1
 
     if node.pool.exact_overflow:
         # §21.5: safety-limit overflow -> AMBIGUOUS + degraded, never a 500
         link = "AMBIGUOUS"
-    elif not set_members:
+    elif not decision_members and not kb_member:
         link = "UNCERTAIN"
     elif kb_member and (kb_member["calibrated_probability"] > (top_p or 0)):
         link = "KB_MISSING"
@@ -1132,11 +1142,12 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
         and top is not None
         and top.commit_blocked is None  # VARIANTS_PLAN §2 ①②
         and (top_p or 0) >= policy.resolve_threshold
-        and (len(set_members) == 1 or (top_p or 0) - second_p >= policy.margin_threshold)
+        and (decision_singleton
+             or (top_p or 0) - second_p >= policy.margin_threshold)
         and not kb_member
     ):
         link = "RESOLVED"
-    elif node_degraded and len(set_members) <= 1:
+    elif node_degraded and len(decision_members) <= 1:
         link = "UNCERTAIN"
     else:
         link = "AMBIGUOUS"

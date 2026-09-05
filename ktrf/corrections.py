@@ -122,9 +122,11 @@ class CorrectionStore:
             evidence_text=evidence_text,
         )
         self._by_tenant.setdefault(tenant_id, {})[c.correction_id] = c
-        return c
+        return copy.deepcopy(c)
 
-    def get(self, tenant_id: str, correction_id: str) -> Correction:
+    def _record(self, tenant_id: str, correction_id: str) -> Correction:
+        """The stored record itself. Internal: the only code allowed to hold a
+        live reference is the code that owns the state transitions."""
         # REQ-COR-004: lookups are tenant-scoped; no cross-tenant access
         try:
             return self._by_tenant[tenant_id][correction_id]
@@ -133,8 +135,20 @@ class CorrectionStore:
                 f"correction {correction_id!r} not found for tenant {tenant_id!r}"
             )
 
+    def get(self, tenant_id: str, correction_id: str) -> Correction:
+        """A copy of the record.
+
+        Handing back the record itself made `status` writable from outside:
+        setting it to ACCEPTED on the object `submit` returned put the
+        correction into the training export without `review` ever being
+        called. The approval path is the store's, not the caller's, so the
+        caller gets a copy and nothing it does to that copy is an approval.
+        """
+        return copy.deepcopy(self._record(tenant_id, correction_id))
+
     def list(self, tenant_id: str, status: str | None = None) -> list[Correction]:
-        items = list(self._by_tenant.get(tenant_id, {}).values())
+        items = [copy.deepcopy(c)
+                 for c in self._by_tenant.get(tenant_id, {}).values()]
         if status:
             items = [c for c in items if c.status == status]
         return items
@@ -143,12 +157,12 @@ class CorrectionStore:
                reviewer: str, reason: str = "") -> Correction:
         if decision not in ("ACCEPTED", "REJECTED"):
             raise CorrectionError("decision must be ACCEPTED or REJECTED")
-        c = self.get(tenant_id, correction_id)
+        c = self._record(tenant_id, correction_id)
         if c.status not in ("SUBMITTED", "REVIEWED"):
             raise CorrectionError(f"correction already {c.status}")
         c.status = decision
         c.review = {"decision": decision, "reviewer": reviewer, "reason": reason}
-        return c
+        return copy.deepcopy(c)
 
     def export_accepted(
         self,
@@ -164,7 +178,14 @@ class CorrectionStore:
         caps = per_principal_cap or DEFAULT_PER_PRINCIPAL_CAP
         taken: dict[str, int] = {}
         out: list[dict] = []
-        for c in self.list(tenant_id, status="ACCEPTED"):
+        for c in self._by_tenant.get(tenant_id, {}).values():
+            # Status and audit record have to agree. A status of ACCEPTED with
+            # no ACCEPTED review behind it is not an approval — it is a status
+            # that got there some other way, and the export is the one place
+            # where believing it would put unreviewed labels into training.
+            if c.status != "ACCEPTED" or (c.review or {}).get(
+                    "decision") != "ACCEPTED":
+                continue
             kind = c.verifier.get("kind", "USER")
             principal = c.verifier.get("principal_ref", "anonymous")
             if taken.get(principal, 0) >= caps.get(kind, 0):

@@ -21,6 +21,9 @@ explicit registry step, §11.4).
 from __future__ import annotations
 
 import dataclasses
+import os
+import itertools
+import shutil
 import json
 from pathlib import Path
 
@@ -52,9 +55,61 @@ def _policy_from_dict(d: dict) -> RuntimePolicy:
     return RuntimePolicy(candidate_budget=budget, **d)
 
 
+_save_seq = itertools.count(1)
+
+
+def _publish(staging: Path, out: Path) -> None:
+    """Put a finished bundle in place of whatever is there.
+
+    Writing straight into the destination meant a failure partway through a
+    re-save left the directory holding the new glossary beside the old
+    manifest — a bundle that verified against neither and could no longer be
+    loaded at all. The previous good bundle was destroyed by an interrupted
+    attempt to replace it.
+
+    A directory rename is the closest thing to atomic that a plain filesystem
+    offers here. The old bundle is moved aside first (Windows will not replace
+    a directory that exists), and it is only deleted once the new one is in
+    place; if the second rename fails, the old one goes back. The residual
+    window is between the two renames, and it is not zero — a reader arriving
+    in it finds no bundle rather than a broken one, which is the failure worth
+    having.
+    """
+    backup = None
+    if out.exists():
+        backup = out.parent / f".{out.name}.replaced-{os.getpid()}-{next(_save_seq)}"
+        shutil.rmtree(backup, ignore_errors=True)
+        os.replace(out, backup)
+    try:
+        os.replace(staging, out)
+    except BaseException:
+        if backup is not None:
+            os.replace(backup, out)      # the old bundle is still the truth
+        raise
+    if backup is not None:
+        shutil.rmtree(backup, ignore_errors=True)
+
+
 def save_snapshot(snapshot: Snapshot, out_dir: str | Path) -> Path:
-    """Persist a compiled snapshot as an artifact bundle."""
+    """Persist a compiled snapshot as an artifact bundle.
+
+    The bundle is built in a staging directory and published by rename, so a
+    write that fails halfway leaves the previous bundle exactly as it was.
+    """
     out = Path(out_dir)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    staging = out.parent / f".{out.name}.staging-{os.getpid()}-{next(_save_seq)}"
+    shutil.rmtree(staging, ignore_errors=True)
+    try:
+        _write_bundle(snapshot, staging)
+    except BaseException:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    _publish(staging, out)
+    return out
+
+
+def _write_bundle(snapshot: Snapshot, out: Path) -> Path:
     out.mkdir(parents=True, exist_ok=True)
     gdict = glossary_to_dict(snapshot.glossary)
     (out / "glossary.yaml").write_text(
@@ -72,15 +127,10 @@ def save_snapshot(snapshot: Snapshot, out_dir: str | Path) -> Path:
         json.dumps(dataclasses.asdict(snapshot.guard), indent=2),
         encoding="utf-8",
     )
-    # a bundle is the snapshot, not the union of every snapshot written here:
-    # an optional artifact left by a previous save would be picked up by load
-    for optional, present in (
-        ("calibrator.json", snapshot.calibrator is not None),
-        ("entity-vectors.json", snapshot.dense is not None),
-        ("fusion.json", snapshot.fusion is not None),
-    ):
-        if not present:
-            (out / optional).unlink(missing_ok=True)
+    # A bundle is the snapshot, not the union of every snapshot ever written
+    # here. That used to need an explicit unlink of each optional artifact a
+    # previous save might have left; building in an empty staging directory
+    # gives it for free, and gives it for files nobody remembered to list.
     manifest = dict(snapshot.manifest)
     if snapshot.calibrator is not None:
         cal = snapshot.calibrator.to_dict()
@@ -173,6 +223,21 @@ def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False,
             "bundle verification failed: snapshot_id does not match "
             "manifest content",
         )
+    # A manifest entry is a claim about what this bundle contains. Optional
+    # artifacts were verified only `if the file exists`, so deleting a
+    # declared file took away the check along with its subject: the bundle
+    # loaded with calibrator=None while the manifest still said there was
+    # one, and the two disagreed silently. Absence is checked against the
+    # declaration, not against the directory listing.
+    for key, filename in (("calibrator_hash", "calibrator.json"),
+                          ("fusion_hash", "fusion.json"),
+                          ("entity_vectors_hash", "entity-vectors.json"),
+                          ("segmentation_guard_hash", "guard.json")):
+        if manifest.get(key) is not None and not (d / filename).exists():
+            raise KtrfApiError(
+                "SNAPSHOT_UNAVAILABLE",
+                f"bundle declares {key} but {filename} is missing; the "
+                "manifest describes artifacts the bundle does not have")
     cal_path = d / "calibrator.json"
     if cal_path.exists():
         cal_dict = json.loads(cal_path.read_text(encoding="utf-8"))

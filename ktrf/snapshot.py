@@ -12,6 +12,7 @@ scope).
 
 from __future__ import annotations
 
+import copy
 import dataclasses
 import hashlib
 import json
@@ -253,6 +254,13 @@ def compile_snapshot(
 
     policy = policy or RuntimePolicy()
     guard = guard or ResolutionGuard()
+    # The snapshot owns its glossary. Holding the caller's object meant a
+    # later edit to it — renaming an entity, appending a binding — changed
+    # what an already-compiled snapshot answered, while snapshot_id, which is
+    # computed once here, went on describing the glossary as it was. An id
+    # that no longer identifies the content is worse than no id: every
+    # integrity check downstream is built on it (INV-015).
+    glossary = copy.deepcopy(glossary)
     fst = ParticleFST()
     exact_index = ExactIndex(glossary, fst)
     snapshot = Snapshot(

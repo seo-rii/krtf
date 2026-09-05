@@ -73,6 +73,20 @@ def _fit_platt(scores: list[float], labels: list[int],
     return a, b
 
 
+def platt_marginal(a: float, b: float, ranking_score: float) -> float:
+    """The calibrated marginal — the one function, used at fit and inference.
+
+    The conformal quantile is a threshold on ``1 - p``. Computing p at full
+    precision while fitting and then clipping and rounding it at inference
+    makes those two different thresholds: a score sitting on the boundary is
+    inside the set on one side of the system and outside on the other. The
+    clip and the round are part of the score function, not presentation, so
+    they belong here where both callers get them.
+    """
+    p = 1.0 / (1.0 + math.exp(-(a * ranking_score + b)))
+    return round(min(0.99, max(0.01, p)), 3)
+
+
 def _conformal_quantile(nonconformity: list[float], alpha: float) -> float:
     """q̂ = ⌈(n+1)(1−α)⌉ / n quantile of the calibration scores (§25.2)."""
     s = sorted(nonconformity)
@@ -287,8 +301,7 @@ class TunedCalibrator:
         return round(1.0 - self.alpha, 4)
 
     def calibrate_marginal(self, ranking_score: float) -> float:
-        p = 1.0 / (1.0 + math.exp(-(self.platt_a * ranking_score + self.platt_b)))
-        return round(min(0.99, max(0.01, p)), 3)
+        return platt_marginal(self.platt_a, self.platt_b, ranking_score)
 
     def quantile_for(self, group: str) -> tuple[float, bool]:
         """(q̂, used_fallback). Below n_min, fall back conservatively
@@ -369,7 +382,7 @@ def fit_calibrator_from_folds(
                       [e.label for e in fit_half])
 
     def marginal(score: float) -> float:
-        return 1.0 / (1.0 + math.exp(-(a * score + b)))
+        return platt_marginal(a, b, score)
 
     positives = [e for e in conformal_rows if e.label == 1]
     if not positives:
