@@ -199,3 +199,43 @@ def test_holdout_by_leaves_rows_without_the_dimension_on_the_fit_side():
 def test_fit_still_refuses_data_it_cannot_calibrate_from():
     with pytest.raises(ValueError):
         fit_calibrator([_ex(0.5, 0, document=f"d{i}") for i in range(20)])
+
+
+# ------------------------------ what a fold is allowed to claim about itself
+
+def test_holdout_only_identities_do_not_buy_a_grouped_basis():
+    # tenant and time are holdout axes, not link dimensions. Rows carrying
+    # only those are separable, but separating them separates nothing —
+    # calling the result "grouped" would claim a guarantee the identities
+    # never supported.
+    from ktrf.calibration import fit_with_folds
+
+    rows = [_ex(0.9 - 0.01 * i, int(i % 4 in (0, 1)), tenant="t1",
+                time_bucket="2026-09-05") for i in range(40)]
+    fitted = fit_with_folds(rows, alpha=0.1, n_min=1)
+    assert fitted.calibrator.split_basis == "row"
+    assert fitted.calibrator.split_report["grouped"] is False
+
+
+def test_an_ungrouped_fit_locks_nothing_because_it_used_every_row():
+    # the row split takes examples[0::2] and examples[1::2] — that is all of
+    # them. A fold called "test" would hold rows the fit had already seen, and
+    # coverage measured there is the number this change exists to stop
+    # reporting.
+    from ktrf.calibration import fit_with_folds
+
+    plain = [TrainingExample(0.9 - 0.01 * i, "exact|multi", int(i % 4 in (0, 1)))
+             for i in range(40)]
+    fitted = fit_with_folds(plain, alpha=0.1, n_min=1,
+                            shares=DEFAULT_SHARES)
+    assert fitted.locked == []
+
+
+def test_a_grouped_fit_does_lock_its_test_fold():
+    from ktrf.calibration import fit_with_folds
+
+    examples = _corpus(n_docs=40)
+    fitted = fit_with_folds(examples, alpha=0.1, n_min=1,
+                            shares=DEFAULT_SHARES)
+    assert fitted.locked, "a grouped four-way split has rows to lock"
+    assert fitted.calibrator.split_basis == "grouped"

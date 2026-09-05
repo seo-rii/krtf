@@ -64,16 +64,32 @@ def test_an_unannotated_alias_in_the_filler_blocks_the_claim(glossary, catalog):
     assert verify_exhaustive(ex, catalog) is False
 
 
-def test_verification_is_not_fooled_by_a_match_spanning_a_cut(glossary,
-                                                              catalog):
-    # the annotated span is removed before scanning, and a newline is left in
-    # its place, so no substring can form across the cut and be counted
+def test_a_second_unannotated_occurrence_is_found(glossary, catalog):
     surface = _alias(glossary)
     text = f"{surface}{surface} 보고."
     ex = EvalExample(text, "s", "A",
                      [GoldMention((0, len(surface)), "E", surface)])
-    # the SECOND occurrence really is unannotated, so this is not exhaustive
     assert verify_exhaustive(ex, catalog) is False
+
+
+def test_the_two_sides_of_a_cut_are_never_joined_back_together(glossary,
+                                                               catalog):
+    # Split the alias, put the annotated occurrence between the halves. The
+    # halves are not a mention and the document IS exhaustive — but joining
+    # the residual on a separator and normalising would splice them back into
+    # the alias, because a tolerant profile drops whitespace. Scanning each
+    # stretch separately is what keeps that invented occurrence out.
+    surface = _alias(glossary)
+    if len(surface) < 4:
+        pytest.skip("need an alias long enough to split")
+    head, tail = surface[:len(surface) // 2], surface[len(surface) // 2:]
+    text = f"{head} {surface} {tail} 보고."
+    ex = EvalExample(text, "s", "A",
+                     [GoldMention((len(head) + 1,
+                                   len(head) + 1 + len(surface)), "E",
+                                  surface)])
+    assert text[len(head) + 1:len(head) + 1 + len(surface)] == surface
+    assert verify_exhaustive(ex, catalog) is True
 
 
 def test_marking_a_corpus_reports_how_many_it_could_verify(glossary):

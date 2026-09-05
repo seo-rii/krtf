@@ -163,3 +163,50 @@ def test_a_member_the_quantile_rejected_is_marked_as_forced():
     forced = [m["prediction_set"].get("forced_top") for m in resp["mentions"]
               if "prediction_set" in m]
     assert forced and all(f is True for f in forced)
+
+
+# ------------------------------------------- two contracts, told apart
+
+def test_strict_mode_returns_the_set_the_quantile_actually_drew():
+    # a quantile of 0 admits nothing. The default contract hands back the top
+    # candidate anyway so the caller has something to show; the strict one
+    # returns the empty set, which is the honest conformal answer.
+    strict = TunedCalibrator(
+        platt_a=1.0, platt_b=0.0, alpha=0.1,
+        group_quantiles={}, global_quantile=0.0, fallback_quantile=0.0,
+        group_counts={}, n_min=1)
+    snap = _snapshot_with(strict)
+    lenient = resolve(snap, "금융감독원이 조사했다", mode="commit")
+    exact = resolve(snap, "금융감독원이 조사했다", mode="commit",
+                    options={"strict_conformal_set": True})
+    lenient_sets = [m["prediction_set"] for m in lenient["mentions"]
+                    if "prediction_set" in m]
+    exact_sets = [m["prediction_set"] for m in exact["mentions"]
+                  if "prediction_set" in m]
+    assert lenient_sets and exact_sets
+    assert all(s.get("forced_top") for s in lenient_sets)
+    assert all(s.get("forced_top") is None for s in exact_sets)
+    assert all(s.get("strict_conformal") for s in exact_sets)
+    # the empty set is a real answer: no candidate cleared the bar
+    assert all(len(s["members"]) < len(l["members"])
+               for s, l in zip(exact_sets, lenient_sets))
+
+
+def test_a_mention_with_an_empty_strict_set_is_not_reported_as_resolved():
+    strict = TunedCalibrator(
+        platt_a=1.0, platt_b=0.0, alpha=0.1,
+        group_quantiles={}, global_quantile=0.0, fallback_quantile=0.0,
+        group_counts={}, n_min=1)
+    resp = resolve(_snapshot_with(strict), "금융감독원이 조사했다",
+                   mode="commit", options={"strict_conformal_set": True})
+    for m in resp["mentions"]:
+        if m.get("prediction_set", {}).get("members") == []:
+            assert m["link_decision"] != "RESOLVED"
+
+
+def test_the_default_contract_is_unchanged():
+    snap = compile_snapshot(load_glossary(GLOSSARY))
+    a = resolve(snap, "금융감독원이 조사했다", mode="commit")
+    b = resolve(snap, "금융감독원이 조사했다", mode="commit",
+                options={"strict_conformal_set": False})
+    assert a["mentions"] == b["mentions"]

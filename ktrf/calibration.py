@@ -432,15 +432,18 @@ def fit_with_folds(examples: list[TrainingExample], alpha: float = 0.05,
     """
     shares = dict(shares or {"platt": 0.5, "conformal": 0.5})
     if not any(e.groups for e in examples):
-        # nothing to group by: the row split is all there is, and it is not
-        # evidence of a leak — just an absence of evidence either way
-        report = split_examples(examples, shares=shares)
+        # Nothing to group by: the row split is all there is, and it is not
+        # evidence of a leak — just an absence of evidence either way. It uses
+        # every row, including the ones a fold named "test" would hold, so
+        # nothing is locked and none is claimed to be: a held-out coverage
+        # measured on rows the fit saw is the number this whole change exists
+        # to stop reporting.
         return FittedSplit(
             calibrator=fit_calibrator_from_folds(
                 examples[0::2], examples[1::2], alpha=alpha, n_min=n_min,
                 split_basis="row"),
             split=None,
-            locked=report.rows(examples, "test") if "test" in shares else [],
+            locked=[],
         )
     report = split_examples(examples, shares=shares)
     platt = report.rows(examples, "platt")
@@ -450,9 +453,15 @@ def fit_with_folds(examples: list[TrainingExample], alpha: float = 0.05,
         return FittedSplit(
             calibrator=fit_calibrator_from_folds(
                 platt, conformal, alpha=alpha, n_min=n_min,
-                split_basis="grouped", split_report=report.to_dict()),
+                # rows can carry only tenant or time, which are holdout axes
+                # and link nothing: the split then separates rows without
+                # separating groups, and calling it "grouped" would claim a
+                # guarantee the identities never supported
+                split_basis="grouped" if report.grouped else "row",
+                split_report=report.to_dict()),
             split=report,
-            locked=report.rows(examples, "test") if "test" in shares else [],
+            locked=(report.rows(examples, "test")
+                    if "test" in shares and report.grouped else []),
         )
     degraded = report.to_dict()
     degraded["degraded_to"] = "row"

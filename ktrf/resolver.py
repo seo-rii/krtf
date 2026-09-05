@@ -104,6 +104,13 @@ _OPTION_SCHEMA = {
     # the exact pass costs, and the deadline governs the optional Level B
     # stages above it.
     "deadline_ms": (int, lambda v: 1 <= v <= 600_000),
+    # §25.2: two different contracts over the same machinery. The default is
+    # the usability one — always offer at least the best candidate, so a
+    # caller has something to show. Setting this asks for the conformal set
+    # exactly as the quantile drew it, empty included. They cannot be the same
+    # mode: a set with a member the quantile rejected is not the set whose
+    # coverage `set_confidence` describes.
+    "strict_conformal_set": (bool, None),
 }
 
 
@@ -518,7 +525,8 @@ def resolve(
         m = _mention_response(n, i, snapshot, omap, text, mode, max_set,
                               return_features,
                               options.get("return_eval_trace", False),
-                              generation_cutoff)
+                              generation_cutoff,
+                              options.get("strict_conformal_set", False))
         m["primary"] = n.core_span in primary_spans
         if n.pool.truncated or n.pool.exact_overflow:
             degraded = True
@@ -947,7 +955,8 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
                       omap: OffsetMap, text: str, mode: str,
                       max_set: int, return_features: bool = False,
                       return_eval_trace: bool = False,
-                      generation_cutoff: int | None = None) -> dict:
+                      generation_cutoff: int | None = None,
+                      strict_conformal_set: bool = False) -> dict:
     s, e = node.core_span
     check_span_invariant(text, s, e, node.surface)  # INV-002
     cands = node.pool.all_candidates()
@@ -1046,7 +1055,14 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
     # answer, not because the quantile admitted it. Adding it cannot lower
     # coverage, but it does mean the set is no longer the conformal set, and
     # anything measuring set size has to be able to tell (review P0-3).
-    forced_top = top is not None and top not in members
+    #
+    # `strict_conformal_set` asks for the other contract: the set exactly as
+    # the quantile drew it, empty included. An empty set is a real answer —
+    # it says no candidate cleared the bar — and the mention falls through to
+    # UNCERTAIN below rather than being handed a candidate to make it look
+    # decided.
+    forced_top = (not strict_conformal_set
+                  and top is not None and top not in members)
     if forced_top:
         members = [top] + members
     # truncation drops tail members from a conformal set — the coverage
@@ -1158,6 +1174,10 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
         m["prediction_set"]["coverage_basis"] = calibrator.split_basis
     if forced_top:
         m["prediction_set"]["forced_top"] = True
+    if strict_conformal_set:
+        # say which contract produced this set, so a set-size or coverage
+        # measurement taken from a response knows what it is measuring
+        m["prediction_set"]["strict_conformal"] = True
     if calibration_fallback:
         # REQ-CAL-002: group sample below n_min → pooled-quantile fallback
         m["prediction_set"]["calibration_fallback"] = True

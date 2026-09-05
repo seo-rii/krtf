@@ -45,18 +45,21 @@ class EvalExample:
     exhaustive: bool = False
 
 
-def _residual(text: str, gold: list[GoldMention]) -> str:
-    """The text with the annotated spans cut out.
+def _residual(text: str, gold: list[GoldMention]) -> tuple[str, ...]:
+    """The stretches of text left between the annotated spans.
 
-    Newlines replace them so no substring can form across a cut and be
-    mistaken for an unannotated mention.
+    Returned as separate segments rather than joined, so nothing can match
+    across a cut. A separator character would not do the job: a tolerant
+    profile drops whitespace during normalisation, so joining on a newline and
+    normalising splices the two sides back together and invents an occurrence
+    that is not in the document.
     """
     out, last = [], 0
     for g in sorted(gold, key=lambda g: g.span):
         out.append(text[last:g.span[0]])
         last = max(last, g.span[1])
     out.append(text[last:])
-    return "\n".join(out)
+    return tuple(seg for seg in out if seg)
 
 
 def _catalog_keys(glossary: Glossary) -> dict[str, tuple[object, set[str], int]]:
@@ -83,30 +86,38 @@ def verify_exhaustive(example: EvalExample, catalog, _cache=None) -> bool:
     ever be a commit to something in the catalog, and a document with no
     unannotated catalog occurrence leaves no commit unjudged.
 
-    Two things it deliberately does not do: match across a cut span boundary,
-    and reason about boundary policy. Both make it answer "not exhaustive"
-    more often than strictly necessary, which is the safe direction — marking
-    a document exhaustive when it is not would turn a real false positive into
-    a silent pass.
+    One thing it deliberately does not do is reason about boundary policy: an
+    alias sitting inside a longer token is not a mention, but it is counted
+    here as an unannotated occurrence anyway. That makes the answer "not
+    exhaustive" more often than strictly necessary, which is the safe
+    direction — marking a document exhaustive when it is not would turn a real
+    false positive into a silent pass.
     """
     cache = _cache if _cache is not None else {}
-    residual = _residual(example.text, example.gold)
+    segments = _residual(example.text, example.gold)
     for pkey, (prof, keys, longest) in catalog.items():
-        hit = cache.get((residual, pkey))
+        hit = cache.get((segments, pkey))
         if hit is None:
-            norm = normalize_alias(residual, prof)
-            hit = False
-            for i in range(len(norm)):
-                for j in range(i + 1, min(len(norm), i + longest) + 1):
-                    if norm[i:j] in keys:
-                        hit = True
-                        break
-                if hit:
-                    break
-            cache[(residual, pkey)] = hit
+            hit = any(_contains_key(normalize_alias(seg, prof), keys, longest)
+                      for seg in segments)
+            cache[(segments, pkey)] = hit
         if hit:
             return False
     return True
+
+
+def _contains_key(norm: str, keys: set[str], longest: int) -> bool:
+    """Whether any alias key occurs in this normalised segment.
+
+    Windows over the segment rather than over the key set: a segment is a few
+    dozen characters and the catalog runs to thousands of keys, so asking "is
+    this substring a key" is the cheap direction.
+    """
+    for i in range(len(norm)):
+        for j in range(i + 1, min(len(norm), i + longest) + 1):
+            if norm[i:j] in keys:
+                return True
+    return False
 
 
 def mark_exhaustive(examples: list[EvalExample], glossary: Glossary) -> int:
