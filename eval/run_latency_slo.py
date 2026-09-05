@@ -200,31 +200,56 @@ def _concurrency_sweep(snap, text: str,
     return out
 
 
+#: Budgets to try, as fractions of the unbounded p50. One budget is not an
+#: experiment: at the p50 there is often nothing left to shed, because the
+#: stages a deadline governs have already finished.
+BUDGET_FRACTIONS = (1.0, 0.5, 0.25, 0.1)
+
+
 def _deadline_effect(snap, text: str, unbounded: list[float],
                      repeats: int) -> dict:
-    """What a wall-clock budget actually buys on the tail.
+    """Where a wall-clock budget starts to bite, and where it stops helping.
 
-    The budget is set at the unbounded p50, so half the requests would have
-    finished inside it anyway and the interesting half is the other one. The
-    floor is not zero and is not meant to be: Level A always runs, so a budget
-    below the exact pass buys nothing further, and the overshoot is reported
-    rather than smoothed away.
+    The first version of this asked one question — what does a budget equal to
+    the unbounded p50 buy — and got 0% of requests shedding a stage at 1,000
+    and 3,000 entities. That was not the budget failing. Fuzzy is capped by
+    `max_fuzzy_windows` at a few hundred characters and is already over by the
+    time a p50-sized budget expires, so there was nothing left for the
+    deadline to drop. The knob only has anything to work with earlier than
+    that, which is what a sweep shows and a single point cannot.
+
+    The floor is Level A. The exact pass runs under any budget, so on a long
+    document the deadline cannot bound total latency — it bounds the optional
+    work above the exact pass. For documents where that is not enough, the
+    answer is the chunked async API, not a smaller number here.
     """
-    budget = max(1, int(_pct(unbounded, 0.50)))
-    samples, shed = [], 0
-    for _ in range(repeats):
-        t0 = time.perf_counter()
-        resp = resolve(snap, text, mode="commit",
-                       options={"deadline_ms": budget})
-        samples.append((time.perf_counter() - t0) * 1000)
-        shed += int(bool(resp.get("deadline", {}).get("skipped_stages")))
+    base_p50 = _pct(unbounded, 0.50)
+    steps = []
+    for frac in BUDGET_FRACTIONS:
+        budget = max(1, int(base_p50 * frac))
+        samples, shed, stages = [], 0, set()
+        for _ in range(repeats):
+            t0 = time.perf_counter()
+            resp = resolve(snap, text, mode="commit",
+                           options={"deadline_ms": budget})
+            samples.append((time.perf_counter() - t0) * 1000)
+            dropped = resp.get("deadline", {}).get("skipped_stages") or []
+            shed += int(bool(dropped))
+            stages.update(dropped)
+        steps.append({
+            "fraction": frac,
+            "budget_ms": budget,
+            "p50_ms": _pct(samples, 0.50),
+            "p95_ms": _pct(samples, 0.95),
+            "max_ms": round(max(samples), 1),
+            "shed_rate": round(shed / repeats, 3) if repeats else None,
+            "stages": sorted(stages),
+        })
     return {
-        "budget_ms": budget,
+        "unbounded_p50_ms": base_p50,
         "unbounded_p95_ms": _pct(unbounded, 0.95),
         "unbounded_max_ms": round(max(unbounded), 1),
-        "bounded_p95_ms": _pct(samples, 0.95),
-        "bounded_max_ms": round(max(samples), 1),
-        "shed_rate": round(shed / repeats, 3) if repeats else None,
+        "steps": steps,
     }
 
 
@@ -549,20 +574,33 @@ def write_markdown(t: dict, control: dict | None, out_path: Path) -> None:
             " exact 패스 비용 아래로는 예산을 줄여도 더 빨라지지 않으며, 아래"
             " 표의 초과분은 감추지 않고 그대로 적는다.",
             "",
-            "예산은 **무제한 p50**으로 잡았다 — 절반은 원래 그 안에 끝났을"
-            " 요청이고, 볼 값은 나머지 절반이다.",
+            "**예산 하나는 실험이 아니다.** 처음에는 무제한 p50 하나만 재서"
+            " 1,000·3,000 entity에서 단계 버린 비율 0%를 얻었다. 예산이"
+            " 안 듣는 것이 아니라, fuzzy가 `max_fuzzy_windows`로 수백 자에서"
+            " 이미 끝나 있어서 **버릴 것이 남아 있지 않았다.** 그래서 아래는"
+            " p50의 여러 분수를 훑는다 — 예산이 물기 시작하는 지점과 더 줄여도"
+            " 소용없어지는 지점이 둘 다 보여야 한다.",
             "",
-            "| entity | 문서 | 예산 | 무제한 p95 / 최대 | 예산 p95 / 최대 |"
-            " 단계 버린 비율 |",
-            "|---:|---:|---:|---:|---:|---:|",
+            "긴 문서에서 이 예산은 **전체 지연을 묶지 못한다.** exact 패스는"
+            " 어떤 예산에서도 돌아가기 때문이다. 그 아래가 필요하면 답은 더"
+            " 작은 숫자가 아니라 **청크 단위 async API**다.",
+            "",
+            "| entity | 문서 | 예산 | p50 | p95 | 최대 | 단계 버린 비율 |"
+            " 버린 단계 |",
+            "|---:|---:|---:|---:|---:|---:|---:|---|",
         ]
         for r in t["deadline"]:
             lines.append(
-                f"| {r['entities']:,} | {r['doc_chars']:,}자 |"
-                f" {r['budget_ms']}ms |"
-                f" {r['unbounded_p95_ms']} / {r['unbounded_max_ms']} |"
-                f" {r['bounded_p95_ms']} / {r['bounded_max_ms']} |"
-                f" {r['shed_rate']:.0%} |")
+                f"| {r['entities']:,} | {r['doc_chars']:,}자 | (무제한) |"
+                f" {r['unbounded_p50_ms']} | {r['unbounded_p95_ms']} |"
+                f" {r['unbounded_max_ms']} | — | — |")
+            for st in r["steps"]:
+                lines.append(
+                    f"| | | {st['budget_ms']}ms"
+                    f" (p50×{st['fraction']}) |"
+                    f" {st['p50_ms']} | {st['p95_ms']} | {st['max_ms']} |"
+                    f" {st['shed_rate']:.0%} |"
+                    f" {', '.join(st['stages']) or '—'} |")
 
     if t.get("concurrency_sweep"):
         lines += [
