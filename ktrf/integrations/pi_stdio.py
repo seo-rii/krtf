@@ -227,18 +227,40 @@ HANDLERS = {
 
 
 def handle_request(runtime: PiRuntime, request: dict) -> dict:
-    """Dispatch one parsed request to a response dict (never raises)."""
+    """Dispatch one parsed request to a response dict (never raises).
+
+    "Never raises" was a docstring rather than a property. `HANDLERS.get(method)`
+    sat outside the try, and a dict lookup on an unhashable key raises: one
+    request carrying `"method": []` ended the process, and the `health` request
+    on the next line was never answered. A protocol handler that can be stopped
+    by a single malformed line is not isolating anything.
+    """
     rid = request.get("id")
+    if isinstance(rid, (dict, list)):
+        rid = None          # an id is what a caller matches a reply on
     method = request.get("method")
+    if not isinstance(method, str):
+        return {"id": rid, "error": {
+            "code": "INVALID_REQUEST",
+            "message": f"method must be a string, got "
+                       f"{type(method).__name__}"}}
     handler = HANDLERS.get(method)
     if handler is None:
         return {"id": rid, "error": {"code": "UNKNOWN_METHOD",
                                      "message": f"unknown method {method!r}",
                                      "known": sorted(HANDLERS)}}
+    params = request.get("params")
+    if params is None:
+        params = {}
+    if not isinstance(params, dict):
+        return {"id": rid, "error": {
+            "code": "INVALID_REQUEST",
+            "message": f"params must be an object, got "
+                       f"{type(params).__name__}"}}
     runtime.requests += 1
     t0 = time.perf_counter()
     try:
-        result = handler(runtime, request.get("params") or {})
+        result = handler(runtime, params)
         return {"id": rid, "result": result,
                 "elapsed_ms": round(1000 * (time.perf_counter() - t0), 2)}
     except Exception as exc:
@@ -263,12 +285,40 @@ def _force_utf8(stream):
     return stream
 
 
+def _bounded_lines(stream):
+    """Lines, reading at most a bounded amount before deciding to reject one.
+
+    `for line in stream` reads a whole line however long it is, so the size
+    check only ever ran *after* the memory had been spent. `readline(n)` caps
+    what a single read takes; the rest of an oversize line is drained and
+    dropped so the next request still starts at a line boundary.
+
+    The cap is in characters and the limit is in bytes, so a line of Korean
+    can still take up to three times the byte limit before it is rejected.
+    That is a bound, not the bound — the byte check below is still the one
+    that decides.
+    """
+    while True:
+        chunk = stream.readline(MAX_REQUEST_BYTES + 1)
+        if not chunk:
+            return
+        if not chunk.endswith("\n") and len(chunk) > MAX_REQUEST_BYTES:
+            # drain the tail of an oversize line without holding it
+            while True:
+                more = stream.readline(MAX_REQUEST_BYTES)
+                if not more or more.endswith("\n"):
+                    break
+            yield chunk            # the size check below rejects it
+            continue
+        yield chunk
+
+
 def serve(stdin=None, stdout=None) -> int:
     """Read requests until EOF or ``shutdown``; returns an exit code."""
     stdin = _force_utf8(stdin or sys.stdin)
     stdout = _force_utf8(stdout or sys.stdout)
     runtime = PiRuntime()
-    for line in stdin:
+    for line in _bounded_lines(stdin):
         line = line.strip()
         if not line:
             continue
@@ -292,9 +342,25 @@ def serve(stdin=None, stdout=None) -> int:
                 ensure_ascii=False) + "\n")
             stdout.flush()
             continue
-        response = handle_request(runtime, request)
-        stdout.write(json.dumps(response, ensure_ascii=False,
-                                default=str) + "\n")
+        try:
+            response = handle_request(runtime, request)
+        except Exception as exc:      # noqa: BLE001 - the loop must survive
+            # handle_request is contracted not to raise. If it ever does, one
+            # request still must not end the session — the alternative is a
+            # sidecar that stops answering and gives no reason.
+            _log(traceback.format_exc())
+            rid = request.get("id")
+            response = {"id": rid if isinstance(rid, (str, int, float))
+                        else None,
+                        "error": {"code": "INTERNAL", "message": str(exc)}}
+        try:
+            payload = json.dumps(response, ensure_ascii=False, default=str)
+        except (TypeError, ValueError) as exc:
+            payload = json.dumps(
+                {"id": None, "error": {"code": "INTERNAL",
+                                       "message": f"unserialisable response: "
+                                                  f"{exc}"}})
+        stdout.write(payload + "\n")
         stdout.flush()
         if request.get("method") == "shutdown":
             return 0

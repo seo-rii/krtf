@@ -14,6 +14,7 @@ spec collapses into the disk tier here (REQ-MEM-001 is Rust-core scope).
 
 from __future__ import annotations
 
+import json
 import time
 from collections import OrderedDict
 from contextlib import contextmanager
@@ -26,11 +27,28 @@ from .snapshot import Snapshot
 
 
 class TieredSnapshotStore:
-    def __init__(self, cold_dir: str | Path, max_hot: int = 8, metrics=None):
+    def __init__(self, cold_dir: str | Path, max_hot: int = 8, metrics=None,
+                 model_resolver=None):
+        """``model_resolver(manifest) -> (encoder, reranker)`` supplies the
+        neural backends a cold load needs.
+
+        A bundle carrying entity vectors cannot be loaded without the encoder
+        that produced them (§11.3), and the cold path called ``load_snapshot``
+        with none. A dense tenant therefore activated fine, served fine, and
+        raised SNAPSHOT_UNAVAILABLE the first time it was evicted and asked
+        for again — the eviction turned a working tenant into a broken one.
+
+        Two ways in, because there are two cold starts. Within a process the
+        store already saw the live objects at ``activate`` and remembers them.
+        Across a restart there is nothing to remember, and the manifest names
+        model ids rather than holding models, so a resolver has to map them.
+        """
         self.cold_dir = Path(cold_dir)
         self.max_hot = max_hot
         self.metrics = metrics
+        self.model_resolver = model_resolver
         self._hot: OrderedDict[str, Snapshot] = OrderedDict()
+        self._models: dict[str, tuple] = {}
         self._cold: dict[str, Path] = {}
         self._refcounts: dict[str, int] = {}
         self._pinned: set[str] = set()
@@ -46,6 +64,11 @@ class TieredSnapshotStore:
         save_snapshot(snapshot, bundle)
         with self._lock:
             self._cold[snapshot.tenant_id] = bundle
+            # keep the live backends: they are what a later cold load needs,
+            # and this is the only moment the store is holding them
+            encoder = snapshot.dense.encoder if snapshot.dense else None
+            if encoder is not None or snapshot.reranker is not None:
+                self._models[snapshot.tenant_id] = (encoder, snapshot.reranker)
             self._put_hot(snapshot.tenant_id, snapshot)
 
     def pin(self, tenant_id: str) -> None:
@@ -87,7 +110,9 @@ class TieredSnapshotStore:
                     raise KtrfApiError("GLOSSARY_NOT_FOUND",
                                        f"no snapshot for tenant {tenant_id!r}")
                 t0 = time.perf_counter()
-                snap = load_snapshot(bundle)
+                encoder, reranker = self._backends_for(tenant_id, bundle)
+                snap = load_snapshot(bundle, encoder=encoder,
+                                     reranker=reranker)
                 self.stats["cold_starts"] += 1
                 if self.metrics is not None:
                     self.metrics.observe(
@@ -96,6 +121,22 @@ class TieredSnapshotStore:
             self._refcounts[snap.snapshot_id] = \
                 self._refcounts.get(snap.snapshot_id, 0) + 1
             return snap
+
+    def _backends_for(self, tenant_id: str, bundle: Path) -> tuple:
+        """(encoder, reranker) for a cold load, or (None, None) if the bundle
+        does not need any."""
+        remembered = self._models.get(tenant_id)
+        if remembered is not None:
+            return remembered
+        if self.model_resolver is None:
+            return (None, None)
+        try:
+            manifest = json.loads(
+                (bundle / "manifest.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return (None, None)
+        resolved = self.model_resolver(manifest)
+        return resolved if resolved else (None, None)
 
     def tier_of(self, tenant_id: str) -> str:
         with self._lock:

@@ -286,10 +286,13 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
                 omissions.append({"mention_id": m.get("mention_id"),
                                   "reason": "profile_excludes_ambiguous"})
                 continue
+            offered = _entity_ids(m)
             cands = []
-            for member in _entity_ids(m)[:policy.max_candidates_per_mention]:
+            withheld = 0
+            for member in offered[:policy.max_candidates_per_mention]:
                 entity = glossary.entity(member["entity_id"])
                 if not _allowed(entity, as_fact=False):
+                    withheld += 1
                     continue
                 cand = {
                     "entity_id": member["entity_id"],
@@ -308,6 +311,20 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
                 cands.append(cand)
             if not cands:
                 continue
+            # The pack cuts candidates too — `max_candidates_per_mention`, and
+            # anything the clearance check withholds. Only the resolver's own
+            # truncation was being reported, so a pack that had itself dropped
+            # a sense still claimed set_valid and complete coverage. A cut is
+            # a cut whoever makes it.
+            pack_cut = (len(offered) > policy.max_candidates_per_mention
+                        or withheld > 0)
+            if pack_cut:
+                omissions.append({
+                    "mention_id": m.get("mention_id"),
+                    "reason": "candidates_truncated",
+                    "offered": len(offered),
+                    "shown": len(cands),
+                })
             ambiguous.append({
                 **_mention_ref(m),
                 "candidates": cands,
@@ -315,7 +332,8 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
                 # a truncated conformal set no longer carries its coverage
                 # guarantee — surface that instead of hiding it
                 "set_valid": not pset.get("truncated", False)
-                and pset.get("coverage_valid", True) is not False,
+                and pset.get("coverage_valid", True) is not False
+                and not pack_cut,
                 "calibration_fallback":
                     bool(pset.get("calibration_fallback")),
                 "was_degraded_resolved": bool(link == "RESOLVED"),
@@ -413,6 +431,11 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
             # resolver internals or guess.
             "resolver_limits": list(resolve_response.get("limits") or []),
             "budget_truncated": False,
+            # what the pack actually costs, and whether the budget was met.
+            # Both are filled in by the budget pass; a caller reading only
+            # `max_tokens` was reading its own request back.
+            "rendered_tokens": None,
+            "budget_exceeded": False,
             "complete": not omissions,
         },
         "safety": {
@@ -428,6 +451,17 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
         card.pop("_first_pos", None)
     for a in pack["ambiguous_mentions"]:
         a.pop("_first_pos", None)
+    # Counts describe the pack that is being returned, not the one that was
+    # assembled before the budget cut it. `entities_injected` said 6 beside a
+    # `resolved_terms` list the budget had emptied, and a host reading the
+    # coverage block to decide whether to inject was reading a plan rather
+    # than a result. `unknown_mentions` stays the *detected* count on purpose:
+    # it is what the resolver found, and the policy-withheld ones are already
+    # recorded as omissions.
+    pack["coverage"]["entities_injected"] = len(pack["resolved_terms"])
+    pack["coverage"]["ambiguous_mentions"] = len(pack["ambiguous_mentions"])
+    pack["coverage"]["document_definitions"] = len(pack["document_definitions"])
+    pack["coverage"]["omitted"] = len(pack["omissions"])
     pack["coverage"]["complete"] = (not pack["omissions"]
                                     and not pack["coverage"]
                                     ["budget_truncated"])
@@ -488,8 +522,19 @@ def _apply_token_budget(pack: dict, policy: ContextPolicy,
     def note(reason: str, **kw) -> None:
         pack["omissions"].append({"reason": reason, **kw})
         pack["coverage"]["budget_truncated"] = True
+        # `complete` is rendered into the header, so it has to be current
+        # while the budget is measuring. It was recomputed after this pass,
+        # which meant the last render the budget checked was one character
+        # shorter than the one that shipped — the budget was being enforced
+        # against a string that did not exist.
+        pack["coverage"]["complete"] = False
+
+    def record_size() -> None:
+        pack["coverage"]["rendered_tokens"] = counter.count(
+            render_context_pack(pack, "xml"))
 
     if not over():
+        record_size()
         return
     # 1. drop disambiguation hints
     for group in (pack["resolved_terms"],
@@ -521,6 +566,26 @@ def _apply_token_budget(pack: dict, policy: ContextPolicy,
     if over() and pack["resolved_terms"]:
         dropped = pack["resolved_terms"].pop()
         note("token_budget", entity_id=dropped["entity_id"])
+    # 5. document definitions. They were outside the reduction order
+    #    entirely, which is why a document that defines its own abbreviations
+    #    rendered 416 tokens against a budget of 100: twelve definitions the
+    #    budget had no way to reach.
+    while over() and pack["document_definitions"]:
+        dropped = pack["document_definitions"].pop()
+        note("token_budget", surface=dropped.get("surface"))
+    # 6. unknown mentions, for the same reason
+    while over() and pack["unknown_mentions"]:
+        dropped = pack["unknown_mentions"].pop()
+        note("token_budget", mention_id=dropped.get("mention_id"))
+    # 7. Nothing left to drop and still over: the fixed header and policy
+    #    text alone do not fit. Say so. A budget silently missed is worse
+    #    than one reported as unreachable, because the caller set it to
+    #    protect something and has no way to see that it did not hold.
+    record_size()
+    if over():
+        pack["coverage"]["budget_exceeded"] = True
+        note("token_budget_unreachable", requested=policy.max_tokens,
+             rendered=pack["coverage"]["rendered_tokens"])
 
 
 # --------------------------------------------------------------------------
