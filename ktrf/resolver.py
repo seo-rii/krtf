@@ -294,10 +294,32 @@ def resolve(
                             "trust_level": occ.binding.trust_level},
             ))
     # definitional boost for merged nodes (INV-009: additive only)
+    #
+    # `find_occurrences` skips the defining occurrence itself, which is right
+    # for counting uses and wrong for deciding what it means: the alias inside
+    # `고급빌링콘솔(이하 "ABC")` was left to the exact channel, so a glossary
+    # that says ABC is something else won that node outright and the pack
+    # asserted, as fact, the one meaning the document had just contradicted.
+    # The boost was already being applied here by surface; it applied to a
+    # candidate that was not in the pool. Put it there, and the defining
+    # occurrence answers what every other occurrence of the alias answers.
     for b in local_bindings:
         for n in nodes.values():
-            if n.surface == b.alias_surface:
-                n.doc_local_entities.update(b.entity_ids)
+            if n.surface != b.alias_surface:
+                continue
+            n.doc_local_entities.update(b.entity_ids)
+            n.sources.add("doc_local")
+            for eid in b.entity_ids:
+                # `add` merges evidence for an entity already in the pool, so
+                # a node that find_occurrences already covered is unchanged
+                n.pool.add(Candidate(
+                    entity_id=eid, alias_id=None, family_id=None,
+                    generation_channels={"doc_local"},
+                    channel_scores={"doc_local": _CHANNEL_BASE["doc_local"]},
+                    is_exact=False,
+                    provenance={"definition_span": b.definition_span,
+                                "trust_level": b.trust_level},
+                ))
 
     # ---- fuzzy channels (Pass 1, not in fast: §26.1) ----
     exact_spans = [n.core_span for n in nodes.values()

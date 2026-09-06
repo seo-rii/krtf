@@ -127,14 +127,14 @@ def test_the_definition_reaches_the_chunks_that_use_it(snap):
     uses = [m for m in mgr.results(job["job_id"], page_size=1000)["mentions"]
             if m["surface"] == "과기정통부"]
     assert len(uses) >= 3
-    # the first occurrence is the one inside the parentheses that defines the
-    # abbreviation; §18 skips the defining site, and sync does the same
-    defining, later = uses[0], uses[1:]
-    assert "doc_local" not in defining["generation_channels"]
-    assert all("doc_local" in m["generation_channels"] for m in later), \
-        [m["generation_channels"] for m in later]
+    # every occurrence of the alias carries the definition, the one inside
+    # the parentheses included. Counting *uses* skips the defining site;
+    # deciding what it means must not, or a glossary that disagrees wins the
+    # one node the document was explicitly talking about.
+    assert all("doc_local" in m["generation_channels"] for m in uses), \
+        [m["generation_channels"] for m in uses]
     # and the later ones are in chunks the definition is not in
-    assert later[-1]["span"]["codepoint"]["start"] > 60
+    assert uses[-1]["span"]["codepoint"]["start"] > 60
 
 
 def test_every_position_belongs_to_exactly_one_chunk(snap):

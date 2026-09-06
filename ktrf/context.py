@@ -153,6 +153,43 @@ def _injection_policy(entity) -> str:
     return (entity.grounding or {}).get("injection_policy", "auto")
 
 
+def _document_definition(m: dict) -> dict | None:
+    """What the document itself declared this surface to mean.
+
+    Recorded wherever the doc-local channel fired, not only where it won.
+    The case this exists for is the one where it does not: a glossary that
+    binds the same surface to a different entity makes the mention
+    AMBIGUOUS, and that is precisely when the model needs to be told the
+    document defined the term. A pack that lists two candidates and never
+    says one of them is the document's own has dropped the evidence that
+    decides between them — and the fixed policy tells the model a document's
+    own definition may govern, which it cannot act on if the pack does not
+    say which candidate that is.
+    """
+    if "doc_local" not in (m.get("generation_channels") or []):
+        return None
+    asserted, others = [], []
+    for member in _entity_ids(m):
+        channels = member.get("generation_channels") or []
+        (asserted if "doc_local" in channels else others).append(
+            member["entity_id"])
+    if not asserted:
+        return None
+    out = {
+        "surface": _clean(m.get("surface")),
+        "entity_id": asserted[0],
+        "authority": "document_asserted",
+        "source_span": m.get("span", {}).get("codepoint"),
+    }
+    conflicting = sorted(set(others) - set(asserted))
+    if conflicting:
+        # §18: the document's definition is scoped to the document and the
+        # glossary's is not, so neither overrides the other silently. Say
+        # they disagree and let the reader apply the stated precedence.
+        out["conflicts_with_glossary"] = conflicting
+    return out
+
+
 def _shadowed_entities(glossary: Glossary, mention: dict) -> list[str]:
     """Wider-scope meanings this surface outranks (layered glossaries)."""
     surface = mention.get("surface", "")
@@ -271,13 +308,9 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
                 if p is not None:
                     card["resolution"]["probability"] = p
             card["mentions"].append(_mention_ref(m))
-            if "doc_local" in m.get("generation_channels", []):
-                doc_defs.append({
-                    "surface": _clean(m.get("surface")),
-                    "entity_id": eid,
-                    "authority": "document_asserted",
-                    "source_span": m.get("span", {}).get("codepoint"),
-                })
+            definition = _document_definition(m)
+            if definition is not None:
+                doc_defs.append(definition)
 
         elif link in ("AMBIGUOUS",) or (
                 link == "RESOLVED" and degraded
@@ -325,6 +358,9 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
                     "offered": len(offered),
                     "shown": len(cands),
                 })
+            definition = _document_definition(m)
+            if definition is not None:
+                doc_defs.append(definition)
             ambiguous.append({
                 **_mention_ref(m),
                 "candidates": cands,
@@ -404,6 +440,20 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
         omissions.extend({"mention_id": u.get("mention_id"),
                           "reason": "unknown_mentions_excluded"}
                          for u in unknown)
+
+    # A definition is a property of the document, not of each place the
+    # alias appears — the same rule the entity cards follow. The earliest
+    # occurrence keeps the span, because that is the defining site.
+    deduped: dict[tuple[str, str], dict] = {}
+    for d in doc_defs:
+        key = (d["surface"], d["entity_id"])
+        first = deduped.setdefault(key, d)
+        if first is not d:
+            merged = sorted(set(first.get("conflicts_with_glossary", []))
+                            | set(d.get("conflicts_with_glossary", [])))
+            if merged:
+                first["conflicts_with_glossary"] = merged
+    doc_defs = list(deduped.values())
 
     pack = {
         "schema_version": SCHEMA_VERSION,
@@ -677,10 +727,14 @@ def _render_xml(pack: dict) -> str:
     if pack["document_definitions"]:
         lines.append("  <document_definitions>")
         for d in pack["document_definitions"]:
+            conflict = d.get("conflicts_with_glossary")
             lines.append(
                 f"    <definition surface={_attr(d['surface'])}"
                 f" entity_id={_attr(d.get('entity_id'))}"
-                f" authority={_attr(d['authority'])} />")
+                f" authority={_attr(d['authority'])}"
+                + (f" conflicts_with_glossary={_attr(','.join(conflict))}"
+                   if conflict else "")
+                + " />")
         lines.append("  </document_definitions>")
     if pack["unknown_mentions"]:
         lines.append("  <unknown_mentions>")
