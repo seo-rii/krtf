@@ -30,7 +30,8 @@ classifiers = [
 # hypothesis drives the request-validation property test: the invariant
 # is that no option or context value produces an untyped exception,
 # and enumerating the ways to break that by hand is how the gaps got in
-dev = ["pytest>=8.0", "build>=1.2", "hypothesis>=6.0"]
+dev = ["pytest>=8.0", "build>=1.2", "hypothesis>=6.0",
+       "jsonschema>=4.0"]
 # M4 neural runtime (bi-encoder/cross-encoder ONNX backends). Weights are
 # NOT installed by this extra - see docs/PACKAGING.md.
 neural = ["numpy", "onnxruntime>=1.24", "tokenizers", "huggingface_hub"]
@@ -49,10 +50,12 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 include = ["ktrf*"]
 
-# py.typed is the only non-.py file in the package; without it the wheel
-# ships pervasive annotations that no consumer's type checker can see.
+# py.typed and the published ContextPack schema are the non-.py files in the
+# package. Without py.typed the wheel ships pervasive annotations no
+# consumer's type checker can see; without the schema `context_pack_schema()`
+# raises on an installed copy while passing from a source checkout.
 [tool.setuptools.package-data]
-ktrf = ["py.typed"]
+ktrf = ["py.typed", "schemas/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

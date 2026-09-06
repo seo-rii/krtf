@@ -37,22 +37,39 @@ def test_every_subpackage_is_importable_as_a_package():
     A subpackage that forgets ``__init__.py`` is silently dropped from the
     wheel: the source tree keeps working (namespace packages), the wheel
     ships nothing, and the failure only appears on someone else's machine.
+
+    A directory holding no Python is not that. `ktrf/schemas/` is data, and
+    it reaches the wheel through package-data rather than through
+    ``packages.find`` — verified by building one: the wheel carries
+    `ktrf/schemas/context_pack.schema.json` with no `__init__.py` anywhere
+    near it. The rule is about code directories, so ask about code.
     """
     missing = [d.relative_to(ROOT) for d in _package_dirs()
-               if not (d / "__init__.py").exists()]
+               if not (d / "__init__.py").exists()
+               and any(f.suffix == ".py" for f in d.iterdir() if f.is_file())]
     assert not missing, f"subpackages without __init__.py: {missing}"
 
 
 def test_the_package_ships_no_data_files_it_has_not_declared():
-    """Only ``py.typed`` is package data; anything else needs declaring."""
-    declared = set(
-        _pyproject()["tool"]["setuptools"]["package-data"].get("ktrf", []))
-    on_disk = {p.name for p in PKG.rglob("*")
+    """Every non-Python file under ``ktrf/`` is covered by a declared pattern.
+
+    Matched as patterns against the path relative to the package, which is
+    what setuptools does: `schemas/*.json` covers
+    `ktrf/schemas/context_pack.schema.json`, and comparing bare filenames
+    would have said it did not.
+    """
+    import fnmatch
+
+    declared = _pyproject()["tool"]["setuptools"]["package-data"].get(
+        "ktrf", [])
+    on_disk = [p.relative_to(PKG).as_posix() for p in PKG.rglob("*")
                if p.is_file() and p.suffix != ".py"
-               and "__pycache__" not in p.parts}
-    assert on_disk <= declared, (
+               and "__pycache__" not in p.parts]
+    undeclared = [rel for rel in on_disk
+                  if not any(fnmatch.fnmatch(rel, pat) for pat in declared)]
+    assert not undeclared, (
         f"non-Python files present but not in [tool.setuptools.package-data]: "
-        f"{sorted(on_disk - declared)}")
+        f"{sorted(undeclared)}")
 
 
 def test_py_typed_is_present_and_declared():

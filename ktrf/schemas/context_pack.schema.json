@@ -1,0 +1,231 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/seo-rii/ktrf/schemas/context_pack.schema.json",
+  "title": "KTRF ContextPack",
+  "description": "The structure a host receives from build_context_pack. Closed on purpose: a field the builder adds without adding it here fails validation, which is the drift this contract exists to catch.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "profile", "policy_version", "policy_id",
+    "expose_entity_ids", "snapshot", "resolved_terms", "ambiguous_mentions",
+    "document_definitions", "unknown_mentions", "omissions", "coverage",
+    "safety", "pack_id"
+  ],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "profile": {
+      "type": "string",
+      "enum": ["qa_grounding", "summarization", "rag_query_expansion", "automation"]
+    },
+    "policy_version": {"type": "string"},
+    "policy_id": {"type": "string"},
+    "pack_id": {"type": "string", "pattern": "^ctx-[0-9a-f]{16}$"},
+    "expose_entity_ids": {"type": "boolean"},
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["snapshot_id", "glossary_id", "glossary_version"],
+      "properties": {
+        "snapshot_id": {"type": "string"},
+        "glossary_id": {"type": "string"},
+        "glossary_version": {"type": "string"},
+        "model_bundle_version": {"type": ["string", "null"]}
+      }
+    },
+    "resolved_terms": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/entity_card"}
+    },
+    "ambiguous_mentions": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/ambiguous_mention"}
+    },
+    "document_definitions": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/document_definition"}
+    },
+    "unknown_mentions": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/unknown_mention"}
+    },
+    "omissions": {"type": "array", "items": {"$ref": "#/definitions/omission"}},
+    "coverage": {"$ref": "#/definitions/coverage"},
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["data_only", "restricted_fields_removed"],
+      "properties": {
+        "data_only": {"type": "boolean", "const": true},
+        "restricted_fields_removed": {"type": "boolean"}
+      }
+    }
+  },
+  "definitions": {
+    "span": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": {"type": "integer", "minimum": 0},
+        "end": {"type": "integer", "minimum": 0}
+      }
+    },
+    "appears_inside": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["surface", "is_the_same_entity"],
+      "properties": {
+        "surface": {"type": "string"},
+        "relation": {"type": ["string", "null"]},
+        "is_the_same_entity": {"type": "boolean", "const": false},
+        "refers_to_entity_id": {"type": ["string", "null"]}
+      }
+    },
+    "mention_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mention_id", "surface", "span"],
+      "properties": {
+        "mention_id": {"type": ["string", "null"]},
+        "surface": {"type": "string"},
+        "span": {"$ref": "#/definitions/span"},
+        "appears_inside": {"$ref": "#/definitions/appears_inside"}
+      }
+    },
+    "entity_card": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity_id", "canonical", "mentions", "resolution"],
+      "properties": {
+        "entity_id": {"type": "string"},
+        "canonical": {"type": "string"},
+        "short_definition": {"type": "string"},
+        "disambiguation_hints": {"type": "array", "items": {"type": "string"}},
+        "domain_ids": {"type": "array", "items": {"type": "string"}},
+        "type_ids": {"type": "array", "items": {"type": "string"}},
+        "definition_source": {"type": "string"},
+        "source_scope": {"type": ["string", "null"]},
+        "shadowed_entities": {"type": "array", "items": {"type": "string"}},
+        "mentions": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/mention_ref"}
+        },
+        "resolution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["class", "evidence", "degraded"],
+          "properties": {
+            "class": {"type": "string"},
+            "evidence": {"type": "array", "items": {"type": "string"}},
+            "degraded": {"type": "boolean"},
+            "probability": {"type": "number", "minimum": 0, "maximum": 1}
+          }
+        }
+      }
+    },
+    "ambiguous_mention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mention_id", "surface", "span", "candidates", "may_be_unregistered",
+        "set_valid", "calibration_fallback", "was_degraded_resolved"
+      ],
+      "properties": {
+        "mention_id": {"type": ["string", "null"]},
+        "surface": {"type": "string"},
+        "span": {"$ref": "#/definitions/span"},
+        "appears_inside": {"$ref": "#/definitions/appears_inside"},
+        "candidates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["entity_id", "canonical"],
+            "properties": {
+              "entity_id": {"type": "string"},
+              "canonical": {"type": "string"},
+              "short_definition": {"type": "string"},
+              "disambiguation_hints": {
+                "type": "array", "items": {"type": "string"}
+              },
+              "probability": {"type": "number", "minimum": 0, "maximum": 1}
+            }
+          }
+        },
+        "may_be_unregistered": {"type": "boolean"},
+        "set_confidence": {"type": ["number", "null"]},
+        "set_valid": {"type": "boolean"},
+        "calibration_fallback": {"type": "boolean"},
+        "was_degraded_resolved": {"type": "boolean"}
+      }
+    },
+    "document_definition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["surface", "entity_id", "authority", "source_span"],
+      "properties": {
+        "surface": {"type": "string"},
+        "entity_id": {"type": "string"},
+        "authority": {"type": "string", "const": "document_asserted"},
+        "source_span": {"$ref": "#/definitions/span"},
+        "conflicts_with_glossary": {
+          "type": "array", "items": {"type": "string"}, "minItems": 1
+        }
+      }
+    },
+    "unknown_mention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mention_id", "surface", "span", "reason"],
+      "properties": {
+        "mention_id": {"type": ["string", "null"]},
+        "surface": {"type": "string"},
+        "span": {"$ref": "#/definitions/span"},
+        "appears_inside": {"$ref": "#/definitions/appears_inside"},
+        "reason": {"type": "string", "enum": ["KB_MISSING", "UNCERTAIN"]}
+      }
+    },
+    "omission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason"],
+      "properties": {
+        "reason": {"type": "string"},
+        "entity_id": {"type": "string"},
+        "mention_id": {"type": ["string", "null"]},
+        "surface": {"type": "string"},
+        "offered": {"type": "integer", "minimum": 0},
+        "shown": {"type": "integer", "minimum": 0},
+        "requested": {"type": "integer", "minimum": 0},
+        "rendered": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mentions_detected", "entities_injected", "ambiguous_mentions",
+        "unknown_mentions", "omitted", "resolver_degraded", "resolver_limits",
+        "budget_truncated", "rendered_tokens", "budget_exceeded", "complete",
+        "empty", "query_resolved", "query_grounded", "document_definitions"
+      ],
+      "properties": {
+        "mentions_detected": {"type": "integer", "minimum": 0},
+        "entities_injected": {"type": "integer", "minimum": 0},
+        "ambiguous_mentions": {"type": "integer", "minimum": 0},
+        "unknown_mentions": {"type": "integer", "minimum": 0},
+        "document_definitions": {"type": "integer", "minimum": 0},
+        "omitted": {"type": "integer", "minimum": 0},
+        "resolver_degraded": {"type": "boolean"},
+        "resolver_limits": {"type": "array", "items": {"type": "string"}},
+        "budget_truncated": {"type": "boolean"},
+        "rendered_tokens": {"type": ["integer", "null"], "minimum": 0},
+        "budget_exceeded": {"type": "boolean"},
+        "complete": {"type": "boolean"},
+        "empty": {"type": "boolean"},
+        "query_resolved": {"type": ["boolean", "null"]},
+        "query_grounded": {"type": ["boolean", "null"]}
+      }
+    }
+  }
+}
