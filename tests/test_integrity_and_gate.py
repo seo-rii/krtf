@@ -264,3 +264,25 @@ def test_the_builders_that_keep_building_still_end_up_sealed(tmp_path):
     assert layered.verify_integrity() == []
     with pytest.raises(AttributeError, match="sealed"):
         layered.snapshot_id = "fake"
+
+
+def test_gate_fails_when_the_response_breaks_its_contract():
+    g = _gate(response_contract_failures=1)
+    assert g["checks"]["response_contract"] is False
+    assert g["pass"] is False
+
+
+def test_a_contract_check_that_could_not_run_is_not_a_pass():
+    """Without `jsonschema` the eval counts zero failures out of zero
+    comparisons. Reporting that as green is how a gate stops meaning
+    anything, so the gate is told the check did not run."""
+    g = _gate(response_contract_failures=0, response_contract_measured=False)
+    assert g["values"]["response_contract_measured"] is False
+    assert g["checks"]["response_contract"] is False
+    assert g["pass"] is False
+
+
+def test_a_measured_clean_contract_check_passes():
+    g = _gate(response_contract_failures=0, response_contract_measured=True)
+    assert g["checks"]["response_contract"] is True
+    assert g["pass"] is True

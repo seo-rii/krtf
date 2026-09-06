@@ -17,9 +17,11 @@ from collections import defaultdict
 from pathlib import Path
 
 from ktrf.conformance import generate_fixtures, run_fixtures
+from ktrf.errors import KtrfApiError
 from ktrf.glossary import load_glossary
 from ktrf.offsets import verify_response_spans
 from ktrf.resolver import resolve
+from ktrf.schemas import validate_resolve_response
 from ktrf.snapshot import compile_snapshot
 
 from .datagen import generate
@@ -52,6 +54,11 @@ RELEASE_GATE = {
     "unlabeled_commits_max": 0,
     "forbidden_entity_hits_max": 0,
     "offset_invariant_failures_max": 0,
+    # The response against its own published schema, over the corpus rather
+    # than over fixtures. A schema checks only the shapes it is shown, and the
+    # unit tests show it constructed ones; these are the documents the gate is
+    # about. Not measurable is not a pass - see the `response_contract` check.
+    "response_contract_failures_max": 0,
 }
 
 
@@ -88,6 +95,8 @@ def run(glossary_path: str) -> dict:
     resolved_total = resolved_correct = unlabeled_commits = 0
     forbidden_hits = 0
     offset_failures = 0
+    contract_failures = 0
+    contract_measured = True
     fast_a_total = fast_a_detected = 0
     latencies: list[float] = []
 
@@ -103,6 +112,16 @@ def run(glossary_path: str) -> dict:
         # nested `core_link.span` went un-checked for exactly as long as this
         # loop named the field it verified; the verifier finds spans by shape.
         offset_failures += len(verify_response_spans(resp, ex.text))
+
+        # and against its own published contract. Cheap here - the response
+        # already exists - and these are real documents, not fixtures.
+        if contract_measured:
+            try:
+                contract_failures += len(validate_resolve_response(resp))
+            except KtrfApiError:
+                # `jsonschema` absent. A check that did not run must not read
+                # as a check that passed, so the gate hears about it.
+                contract_measured = False
 
         gold_by_span = {g.span: g for g in ex.gold}
         c = counters[ex.slice]
@@ -208,6 +227,8 @@ def run(glossary_path: str) -> dict:
         resolved_total=resolved_total,
         forbidden_entity_hits=forbidden_hits,
         offset_invariant_failures=offset_failures,
+        response_contract_failures=contract_failures,
+        response_contract_measured=contract_measured,
         unlabeled_commits=unlabeled_commits,
         exhaustive_documents=sum(1 for e in examples if e.exhaustive),
         total_documents=len(examples),
@@ -226,6 +247,8 @@ def run(glossary_path: str) -> dict:
 def compute_gate(*, conformance_failures, golden_violations, recall_metric,
                  in_set_metric, resolved_correct, resolved_total,
                  forbidden_entity_hits, offset_invariant_failures,
+                 response_contract_failures=0,
+                 response_contract_measured=True,
                  unlabeled_commits=0, exhaustive_documents=None,
                  total_documents=None) -> dict:
     """§44 release gate as a pure function so its edge cases are testable.
@@ -255,6 +278,8 @@ def compute_gate(*, conformance_failures, golden_violations, recall_metric,
         "resolved_commits": resolved_total,
         "forbidden_entity_hits": forbidden_entity_hits,
         "offset_invariant_failures": offset_invariant_failures,
+        "response_contract_failures": response_contract_failures,
+        "response_contract_measured": response_contract_measured,
         "unlabeled_commits": unlabeled_commits,
         # the honest name for what the number above does to precision
         "resolved_precision_is_upper_bound": unlabeled_commits > 0,
@@ -294,6 +319,13 @@ def compute_gate(*, conformance_failures, golden_violations, recall_metric,
         "offset_invariant_failures":
             offset_invariant_failures
             <= RELEASE_GATE["offset_invariant_failures_max"],
+        # A check that could not run is not a check that passed: without
+        # `jsonschema` this is False and the gate fails, rather than reporting
+        # zero failures out of zero comparisons.
+        "response_contract":
+            response_contract_measured
+            and response_contract_failures
+            <= RELEASE_GATE["response_contract_failures_max"],
         # precision has to be a measurement, not a ceiling
         "precision_is_measurable":
             unlabeled_commits <= RELEASE_GATE["unlabeled_commits_max"],
@@ -396,6 +428,12 @@ def write_markdown(result: dict, out_path: Path) -> None:
         ("offset invariant failures",
          f"≤ {crit['offset_invariant_failures_max']}",
          vals["offset_invariant_failures"], "offset_invariant_failures"),
+        ("응답 스키마 위반",
+         f"≤ {crit['response_contract_failures_max']}",
+         (vals["response_contract_failures"]
+          if vals["response_contract_measured"]
+          else "측정 불가 (jsonschema 없음)"),
+         "response_contract"),
         # a row for the gate criterion that is about the evaluation data
         # rather than the resolver — without it the table can read as all
         # green beside a FAIL verdict, which is how a gate stops being read
