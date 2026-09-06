@@ -82,6 +82,74 @@ def check_span_invariant(text: str, cp_start: int, cp_end: int, surface: str) ->
         )
 
 
+SPAN_ENCODINGS = frozenset({"byte", "codepoint", "utf16"})
+
+
+def is_span_record(value) -> bool:
+    """A span is the three-encoding record :meth:`OffsetMap.span_dict` makes.
+
+    Recognised by shape rather than by the name of the field holding it. That
+    is the whole point: `span` was verified and `core_link.span` was not,
+    because nobody added the new name to a list. Anything that looks like a
+    span is one, including the ones added tomorrow.
+    """
+    return (isinstance(value, dict) and SPAN_ENCODINGS <= set(value)
+            and isinstance(value.get("codepoint"), dict)
+            and "start" in value["codepoint"] and "end" in value["codepoint"])
+
+
+def verify_response_spans(node, text: str, omap: "OffsetMap | None" = None,
+                          path: str = "", out: list | None = None) -> list[str]:
+    """Every span anywhere in a response, checked against the text.
+
+    Every span is range-checked and encoding-checked: its three encodings must
+    describe the same substring (REQ-OFF-003) and it must lie inside the text.
+
+    The surface check is narrower on purpose. A block's ``span`` describes
+    that block's ``surface`` (REQ-OFF-002), which covers the mention itself,
+    `core_link` and `full_surface` — and any block added later that follows
+    the same convention. A span under a *different* key is a different extent:
+    `full_span` is deliberately the raw token and is wider than the core
+    surface beside it, so pairing it with that surface would report the design
+    as a bug. Those spans still get the range and encoding checks; what they
+    do not get is a surface to be compared against, because there is not one.
+
+    Returns a list of violations rather than raising: a caller counting them
+    across a corpus wants all of them, not the first.
+    """
+    if out is None:
+        out = []
+    if omap is None:
+        omap = OffsetMap(text)
+    if isinstance(node, dict):
+        for key, value in node.items():
+            here = f"{path}.{key}" if path else key
+            if is_span_record(value):
+                cp = value["codepoint"]
+                start, end = cp["start"], cp["end"]
+                if not (0 <= start <= end <= len(text)):
+                    out.append(f"{here}: [{start}, {end}) outside a text of "
+                               f"{len(text)} codepoints")
+                    continue
+                surface = node.get("surface")
+                if key == "span" and isinstance(surface, str):
+                    actual = text[start:end]
+                    if actual != surface:
+                        out.append(f"{here}: text[{start}:{end}]={actual!r} "
+                                   f"but {path or 'root'}.surface={surface!r}")
+                expected = omap.span_dict(start, end)
+                for enc in ("byte", "utf16"):
+                    if value.get(enc) != expected[enc]:
+                        out.append(f"{here}.{enc}: {value.get(enc)} but the "
+                                   f"codepoint span maps to {expected[enc]}")
+            else:
+                verify_response_spans(value, text, omap, here, out)
+    elif isinstance(node, list):
+        for i, item in enumerate(node):
+            verify_response_spans(item, text, omap, f"{path}[{i}]", out)
+    return out
+
+
 def check_roundtrip(text: str, cp_start: int, cp_end: int) -> None:
     """REQ-OFF-003: byte and UTF-16 offsets round-trip to the same substring."""
     m = OffsetMap(text)

@@ -18,6 +18,7 @@ from pathlib import Path
 
 from ktrf.conformance import generate_fixtures, run_fixtures
 from ktrf.glossary import load_glossary
+from ktrf.offsets import verify_response_spans
 from ktrf.resolver import resolve
 from ktrf.snapshot import compile_snapshot
 
@@ -98,10 +99,10 @@ def run(glossary_path: str) -> dict:
         latencies.append(time.perf_counter() - t1)
         mentions = resp["mentions"]
 
-        for m in mentions:
-            cp = m["span"]["codepoint"]
-            if ex.text[cp["start"]:cp["end"]] != m["surface"]:
-                offset_failures += 1
+        # every span the response carries, not just the top-level one. The
+        # nested `core_link.span` went un-checked for exactly as long as this
+        # loop named the field it verified; the verifier finds spans by shape.
+        offset_failures += len(verify_response_spans(resp, ex.text))
 
         gold_by_span = {g.span: g for g in ex.gold}
         c = counters[ex.slice]

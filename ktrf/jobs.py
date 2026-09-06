@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from threading import Lock
 
 from .errors import KtrfApiError
-from .offsets import OffsetMap
+from .offsets import OffsetMap, is_span_record
 from .resolver import _validate_context, _validate_options, resolve
 from .snapshot import Snapshot
 
@@ -61,16 +61,6 @@ def _shift_span(span: dict, omap: OffsetMap, cp_shift: int) -> dict:
     return omap.span_dict(cp["start"] + cp_shift, cp["end"] + cp_shift)
 
 
-_SPAN_KEYS = frozenset({"byte", "codepoint", "utf16"})
-
-
-def _is_span(value) -> bool:
-    """A span is the three-encoding record :meth:`OffsetMap.span_dict` makes."""
-    return (isinstance(value, dict) and _SPAN_KEYS <= set(value)
-            and isinstance(value.get("codepoint"), dict)
-            and "start" in value["codepoint"] and "end" in value["codepoint"])
-
-
 def _globalize_mention(m: dict, omap: OffsetMap, cp_shift: int) -> dict:
     """Move every span in a chunk-local mention into document coordinates.
 
@@ -83,7 +73,7 @@ def _globalize_mention(m: dict, omap: OffsetMap, cp_shift: int) -> dict:
     added rather than the day someone remembers this function.
     """
     def walk(value):
-        if _is_span(value):
+        if is_span_record(value):
             return _shift_span(value, omap, cp_shift)
         if isinstance(value, dict):
             return {k: walk(v) for k, v in value.items()}

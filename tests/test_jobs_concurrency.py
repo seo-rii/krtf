@@ -142,13 +142,13 @@ def test_every_nested_span_is_in_document_coordinates(snap):
 def test_a_span_added_later_is_covered_without_editing_the_shifter():
     """The shape is what makes a span, not a name on a list — which is how
     the previous version stopped covering the response."""
-    from ktrf.jobs import _globalize_mention, _is_span
-    from ktrf.offsets import OffsetMap
+    from ktrf.jobs import _globalize_mention
+    from ktrf.offsets import OffsetMap, is_span_record
 
     text = "가나다라 한국전력공사"
     omap = OffsetMap(text)
     m = {"deeply": {"nested": [{"span": omap.span_dict(0, 2)}]}}
-    assert _is_span(omap.span_dict(0, 2))
+    assert is_span_record(omap.span_dict(0, 2))
     out = _globalize_mention(m, omap, 5)
     moved = out["deeply"]["nested"][0]["span"]["codepoint"]
     assert (moved["start"], moved["end"]) == (5, 7)
