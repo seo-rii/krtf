@@ -410,3 +410,59 @@ def test_folding_is_per_card_so_no_entity_is_lost():
     resolved_ids = {m["resolved_entity"]["entity_id"]
                     for m in resp["mentions"] if m.get("resolved_entity")}
     assert resolved_ids <= in_pack, resolved_ids - in_pack
+
+
+def test_thirty_entities_and_a_question_about_two():
+    """§16.4's own acceptance case, at the size it specifies.
+
+    The existing selection tests use two or three entities, where any
+    ordering keeps the right one. Thirty is where the ordering has to work.
+    """
+    from ktrf.resolver import resolve
+
+    snap = compile_snapshot(load_glossary("examples/realorg_glossary.yaml"))
+    surfaces, seen = [], set()
+    for b in snap.glossary.alias_bindings:
+        if b.entity_id in seen or len(b.surface) < 3:
+            continue
+        seen.add(b.entity_id)
+        surfaces.append((b.entity_id, b.surface))
+        if len(surfaces) == 30:
+            break
+    assert len(surfaces) == 30
+
+    text = " ".join(f"{s}이(가) 회의에 참석했다." for _e, s in surfaces)
+    asked = [surfaces[17], surfaces[3]]
+    query = f"{asked[0][1]}과 {asked[1][1]}은 무엇인가?"
+    resp = resolve(snap, text, mode="commit",
+                   options={"return_all_mentions": True,
+                            "max_prediction_set": 50})
+
+    pack = build_context_pack(snap, resp, query=query,
+                              policy=ContextPolicy(max_entities=2,
+                                                   max_tokens=4000))
+    kept = [c["entity_id"] for c in pack["resolved_terms"]]
+    assert set(kept) == {e for e, _s in asked}, kept
+    # and the ones cut are recorded, not silently absent
+    reasons = {o["reason"] for o in pack["omissions"]}
+    assert "max_entities" in reasons, reasons
+    assert all(o.get("reason") for o in pack["omissions"])
+    assert not pack["coverage"]["complete"]
+
+
+def test_without_a_query_the_order_is_the_document_s_own():
+    """Deterministic, and led by what the document actually repeats."""
+    from ktrf.resolver import resolve
+
+    snap = compile_snapshot(load_glossary("examples/realorg_glossary.yaml"))
+    text = ("금융감독원이 조사했다. 한국전력공사가 발표했다. 국토교통부가 밝혔다. "
+            + "보건복지부가 협의했다. " * 5)
+    resp = resolve(snap, text, mode="commit",
+                   options={"return_all_mentions": True})
+    orders = []
+    for _ in range(3):
+        pack = build_context_pack(
+            snap, resp, policy=ContextPolicy(max_entities=4, max_tokens=4000))
+        orders.append([c["entity_id"] for c in pack["resolved_terms"]])
+    assert orders[0] == orders[1] == orders[2]
+    assert orders[0][0] == "ORG_MOHW", orders[0]
