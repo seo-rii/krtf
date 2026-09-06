@@ -15,6 +15,14 @@ reason texts write definitions at all. Reading those six one at a time, which
 the total would have hidden, found the second defect: three of them were
 wrong, and all three came from the reversed branch.
 
+It has since found two more, both about the left side of the bracket. The
+long form was measured against everything before the parenthesis, so
+`정부는 과학기술정보통신부(이하 "과기정통부")` lost the definition that
+`이날 과학기술정보통신부(...)` kept — a preamble deciding whether a document
+may name its own abbreviation. And a bracket alone was read as a definition,
+which `서울특별시(사실상), 세종특별자치시(행정)` is not. Four doc-local
+aliases now come out of the corpus and all four are names.
+
 This harness measures both halves of that funnel and publishes the rejected
 mass with it. Two numbers, and they are not the same number:
 
