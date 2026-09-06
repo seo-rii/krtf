@@ -222,3 +222,45 @@ def test_writing_a_report_does_not_make_the_stamp_cry_wolf(tmp_path):
 
     (tmp_path / "a.txt").write_text("changed", encoding="utf-8")
     assert git_commit(tmp_path) == clean + "-dirty"   # anything else counts
+
+
+# ---------------------------------------------------------------- corpora
+
+def test_every_declared_corpus_names_a_license_for_every_source():
+    """The repository ships a downloader rather than text so each source can
+    name its terms. A source with no declared license cannot go in whatever
+    it would have scored — `sieu-n/korean-newstext-dump` measured 6-47 silver
+    occurrences per 10k characters over 2.4M rows and is not here for exactly
+    that reason."""
+    from eval.wild_data import CORPORA
+
+    for name, (sources, _cache, licenses) in CORPORA.items():
+        for source in sources:
+            dataset = source[0]
+            assert licenses.get(dataset), f"{name}: {dataset} has no license"
+
+
+def test_every_corpus_has_its_own_cache_file():
+    """Two corpora sharing a cache would silently be one corpus, and the
+    held-out ones exist precisely because they are separate."""
+    from eval.wild_data import CORPORA
+
+    caches = [cache for _s, cache, _l in CORPORA.values()]
+    assert len(caches) == len(set(caches)), caches
+
+
+def test_the_source_tuples_are_the_shape_the_downloader_reads():
+    from eval.wild_data import CORPORA
+
+    for name, (sources, _cache, _l) in CORPORA.items():
+        for source in sources:
+            assert len(source) == 8, f"{name}: {source}"
+            (dataset, config, split, field, max_rows, do_split,
+             max_keep, start_offset) = source
+            assert all(isinstance(x, str)
+                       for x in (dataset, config, split, field)), source
+            assert isinstance(max_rows, int) and max_rows > 0, source
+            assert isinstance(do_split, bool), source
+            assert max_keep is None or (isinstance(max_keep, int)
+                                        and max_keep > 0), source
+            assert isinstance(start_offset, int) and start_offset >= 0, source

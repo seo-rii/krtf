@@ -108,6 +108,47 @@ HOLDOUT2_SOURCES = [
 ]
 HOLDOUT2_CACHE = DATA_DIR / "wild_holdout2.jsonl"
 
+# --- open-web corpus ---------------------------------------------------
+#
+# Everything above is edited text: news desks, court reporters, petition
+# forms, encyclopedia editors. None of it is what an ordinary page on the
+# Korean web looks like, and a resolver that only ever meets copy-edited
+# prose has not been asked the harder question.
+#
+# Chosen by measurement, not by name. Every Korean-tagged dataset the Hub
+# will serve was sampled for *silver density* - unambiguous registered-alias
+# occurrences per 10k Hangul characters - because a corpus can be large,
+# Korean and free and still carry nothing to measure against:
+#
+#     naver-news-summarization-ko   26-31 per 10k   (already in `holdout`)
+#     allenai/c4 ko                 3.8-4.8         38-46 entities / 100 rows
+#     wikipedia-monthly 20260101.ko 3.4-6.4         43-44 entities / 100 rows
+#     lcw99/wikipedia-korean        0.4-3.4
+#     fineweb-2 kor_Hang            1.2-2.9
+#     namuwiki                      0.9-1.0         (cc-by-nc-sa)
+#     korean university lectures    0.0
+#     korean-audio-text-economy     0.0-0.6
+#
+# `sieu-n/korean-newstext-dump` measured 6-47 per 10k over 2.4M rows and is
+# not here: it declares no license and has no dataset card. This repository
+# ships a downloader rather than text precisely so each source can name its
+# terms, and a source that cannot is not usable on those terms whatever it
+# would have scored.
+#
+# The Wikipedia snapshot is January 2026 against `wild`'s November 2023 - a
+# recency contrast, not a duplicate. Organisations are renamed, merged and
+# founded between the two, which is the failure mode a fixed glossary has.
+WEB_SOURCES = [
+    ("allenai/c4", "ko", "train", "text", 1200, True, 20000, 0),
+    ("omarkamali/wikipedia-monthly", "20260101.ko", "train", "text",
+     900, True, 14000, 0),
+]
+WEB_CACHE = DATA_DIR / "wild_web.jsonl"
+WEB_LICENSES = {
+    "allenai/c4": "ODC-BY 1.0 (C4; Common Crawl terms apply upstream)",
+    "omarkamali/wikipedia-monthly": "CC BY-SA 4.0 (Wikipedia)",
+}
+
 # Named corpora. `wild` is what every published report measures against and
 # must not gain domains casually — doing so moves every number for a reason
 # unrelated to any change.
@@ -115,6 +156,7 @@ CORPORA = {
     "wild": (SOURCES, CACHE, LICENSES),
     "holdout": (HOLDOUT_SOURCES, HOLDOUT_CACHE, HOLDOUT_LICENSES),
     "holdout2": (HOLDOUT2_SOURCES, HOLDOUT2_CACHE, HOLDOUT_LICENSES),
+    "web": (WEB_SOURCES, WEB_CACHE, WEB_LICENSES),
 }
 
 PAGE = 100
