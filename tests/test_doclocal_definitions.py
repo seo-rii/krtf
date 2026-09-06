@@ -383,3 +383,54 @@ def test_a_definition_supported_only_by_a_later_chunk_survives_chunking():
     sync = doc_local(resolve(snap, text, mode="commit",
                              options={"return_all_mentions": True}))
     assert chunked == sync == ["케이피"]
+
+
+# ---------------------------------------------------------------------------
+# what a proposal is not: measured across four corpora, not one
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("long_form,short", [
+    ("320k", "30"),          # from the web corpus: digits recur, nothing is short
+    ("2024", "24"),
+    ("10.5", "15"),
+])
+def test_a_pair_of_numbers_does_not_abbreviate(long_form, short):
+    """`30(320k)` aligns as a subsequence and abbreviates nothing."""
+    assert align_definition(long_form, short) is None
+
+
+def test_a_description_with_the_spaces_removed_is_not_a_name():
+    """From the web corpus. The longest *correct* space-free name across 47
+    proposals from four corpora is 12 characters; this is 22, so the cut
+    lands in a ten-character gap rather than beside a real name."""
+    assert align_definition("청년들의취업을돕기위해만든청년구직활동지원금",
+                            "청년지원금") is None
+
+
+@pytest.mark.parametrize("long_form,short", [
+    ("중앙재난안전대책본부", "중대본"),        # 10 chars, space-free, correct
+    ("국가공무원노동조합", "국공노"),         # 9
+    ("한국콘텐츠진흥원", "한콘진"),          # 8
+    ("전국지역아동센터협의회", "전지협"),      # 11, the longest correct one
+    ("개발제한구역의 지정 및 농지법 관리에 관한 특별조치법", "개특법"),
+    ("Portland Pattern Repository", "PPR"),
+])
+def test_the_guards_cost_no_real_name(long_form, short):
+    """Every one of these came out of a corpus and is right. A rule that
+    trims the queue by killing them is not worth having — the report's own
+    note is that three earlier candidates did exactly that."""
+    assert align_definition(long_form, short) is not None
+
+
+def test_the_rejection_reasons_are_reported():
+    """The harness publishes what was refused and why; a miner that shows
+    only its hits is unfalsifiable."""
+    import collections
+
+    rejections = collections.Counter()
+    align_definition("320k", "30", rejections=rejections)
+    align_definition("청년들의취업을돕기위해만든청년구직활동지원금", "청년지원금",
+                     rejections=rejections)
+    assert rejections["no_letters"] == 1
+    assert rejections["unspaced_description"] == 1

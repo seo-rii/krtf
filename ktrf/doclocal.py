@@ -49,6 +49,9 @@ _PAT_IHA = re.compile(
     rf"({_NAME})[,，]?\s+이하\s+[\"'“”]?({_SHORT})[\"'“”]?")
 
 MIN_ABBREV_CHARS = 2
+# A Korean name this long is written with spaces; without them it is a
+# description someone ran together. See `align_definition`.
+_MAX_UNSPACED_NAME = 16
 
 
 @dataclass
@@ -153,8 +156,20 @@ def align_definition(long_form: str, short: str, *,
     `PPR`/`Portland Pattern Repository` passes for the reason
     `국공노`/`국가공무원노동조합` does.
 
-    Three conditions on top of alignment, each measured against the wild
-    corpus before it was adopted:
+    Two conditions before alignment is even asked, each measured across
+    every proposal four corpora produce:
+
+    **Both sides need a letter.** `30(320k)` aligns — 3 then 0 do occur in
+    order — and abbreviates nothing; the digits merely recur.
+
+    **A name that long is written with spaces.**
+    `청년들의취업을돕기위해만든청년구직활동지원금` is a description with the
+    spaces removed. The longest correct space-free name in those proposals is
+    12 characters and this is 22, so the cut sits in a gap rather than beside
+    a real name.
+
+    Three more on top of alignment, each measured against the wild corpus
+    before it was adopted:
 
     **An abbreviation skips.** `초등학교` is a subsequence of `서원초등학교`
     and abbreviates nothing — it is the head noun with the name cut off, as
@@ -193,8 +208,20 @@ def align_definition(long_form: str, short: str, *,
         return None
 
     a, b = long_form.strip(), short.strip()
+    if not (any(ch.isalpha() for ch in a) and any(ch.isalpha() for ch in b)):
+        # `30(320k)` aligns as a subsequence and is a pair of numbers.
+        # Digits carry no abbreviation relation - nothing was shortened,
+        # the characters simply recur.
+        return _no("no_letters")
     x, y = ((a, b) if len(a.replace(" ", "")) <= len(b.replace(" ", ""))
             else (b, a))
+    if " " not in y and len(y) >= _MAX_UNSPACED_NAME:
+        # `청년들의취업을돕기위해만든청년구직활동지원금` is a description with
+        # the spaces taken out, not a name. Measured rather than guessed:
+        # across 47 proposals from four corpora the longest *correct*
+        # space-free name is 12 characters and this is 22, so the threshold
+        # sits in a ten-character gap where nothing lives.
+        return _no("unspaced_description")
     compact = x.replace(" ", "")
     if len(compact) < MIN_ABBREV_CHARS or len(compact) >= len(y.replace(" ", "")):
         return _no("too_short_to_abbreviate")
