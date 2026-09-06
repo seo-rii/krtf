@@ -115,16 +115,11 @@ class PiRuntime:
         from ..context import ContextPolicy, prepare_llm_context
 
         snapshot = self._require_snapshot()
-        policy_args = params.get("context_policy") or {}
-        known = set(ContextPolicy.__dataclass_fields__)
-        unknown = set(policy_args) - known
-        if unknown:
-            raise ValueError(f"unknown context_policy keys: "
-                             f"{sorted(unknown)}")
         prepared = prepare_llm_context(
             snapshot, params["text"], query=params.get("query"),
             mode=params.get("mode", "commit"),
-            context_policy=ContextPolicy(**policy_args))
+            context_policy=ContextPolicy.from_options(
+                params.get("context_policy")))
         return {"pack": prepared.context_pack,
                 "prompt_fragment": prepared.prompt_fragment,
                 "policy_fragment": prepared.policy_fragment}

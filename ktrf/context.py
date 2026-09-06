@@ -120,6 +120,47 @@ class ContextPolicy:
                 f"unknown clearance {self.classification_clearance!r}",
                 details={"known": sorted(CLASSIFICATION_ORDER)})
 
+    @classmethod
+    def from_options(cls, options: dict | None) -> "ContextPolicy":
+        """Build a policy from caller-supplied options, refusing surprises.
+
+        `ContextPolicy(**untrusted)` answers an unknown key with a
+        `TypeError`, which is the one way this type reports a bad request
+        that a host catching :class:`KtrfApiError` does not hear. A silently
+        ignored key would be worse: a caller who asked for
+        `classification_clearance` and misspelled it would be served the
+        default clearance and told nothing.
+        """
+        options = options or {}
+        if not isinstance(options, dict):
+            raise KtrfApiError("INVALID_REQUEST",
+                               "context policy options must be an object")
+        unknown = sorted(set(options) - set(cls.__dataclass_fields__))
+        if unknown:
+            raise KtrfApiError(
+                "INVALID_REQUEST",
+                f"unknown context policy options: {unknown}",
+                details={"known": sorted(cls.__dataclass_fields__)})
+        return cls(**options)
+
+    @property
+    def policy_id(self) -> str:
+        """What this policy actually is, not what generation it belongs to.
+
+        `version` is a hand-written constant, so two packs built under
+        materially different policies — one injecting degraded facts, one
+        refusing to — carried the same `policy_version` and, whenever the
+        content happened to coincide, the same `pack_id`. A pack that cannot
+        say which policy produced it cannot be a cache key or an audit
+        record, which are the two things its id is for.
+        """
+        fields = {name: getattr(self, name)
+                  for name in sorted(self.__dataclass_fields__)}
+        digest = hashlib.sha256(
+            json.dumps(fields, sort_keys=True, ensure_ascii=False).encode()
+        ).hexdigest()[:12]
+        return f"{self.version}-{digest}"
+
     @property
     def effective_include_ambiguous(self) -> bool:
         # automation: never let the LLM pick among candidates — route
@@ -459,6 +500,7 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
         "schema_version": SCHEMA_VERSION,
         "profile": policy.profile,
         "policy_version": policy.version,
+        "policy_id": policy.policy_id,
         "expose_entity_ids": policy.expose_entity_ids,
         "snapshot": dict(resolve_response.get("snapshot", {})),
         "resolved_terms": cards,
