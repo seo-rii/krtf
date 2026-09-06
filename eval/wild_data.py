@@ -138,6 +138,26 @@ HOLDOUT2_CACHE = DATA_DIR / "wild_holdout2.jsonl"
 # The Wikipedia snapshot is January 2026 against `wild`'s November 2023 - a
 # recency contrast, not a duplicate. Organisations are renamed, merged and
 # founded between the two, which is the failure mode a fixed glossary has.
+# The same news source's `validation` and `test` splits, which nothing has
+# read. `holdout2` takes a disjoint *offset range* of `train`; this takes
+# different splits, which is a stronger disjointness guarantee than an offset
+# arithmetic anyone could get wrong. It is also the densest silver available
+# anywhere - 26-29 occurrences per 10k characters against 3-6 for the web and
+# encyclopedia sources - so 5,206 rows carry more silver than the entire
+# 114,605-sentence `wild` corpus.
+#
+# What it is not is independent. The whole dataset was crawled from Naver
+# News over one ten-day window in July 2022, so `holdout`, `holdout2` and
+# this share a period and a set of outlets. It answers "do these rules work
+# on articles nobody looked at", not "do they work on other news".
+HOLDOUT3_SOURCES = [
+    ("daekeun-ml/naver-news-summarization-ko", "default", "validation",
+     "document", 2466, True, 22000, 0),
+    ("daekeun-ml/naver-news-summarization-ko", "default", "test",
+     "document", 2740, True, 24000, 0),
+]
+HOLDOUT3_CACHE = DATA_DIR / "wild_holdout3.jsonl"
+
 WEB_SOURCES = [
     ("allenai/c4", "ko", "train", "text", 1200, True, 20000, 0),
     ("omarkamali/wikipedia-monthly", "20260101.ko", "train", "text",
@@ -156,6 +176,7 @@ CORPORA = {
     "wild": (SOURCES, CACHE, LICENSES),
     "holdout": (HOLDOUT_SOURCES, HOLDOUT_CACHE, HOLDOUT_LICENSES),
     "holdout2": (HOLDOUT2_SOURCES, HOLDOUT2_CACHE, HOLDOUT_LICENSES),
+    "holdout3": (HOLDOUT3_SOURCES, HOLDOUT3_CACHE, HOLDOUT_LICENSES),
     "web": (WEB_SOURCES, WEB_CACHE, WEB_LICENSES),
 }
 
