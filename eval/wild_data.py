@@ -138,6 +138,17 @@ HOLDOUT2_CACHE = DATA_DIR / "wild_holdout2.jsonl"
 # The Wikipedia snapshot is January 2026 against `wild`'s November 2023 - a
 # recency contrast, not a duplicate. Organisations are renamed, merged and
 # founded between the two, which is the failure mode a fixed glossary has.
+#
+# Density is not the whole question, which the first version of this corpus
+# learned the hard way. C4 measured 3.8-4.8 per 10k either way, but before
+# `is_keyword_spam` 45% of those occurrences sat inside escort-service SEO
+# pages that stuff *place names* - `충청남도출장안마 -24시출장샵 충청남도
+# 전지역출장마사지샵`. The counts looked like coverage and were not: the
+# apparent 충청남도 9 -> 32 was almost all keyword list, and the corpus's
+# tail coverage read 52% against `wild`'s 84% purely because the uncovered
+# tails were `출장전화번호` and `출장마사지샵`. Filtered, the corpus keeps
+# 890 occurrences over 102 entities, reaches 경기도교육청 and
+# 한국교육과정평가원 that nothing else does, and thickens seven thin ones.
 # The same news source's `validation` and `test` splits, which nothing has
 # read. `holdout2` takes a disjoint *offset range* of `train`; this takes
 # different splits, which is a stronger disjointness guarantee than an offset
@@ -185,12 +196,43 @@ PAGE = 100
 _SENT_SPLIT = re.compile(r"(?<=[.!?])\s+|\n+")
 _MIN_LEN, _MAX_LEN = 8, 300
 
+# Korean escort/gambling SEO spam, which a raw Common Crawl derivative is full
+# of. It matters here more than its share of pages suggests, because these
+# pages stuff *place names*: `충청남도출장안마 -24시출장샵 충청남도전지역출장
+# 마사지샵 ...`. Before this filter, 45% of the silver occurrences the C4 half
+# contributed came from such pages — a registered organisation name inside a
+# machine-generated keyword list is a mention in the most literal sense and
+# tells nothing about how Korean is written. It also decided a headline
+# number: tail coverage read 52% on that corpus against 84% on `wild`, and
+# the uncovered tails were `출장전화번호`, `출장마사지샵`, `출장걸`.
+#
+# Categories rather than a list fitted to the rows that were read, and two
+# hits required so that one mention of 마사지 in an article about the massage
+# industry survives. Measured on every corpus before adoption: it drops 0.01%
+# of `wild`, 0.08% of `holdout`, 0.03% of `holdout2`, 0.05% of `holdout3` —
+# and 5.8% of `web`, which is the whole reason it exists.
+_SPAM_TERMS = (
+    "출장", "마사지", "안마", "콜걸", "오피", "유흥", "밤알바", "룸살롱",
+    "카지노", "바카라", "토토", "슬롯", "먹튀", "사설토토",
+    "성인용품", "야동", "조건만남", "애인대행", "여대생",
+)
+_SPAM = re.compile("|".join(re.escape(t) for t in _SPAM_TERMS))
+_SPAM_HITS = 2
+
+
+def is_keyword_spam(text: str) -> bool:
+    """A keyword-stuffed page repeats its terms; one mention is a topic."""
+    return len(_SPAM.findall(text)) >= _SPAM_HITS
+
 
 def _sentences(text: str, split_sentences: bool) -> list[str]:
+    if is_keyword_spam(text):
+        return []
     if not split_sentences:
         return [text.strip()]
     return [s.strip() for s in _SENT_SPLIT.split(text)
-            if _MIN_LEN <= len(s.strip()) <= _MAX_LEN]
+            if _MIN_LEN <= len(s.strip()) <= _MAX_LEN
+            and not is_keyword_spam(s)]
 
 
 class WildDataUnavailable(RuntimeError):

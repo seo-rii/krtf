@@ -359,7 +359,33 @@ class DocLocalDetector:
                 continue
             seen.add(key)
             bindings.append(candidate)
-        return bindings
+        return self._unique_per_document(bindings)
+
+    @staticmethod
+    def _unique_per_document(bindings: list[DocLocalBinding]
+                             ) -> list[DocLocalBinding]:
+        """A definition is one meaning in one document, or it is not one.
+
+        The open-web corpus found the shape the recurrence rule cannot see:
+
+            삼성전자(Aa3)와 SK텔레콤(A3), KT(A3) 수준이다
+
+        `A3` is a credit rating, and it recurs — that is exactly what a code
+        in a list does — so "the document goes on to use it" was satisfied by
+        the *second item*. The result claimed A3 means SK텔레콤 and that A3
+        means KT, in one sentence.
+
+        Two long forms for one alias is not two definitions, it is evidence
+        that the bracket was never defining anything. Repeats of the *same*
+        long form are the normal case and stay — `과학기술정보통신부(이하
+        과기정통부)` four times in one article is one definition observed
+        four times.
+        """
+        by_alias: dict[str, set[str]] = {}
+        for b in bindings:
+            by_alias.setdefault(b.alias_surface, set()).add(b.long_form)
+        return [b for b in bindings
+                if len(by_alias[b.alias_surface]) == 1]
 
     def _paren_defines(self, text: str, binding: DocLocalBinding,
                        long_form: str, span: tuple[int, int]) -> bool:

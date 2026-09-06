@@ -434,3 +434,28 @@ def test_the_rejection_reasons_are_reported():
                      rejections=rejections)
     assert rejections["no_letters"] == 1
     assert rejections["unspaced_description"] == 1
+
+
+def test_one_alias_with_two_long_forms_defines_neither(detector):
+    """From the open-web corpus, and the shape the recurrence rule cannot see:
+
+        삼성전자(Aa3)와 SK텔레콤(A3), KT(A3) 수준이다
+
+    `A3` is a credit rating. It recurs — that is what a code in a list does —
+    so "the document goes on to use it" was satisfied by the *second item*,
+    and the result claimed A3 meant SK텔레콤 and that A3 meant KT, in one
+    sentence. Two long forms for one alias is not two definitions.
+    """
+    text = "한국전력공사(케이피)와 한전(케이피)은 모두 참여했다. 케이피가 답했다."
+    assert detector.extract(text) == []
+
+
+def test_the_same_definition_repeated_is_still_one_definition(detector):
+    """The normal case: an article restates its own abbreviation. Same long
+    form each time, so nothing is in conflict."""
+    text = ("한국전력공사(이하 한전)가 발표했다. 한전은 이어 설명했다. "
+            "이날 한국전력공사(이하 한전)는 추가 자료를 냈다. 한전이 답했다.")
+    bindings = detector.extract(text)
+    assert len(bindings) == 2
+    assert {b.alias_surface for b in bindings} == {"한전"}
+    assert {b.long_form for b in bindings} == {"한국전력공사"}
