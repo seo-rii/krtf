@@ -33,7 +33,6 @@ import math
 import re
 import unicodedata
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Protocol
 from xml.sax.saxutils import escape, quoteattr
 
@@ -729,10 +728,6 @@ def _apply_token_budget(pack: dict, policy: ContextPolicy,
 # --------------------------------------------------------------------------
 
 
-_SCHEMA_PATH = Path(__file__).with_name("schemas") / "context_pack.schema.json"
-_SCHEMA_CACHE: dict | None = None
-
-
 def context_pack_schema() -> dict:
     """The published JSON Schema for a ContextPack.
 
@@ -740,39 +735,16 @@ def context_pack_schema() -> dict:
     what it receives with its own tooling, in its own language, without
     trusting this module to be honest about its own output.
     """
-    global _SCHEMA_CACHE
-    if _SCHEMA_CACHE is None:
-        _SCHEMA_CACHE = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
-    return _SCHEMA_CACHE
+    from .schemas import load_schema
+
+    return load_schema("context_pack")
 
 
 def validate_context_pack(pack: dict) -> list[str]:
-    """Check a pack against the published schema. Returns the problems.
+    """Check a pack against the published schema. Returns the problems."""
+    from .schemas import validate_against
 
-    The schema is closed (`additionalProperties: false`) on purpose. An
-    open one would accept a builder that quietly grew a field, which is the
-    drift this contract exists to catch — the pack and its written contract
-    disagreeing while every test still passes.
-
-    Needs `jsonschema`, which KTRF does not depend on at runtime: a host
-    that wants validation already has a validator, and one that does not
-    should not pay for it. Raises :class:`KtrfApiError` when it is missing,
-    rather than returning "no problems" from a check that did not run.
-    """
-    try:
-        import jsonschema
-    except ImportError as exc:  # pragma: no cover - depends on environment
-        raise KtrfApiError(
-            "INVALID_REQUEST",
-            "validate_context_pack needs the `jsonschema` package "
-            "(pip install ktrf[dev]); the schema itself is available "
-            "from context_pack_schema() without it",
-        ) from exc
-    validator = jsonschema.Draft7Validator(context_pack_schema())
-    return [f"{'/'.join(str(p) for p in e.absolute_path) or '<root>'}: "
-            f"{e.message}"
-            for e in sorted(validator.iter_errors(pack),
-                            key=lambda e: list(e.absolute_path))]
+    return validate_against(pack, "context_pack")
 
 
 def render_context_pack(pack: dict, format: str = "xml") -> str:

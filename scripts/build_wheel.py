@@ -180,13 +180,12 @@ assert not bad, "import failures: %s" % (bad,)
 # 3. py.typed survived as real package data, not just a metadata claim.
 assert (here.parent / "py.typed").exists(), "py.typed missing from install"
 
-# 3b. So did the published ContextPack schema. `context_pack_schema()` reads
-#     it off disk, so a wheel that ships the code without the data raises on
-#     a host's machine while passing from every source checkout. Its
-#     directory has no __init__.py on purpose - it is data, not a package -
-#     which is exactly the arrangement most likely to be dropped silently.
-from ktrf.context import context_pack_schema
-assert context_pack_schema()["title"] == "KTRF ContextPack"
+# 3b. So did the published schemas. They are read off disk, so a wheel that
+#     ships the code without the data raises on a host's machine while
+#     passing from every source checkout.
+from ktrf.schemas import NAMES, load_schema
+for _name in NAMES:
+    assert load_schema(_name)["$id"].endswith("%s.schema.json" % _name)
 
 # 4. It actually resolves Korean text end to end.
 glossary = ktrf.load_glossary(sys.argv[1])
@@ -200,7 +199,7 @@ assert surfaces, "resolve returned no mentions"
 print("    version   %s" % ktrf.__version__)
 print("    modules   %d imported, 0 failures" % len(mods))
 print("    resolve   %s" % surfaces)
-print("    schema    %s" % context_pack_schema()["$id"])
+print("    schemas   %s" % ", ".join(NAMES))
 '''
 
 

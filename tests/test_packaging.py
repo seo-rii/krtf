@@ -38,15 +38,9 @@ def test_every_subpackage_is_importable_as_a_package():
     wheel: the source tree keeps working (namespace packages), the wheel
     ships nothing, and the failure only appears on someone else's machine.
 
-    A directory holding no Python is not that. `ktrf/schemas/` is data, and
-    it reaches the wheel through package-data rather than through
-    ``packages.find`` — verified by building one: the wheel carries
-    `ktrf/schemas/context_pack.schema.json` with no `__init__.py` anywhere
-    near it. The rule is about code directories, so ask about code.
     """
     missing = [d.relative_to(ROOT) for d in _package_dirs()
-               if not (d / "__init__.py").exists()
-               and any(f.suffix == ".py" for f in d.iterdir() if f.is_file())]
+               if not (d / "__init__.py").exists()]
     assert not missing, f"subpackages without __init__.py: {missing}"
 
 

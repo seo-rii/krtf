@@ -1,0 +1,194 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/seo-rii/ktrf/schemas/resolve_response.schema.json",
+  "title": "KTRF resolve() response",
+  "description": "What resolve() returns. Closed on the contract objects — mention, span, prediction set, surface records — because that is where drift caused real defects: `core_link.span` was added and the chunk translator, the eval harness and the context builder each learned about it separately, or not at all. The diagnostic payloads (`trace`, `eval_trace`, member `features`) are deliberately open: they are for reading, not for depending on.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["snapshot", "mode", "degraded", "limits", "mentions"],
+  "properties": {
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["glossary_id", "glossary_version", "snapshot_id",
+                   "model_bundle_version"],
+      "properties": {
+        "glossary_id": {"type": "string"},
+        "glossary_version": {"type": "string"},
+        "snapshot_id": {"type": "string"},
+        "model_bundle_version": {"type": ["string", "null"]}
+      }
+    },
+    "mode": {"type": "string", "enum": ["commit", "fast"]},
+    "degraded": {"type": "boolean"},
+    "limits": {"type": "array", "items": {"type": "string"}},
+    "mentions": {"type": "array", "items": {"$ref": "#/definitions/mention"}},
+    "deadline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["budget_ms", "elapsed_ms", "exceeded", "skipped_stages"],
+      "properties": {
+        "budget_ms": {"type": "integer", "minimum": 1},
+        "elapsed_ms": {"type": "number", "minimum": 0},
+        "exceeded": {"type": "boolean"},
+        "skipped_stages": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "trace": {"type": "object"}
+  },
+  "definitions": {
+    "offsets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": {"type": "integer", "minimum": 0},
+        "end": {"type": "integer", "minimum": 0}
+      }
+    },
+    "span": {
+      "description": "The three-encoding record OffsetMap.span_dict makes. Anything shaped like this anywhere in the response is a span, and `ktrf.offsets.verify_response_spans` checks it as one.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["byte", "codepoint", "utf16"],
+      "properties": {
+        "byte": {"$ref": "#/definitions/offsets"},
+        "codepoint": {"$ref": "#/definitions/offsets"},
+        "utf16": {"$ref": "#/definitions/offsets"}
+      }
+    },
+    "mention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mention_id", "surface", "span", "generation_channels",
+                   "mention_decision", "link_decision", "primary"],
+      "properties": {
+        "mention_id": {"type": "string", "pattern": "^m[0-9]+$"},
+        "surface": {"type": "string"},
+        "span": {"$ref": "#/definitions/span"},
+        "full_span": {"$ref": "#/definitions/span"},
+        "generation_channels": {"type": "array", "items": {"type": "string"}},
+        "mention_decision": {
+          "type": "string",
+          "enum": ["TERM", "UNCERTAIN", "NOT_TERM"]
+        },
+        "link_decision": {
+          "type": "string",
+          "enum": ["RESOLVED", "AMBIGUOUS", "KB_MISSING", "UNCERTAIN"]
+        },
+        "primary": {"type": "boolean"},
+        "degraded": {"type": "boolean", "const": true},
+        "channels_bounded": {"type": "boolean", "const": true},
+        "resolved_entity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["entity_id", "canonical"],
+          "properties": {
+            "entity_id": {"type": "string"},
+            "canonical": {"type": ["string", "null"]},
+            "calibrated_probability": {
+              "type": ["number", "null"], "minimum": 0, "maximum": 1
+            }
+          }
+        },
+        "prediction_set": {"$ref": "#/definitions/prediction_set"},
+        "prefix": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "span", "surface"],
+          "properties": {
+            "kind": {"type": "string"},
+            "span": {"$ref": "#/definitions/span"},
+            "surface": {"type": "string"}
+          }
+        },
+        "tail": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["particles", "residual", "residual_kind",
+                       "latin_tail", "grammatical"],
+          "properties": {
+            "particles": {"type": "array", "items": {"type": "string"}},
+            "residual": {"type": "string"},
+            "residual_kind": {"type": "string"},
+            "latin_tail": {"type": "string"},
+            "grammatical": {"type": "boolean"}
+          }
+        },
+        "matched_segments": {
+          "type": "array", "items": {"$ref": "#/definitions/offsets"}
+        },
+        "core_link": {
+          "description": "What the core links to, as opposed to what the whole surface denotes (VARIANTS_PLAN §2).",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["span", "surface"],
+          "properties": {
+            "span": {"$ref": "#/definitions/span"},
+            "surface": {"type": "string"},
+            "relation": {"type": ["string", "null"]}
+          }
+        },
+        "full_surface": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["span", "surface", "identity"],
+          "properties": {
+            "span": {"$ref": "#/definitions/span"},
+            "surface": {"type": "string"},
+            "identity": {"type": "string"},
+            "prefix_kind": {"type": "string"},
+            "tail_class": {"type": "string"},
+            "composes_to": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["entity_id", "from_entity_id", "relation_id"],
+              "properties": {
+                "entity_id": {"type": "string"},
+                "canonical": {"type": ["string", "null"]},
+                "from_entity_id": {"type": "string"},
+                "relation_id": {"type": ["string", "null"]}
+              }
+            }
+          }
+        },
+        "eval_trace": {"type": "object"}
+      }
+    },
+    "prediction_set": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["members"],
+      "properties": {
+        "set_confidence": {"type": ["number", "null"]},
+        "members": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/set_member"}
+        },
+        "truncated": {"type": "boolean", "const": true},
+        "coverage_basis": {"type": "string"},
+        "forced_top": {"type": "boolean", "const": true},
+        "strict_conformal": {"type": "boolean", "const": true},
+        "calibration_fallback": {"type": "boolean", "const": true},
+        "coverage_valid": {"type": "boolean"}
+      }
+    },
+    "set_member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {"type": "string", "enum": ["ENTITY", "KB_MISSING"]},
+        "entity_id": {"type": "string"},
+        "calibrated_probability": {
+          "type": ["number", "null"], "minimum": 0, "maximum": 1
+        },
+        "ranking_score": {"type": ["number", "null"]},
+        "generation_channels": {"type": "array", "items": {"type": "string"}},
+        "retrieval_pass": {"type": "integer", "minimum": 0},
+        "commit_blocked": {"type": ["string", "null"]},
+        "features": {"type": "object"}
+      }
+    }
+  }
+}

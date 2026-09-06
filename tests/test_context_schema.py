@@ -166,10 +166,11 @@ def test_a_pack_id_that_is_not_one_is_caught(snapshot):
 # --------------------------------------------------------------- packaging
 
 def test_the_schema_is_json_on_disk():
-    from ktrf.context import _SCHEMA_PATH
+    from ktrf.schemas import schema_path
 
-    assert _SCHEMA_PATH.exists(), _SCHEMA_PATH
-    json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    path = schema_path("context_pack")
+    assert path.exists(), path
+    json.loads(path.read_text(encoding="utf-8"))
 
 
 def test_the_wheel_is_told_to_carry_it():
