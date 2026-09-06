@@ -369,9 +369,24 @@ def validate_glossary(g: Glossary, strict: bool = True) -> list[Diagnostic]:
         seen_entities.add(e.entity_id)
         if not e.canonical.strip():
             diags.append(Diagnostic("error", "EMPTY_CANONICAL", e.entity_id))
+        # Everything the glossary author writes that can reach a prompt, not
+        # the two fields the lint happened to start with. `short_definition`
+        # and `disambiguation_hints` exist *to be* injected into an LLM
+        # prompt, and both went unchecked: a control character or an
+        # instruction-shaped sentence in either passed validation clean and
+        # the operator was told nothing. The renderer escapes them either
+        # way; the lint is how a glossary gets fixed rather than survived.
+        _lint_content(e.canonical, f"{e.entity_id}.canonical", diags)
         _lint_content(e.description, f"{e.entity_id}.description", diags)
         for i, ex in enumerate(e.examples):
             _lint_content(ex, f"{e.entity_id}.examples[{i}]", diags)
+        grounding = e.grounding or {}
+        _lint_content(grounding.get("short_definition"),
+                      f"{e.entity_id}.grounding.short_definition", diags)
+        for i, hint in enumerate(grounding.get("disambiguation_hints") or []):
+            _lint_content(hint,
+                          f"{e.entity_id}.grounding.disambiguation_hints[{i}]",
+                          diags)
 
     family_ids = {f.family_id for f in g.alias_families}
     seen_bindings: set[str] = set()
