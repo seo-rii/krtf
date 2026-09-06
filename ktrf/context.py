@@ -424,6 +424,28 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
             unknown.append({**_mention_ref(m), "reason": "UNCERTAIN"})
         # anything else (fast-mode shapes etc.) is ignored conservatively
 
+    # One occurrence, one entry. `return_all_mentions` gives the pack every
+    # reading of a site, so `한국전력공사` arrives twice — once whole and once
+    # as the `한국전력` inside it — and both land on the same card. Seven
+    # sentences and five short forms came back as `occurrence_count="19"`
+    # for a document that names the entity twelve times, the extra spans
+    # spent budget saying the same thing, and `_card_score` ranks by mention
+    # count, so an entity whose aliases happen to nest outranked one whose
+    # do not. A mention contained in another on the same card is the same
+    # occurrence read twice, not a second occurrence.
+    for card in resolved.values():
+        kept: list[dict] = []
+        for ref in sorted(card["mentions"], key=lambda r: (
+                (r["span"] or {}).get("start", 0),
+                -((r["span"] or {}).get("end", 0)))):
+            span = ref["span"]
+            if span and any(
+                    k["span"] and k["span"]["start"] <= span["start"]
+                    and span["end"] <= k["span"]["end"] for k in kept):
+                continue
+            kept.append(ref)
+        card["mentions"] = kept
+
     # ---- query-aware relevance ordering (deterministic, no model calls) --
     def _card_score(card: dict) -> tuple:
         score = 0.0

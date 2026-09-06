@@ -359,3 +359,54 @@ def test_policy_hidden_unknowns_are_recorded_as_omissions():
     assert len(shown["unknown_mentions"]) == 1
     assert shown["omissions"] == []
     assert shown["coverage"]["complete"] is True
+
+
+def test_one_occurrence_is_one_entry():
+    """`return_all_mentions` hands the pack every reading of a site.
+
+    `한국전력공사` arrives twice — once whole, once as the `한국전력` inside
+    it — and both land on the same card. Seven of those plus five short
+    forms came back as `occurrence_count="19"` for a document naming the
+    entity twelve times, with the extra spans spending budget to repeat
+    themselves and `_card_score` ranking by mention count, so an entity
+    whose aliases happen to nest outranked one whose do not.
+    """
+    from ktrf.resolver import resolve
+
+    snap = compile_snapshot(load_glossary("examples/realorg_glossary.yaml"))
+    text = ("한국전력공사가 발표했다. " * 7 + "한전은 답했다. " * 5
+            + "금융감독원이 조사했다.")
+    resp = resolve(snap, text, mode="commit",
+                   options={"return_all_mentions": True})
+    # the resolver does report the nested reading; the pack is what folds it
+    assert any(not m.get("primary", True) for m in resp["mentions"])
+
+    pack = build_context_pack(snap, resp)
+    kepco = next(c for c in pack["resolved_terms"]
+                 if c["entity_id"] == "ORG_KEPCO")
+    assert len(kepco["mentions"]) == 12
+    assert {m["surface"] for m in kepco["mentions"]} == {"한국전력공사", "한전"}
+
+    spans = [(m["span"]["start"], m["span"]["end"]) for m in kepco["mentions"]]
+    assert len(spans) == len(set(spans))
+    for i, a in enumerate(spans):
+        for j, b in enumerate(spans):
+            if i != j:
+                assert not (b[0] <= a[0] and a[1] <= b[1]), (a, b)
+
+
+def test_folding_is_per_card_so_no_entity_is_lost():
+    """A nested mention that is the only evidence for its own entity is not
+    somebody else's duplicate."""
+    from ktrf.resolver import resolve
+
+    snap = compile_snapshot(load_glossary("examples/realorg_glossary.yaml"))
+    resp = resolve(snap, "한전노조가 성명을 냈다. 한국전력공사도 밝혔다.",
+                   mode="commit", options={"return_all_mentions": True})
+    pack = build_context_pack(snap, resp)
+    in_pack = {c["entity_id"] for c in pack["resolved_terms"]}
+    in_pack |= {c["entity_id"] for a in pack["ambiguous_mentions"]
+                for c in a["candidates"]}
+    resolved_ids = {m["resolved_entity"]["entity_id"]
+                    for m in resp["mentions"] if m.get("resolved_entity")}
+    assert resolved_ids <= in_pack, resolved_ids - in_pack
