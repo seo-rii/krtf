@@ -271,3 +271,115 @@ def test_an_alignment_spread_over_words_still_refuses_a_trailing_phrase():
     assert align_definition(
         "미사일에 대한 국제사회와 트럼프대통령과 트럼프행정부", "미국") is None
     assert align_definition("혈구는 호흡 색소 검사", "혈색소") is None
+
+
+# ---------------------------------------------------------------------------
+# the name is what the parenthesis defines, not everything before it
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("preamble", [
+    "", "이날 ", "정부는 ", "어제 서울에서 ", "관계 부처와 협의를 마친 ",
+])
+def test_words_before_the_name_do_not_decide_whether_it_defines(detector,
+                                                                preamble):
+    """The proportional gate measured the match against the whole capture, so
+    `이날 한국전력공사(이하 한전)` kept the definition and `정부는 …` lost it.
+    Three characters of unrelated preamble is not a fact about the name."""
+    text = f'{preamble}한국전력공사(이하 "한전")가 발표했다. 한전은 이어 설명했다.'
+    bindings = detector.extract(text)
+    assert len(bindings) == 1, f"{preamble!r} lost the definition"
+    assert bindings[0].alias_surface == "한전"
+    assert bindings[0].long_form == "한국전력공사"
+    assert bindings[0].entity_ids == ["E_KEPCO"]
+
+
+def test_the_long_form_is_the_name_not_the_sentence_so_far(detector):
+    text = '정부는 한국전력공사(이하 "한전")와 협의했다. 한전이 답했다.'
+    assert detector.extract(text)[0].long_form == "한국전력공사"
+
+
+def test_a_name_glued_to_the_previous_word_is_not_anchored(detector):
+    """Right-anchoring alone is not enough: the match also has to begin a
+    word, or the tail of any longer token would read as a name of its own.
+    `대한한국전력공사` is one token, so nothing in it defines 한전."""
+    assert detector.extract("대한한국전력공사(한전)가 있다. 한전은 답했다.") == []
+
+
+# ---------------------------------------------------------------------------
+# a bracket is not a definition by itself
+# ---------------------------------------------------------------------------
+
+
+def test_a_qualifier_in_brackets_is_not_a_definition(detector):
+    """From the wild corpus: `서울특별시(사실상), 세종특별자치시(행정)` is a
+    line about which capital is which, not two definitions. 사실상 is not an
+    abbreviation of 서울특별시 and the document never uses it as a name."""
+    text = "대한민국 - 한국전력공사(사실상), 한전(행정)"
+    # neither bracket survives: 사실상 abbreviates nothing and the line
+    # never uses it as a name, and 행정 is the same shape
+    assert detector.extract(text) == []
+
+
+def test_iha_says_outright_that_it_is_a_definition(detector):
+    """`이하` needs no corroboration — declaring the alias is what it does."""
+    text = "한국전력공사(이하 케이피)가 발표했다."
+    bindings = detector.extract(text)
+    assert [b.alias_surface for b in bindings] == ["케이피"]
+
+
+def test_a_bare_bracket_is_kept_when_the_document_uses_the_name(detector):
+    """코레일 is not an abbreviation of 한국철도공사, and it is still a real
+    doc-local alias in a document that goes on to use it."""
+    used = "한국전력공사(케이피) 설립준비단장을 위촉했다. 케이피 출범을 준비한다."
+    assert [b.alias_surface for b in detector.extract(used)] == ["케이피"]
+
+    unused = "한국전력공사(케이피), 한국수력원자력 등 103개 기관이 동참했다."
+    assert detector.extract(unused) == []
+
+
+def test_a_bare_bracket_is_kept_when_it_reads_as_an_abbreviation(detector):
+    """한전 abbreviates 한국전력공사, so the bracket needs no other support."""
+    text = "한국전력공사(한전)가 발표했다."
+    assert [b.alias_surface for b in detector.extract(text)] == ["한전"]
+
+
+def test_a_definition_supported_only_by_a_later_chunk_survives_chunking():
+    """The recurrence rule reads the document, and a job is a document.
+
+    `케이피` abbreviates nothing and carries no `이하`; it is a doc-local
+    alias only because the text goes on to use it — six sentences later, in
+    another chunk. Extracted per chunk, no chunk both defines and uses it and
+    the definition disappears. The job extracts once from the whole text
+    (INV-017), so the async path answers what the sync path answers.
+    """
+    from ktrf.jobs import ResolveJobManager
+    from ktrf.resolver import resolve
+    from ktrf.snapshot import compile_snapshot
+
+    snap = compile_snapshot(load_glossary("examples/realorg_glossary.yaml"),
+                            strict=False, run_conformance=False)
+    text = ("한국전력공사(케이피)가 발표했다. " + "관련 회의가 이어졌다. " * 6
+            + "케이피는 이어 설명했다.")
+
+    assert [b.alias_surface for b in snap.doclocal.extract(text)] == ["케이피"]
+
+    mgr = ResolveJobManager(
+        max_chunk_bytes=len(text.encode("utf-8")) // 3 + 20)
+    jid = mgr.submit(snap, text,
+                     options={"return_all_mentions": True})["job_id"]
+    job = mgr._get(jid)
+    assert len(job.chunks) > 1
+    # no single chunk can see both the definition and the use
+    assert all(snap.doclocal.extract(text[a:b]) == []
+               for a, b in job.chunks)
+    mgr.process(jid)
+
+    def doc_local(resp):
+        return [m["surface"] for m in resp["mentions"]
+                if "doc_local" in (m.get("generation_channels") or [])]
+
+    chunked = doc_local(mgr.results(jid, page_size=500))
+    sync = doc_local(resolve(snap, text, mode="commit",
+                             options={"return_all_mentions": True}))
+    assert chunked == sync == ["케이피"]

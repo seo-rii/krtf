@@ -248,6 +248,50 @@ class DocLocalDetector:
         ]
         return sorted({m.binding.entity_id for m in full})
 
+    def _anchored_long_form(self, capture: str) -> tuple[str, list[str]]:
+        """The registered name a definition's left side actually ends with.
+
+        The left side of `X(이하 Y)` is everything before the parenthesis,
+        and in real prose that is rarely the name by itself. Measuring the
+        match against the *whole* capture made a document's own definition
+        depend on how many characters of unrelated words happened to precede
+        the name:
+
+            `이날 과학기술정보통신부(이하 "과기정통부")`   9/12 chars -> kept
+            `정부는 과학기술정보통신부(이하 "과기정통부")`  9/13 chars -> lost
+
+        Three characters of preamble decided whether the document got to
+        define its own abbreviation. Worse, losing it is silent: the pack
+        simply carries the glossary's meaning instead, so a document that
+        says `고급빌링콘솔(이하 "ABC")` is told, as fact, that ABC is
+        활동기준원가.
+
+        The name is what sits immediately before the parenthesis, so anchor
+        there — the longest registered match that ends at the end of the
+        capture and starts on a word boundary. Preceding words are outside
+        the definition rather than part of a name that failed to be covered.
+        The old proportional rule stays as a fallback so nothing that used
+        to be recognised stops being recognised.
+        """
+        text = capture.strip()
+        if not text:
+            return "", []
+        matches = self.exact_index.find(build_canonical_stream(text))
+        best: tuple[int, list[str]] | None = None
+        for m in matches:
+            start, end = m.core_span
+            if end != len(text):
+                continue  # not what the parenthesis is defining
+            if start and text[start - 1] not in " 	·":
+                continue  # mid-token: not a name of its own
+            if best is None or start < best[0]:
+                best = (start, [])
+            if start == best[0]:
+                best[1].append(m.binding.entity_id)
+        if best is not None:
+            return text[best[0]:], sorted(set(best[1]))
+        return text, self._resolve_long_form(text)
+
     @staticmethod
     def _pairs(text: str):
         """(pattern name, long form, short form, span) for every definition."""
@@ -261,8 +305,8 @@ class DocLocalDetector:
     def extract(self, text: str) -> list[DocLocalBinding]:
         bindings: list[DocLocalBinding] = []
         seen: set[tuple[str, tuple[int, int]]] = set()
-        for _name, long_form, short, span in self._pairs(text):
-            entity_ids = self._resolve_long_form(long_form)
+        for _name, capture, short, span in self._pairs(text):
+            long_form, entity_ids = self._anchored_long_form(capture)
             pair_entity_ids = entity_ids
             alias = short
             if not entity_ids:
@@ -277,16 +321,49 @@ class DocLocalDetector:
             key = (alias, span)
             if key in seen:
                 continue
-            seen.add(key)
-            bindings.append(
-                DocLocalBinding(
-                    alias_surface=alias,
-                    entity_ids=pair_entity_ids,
-                    definition_span=span,
-                    long_form=long_form if alias == short else short,
-                )
+            candidate = DocLocalBinding(
+                alias_surface=alias,
+                entity_ids=pair_entity_ids,
+                definition_span=span,
+                long_form=long_form if alias == short else short,
             )
+            if alias == short and not self._paren_defines(text, candidate,
+                                                          long_form, span):
+                continue
+            seen.add(key)
+            bindings.append(candidate)
         return bindings
+
+    def _paren_defines(self, text: str, binding: DocLocalBinding,
+                       long_form: str, span: tuple[int, int]) -> bool:
+        """Is `X(Y)` defining Y, or qualifying X?
+
+        Korean prose puts both in the same brackets, and the corpus has both:
+
+            한국철도공사(코레일)              a name the document will use
+            서울특별시(사실상), 세종특별자치시(행정)   which capital, in what sense
+
+        Nothing about the bracket separates them. Three things do, and any
+        one is enough:
+
+        `이하` says so outright — that is what the word is for.
+
+        The short form reads as an abbreviation of the long one (질본 of
+        질병관리본부, 공수처 of 고위공직자범죄수사처). 사실상 is not an
+        abbreviation of 서울특별시 and 행정 is not one of 세종특별자치시.
+
+        Or the document goes on to *use* it, which is what a definition is
+        for. This is what keeps 코레일 — a brand name, not an abbreviation —
+        in any document that uses it. In one that does not, the binding
+        would produce no occurrences and change no resolution anyway; all
+        it would do is put a definition in the pack that the document never
+        relied on.
+        """
+        if "이하" in text[span[0]:span[1]]:
+            return True
+        if align_definition(long_form, binding.alias_surface) is not None:
+            return True
+        return bool(self.find_occurrences(text, [binding]))
 
     def extract_new_terms(self, text: str, *,
                           rejections=None) -> list[NewTermDefinition]:
