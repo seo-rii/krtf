@@ -402,9 +402,19 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
             definition = _document_definition(m)
             if definition is not None:
                 doc_defs.append(definition)
+            # §24.3 puts a KB_MISSING member in the set when no candidate
+            # cleared the context bar: "it may be none of these". The pack
+            # filtered the set down to its ENTITY members and dropped it, so
+            # a mention whose set was {ORG_FSS 0.425, KB_MISSING 0.375} came
+            # out as one candidate with `set_valid` true — the single largest
+            # competing hypothesis deleted and the survivor presented as if
+            # the set covered it. A set member is a member.
+            unregistered = any(x.get("kind") == "KB_MISSING"
+                               for x in pset.get("members", []))
             ambiguous.append({
                 **_mention_ref(m),
                 "candidates": cands,
+                "may_be_unregistered": unregistered,
                 "set_confidence": pset.get("set_confidence"),
                 # a truncated conformal set no longer carries its coverage
                 # guarantee — surface that instead of hiding it
@@ -774,6 +784,10 @@ def _render_xml(pack: dict) -> str:
             note = a.get("appears_inside")
             extra = (f" appears_inside={_attr(note['surface'])}"
                      f" same_entity=\"false\"" if note else "")
+            if a.get("may_be_unregistered"):
+                # the set says it may be none of these; without this the
+                # candidate list reads as exhaustive
+                extra += " may_be_unregistered=\"true\""
             lines.append(
                 f"    <mention surface={_attr(a['surface'])}{extra}>")
             for cand in a["candidates"]:

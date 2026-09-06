@@ -466,3 +466,41 @@ def test_without_a_query_the_order_is_the_document_s_own():
         orders.append([c["entity_id"] for c in pack["resolved_terms"]])
     assert orders[0] == orders[1] == orders[2]
     assert orders[0][0] == "ORG_MOHW", orders[0]
+
+
+def test_a_set_that_may_be_none_of_these_says_so():
+    """§24.3 puts a KB_MISSING member in the set when nothing cleared the
+    context bar. The pack filtered the set to its ENTITY members and dropped
+    it, so `{ORG_FSS 0.425, KB_MISSING 0.375}` rendered as one candidate with
+    `set_valid` true — the largest competing hypothesis deleted and the
+    survivor presented as if the set covered it.
+    """
+    from ktrf.resolver import resolve
+
+    snap = compile_snapshot(load_glossary("examples/realorg_glossary.yaml"))
+    resp = resolve(snap, "금유감독원이 조사했다.", mode="commit",
+                   options={"return_all_mentions": True})
+    kinds = [x.get("kind")
+             for m in resp["mentions"]
+             for x in m.get("prediction_set", {}).get("members", [])]
+    assert "KB_MISSING" in kinds, kinds
+
+    pack = build_context_pack(snap, resp)
+    amb = pack["ambiguous_mentions"]
+    assert amb and all(a["may_be_unregistered"] for a in amb), amb
+    xml = render_context_pack(pack, "xml")
+    assert 'may_be_unregistered="true"' in xml
+
+
+def test_a_set_without_that_member_does_not_claim_it():
+    from ktrf.resolver import resolve
+
+    snap = compile_snapshot(load_glossary("examples/demo_glossary.yaml"))
+    resp = resolve(snap, "한전KDN은 밝혔다", mode="commit",
+                   options={"return_all_mentions": True})
+    pack = build_context_pack(snap, resp)
+    amb = pack["ambiguous_mentions"]
+    # the flag is a fact about the set, not a blanket warning
+    assert len(amb) == 1, amb
+    assert amb[0]["may_be_unregistered"] is False, amb
+    assert "may_be_unregistered" not in render_context_pack(pack, "xml")
