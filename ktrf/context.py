@@ -95,6 +95,17 @@ class ContextPolicy:
     ambiguity_scope: str = "query"
     expose_entity_ids: bool = True
     include_numeric_probabilities: bool = False
+    # A backstop, not a switch. §27.8/REQ-API-005 makes `not node_degraded`
+    # a precondition of RESOLVED, so the resolver never emits a mention that
+    # is both: over 5,401 mentions of which 2,092 were degraded, those landed
+    # on AMBIGUOUS (1,543), KB_MISSING (539) and UNCERTAIN (10) and never on
+    # RESOLVED. Turning this on therefore changes nothing today, and it is
+    # kept rather than deleted because the guarantee lives in another module
+    # — if that precondition is ever relaxed, the default here is what stops
+    # a degraded link being injected as fact in the meantime.
+    # `test_no_mention_is_both_resolved_and_degraded` pins the guarantee, so
+    # the day it stops holding is the day this option starts meaning
+    # something rather than the day it is silently needed.
     allow_degraded_resolved: bool = False
     classification_clearance: str = "internal"
     version: str = "ctxpol-1"

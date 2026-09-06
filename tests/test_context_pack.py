@@ -504,3 +504,46 @@ def test_a_set_without_that_member_does_not_claim_it():
     assert len(amb) == 1, amb
     assert amb[0]["may_be_unregistered"] is False, amb
     assert "may_be_unregistered" not in render_context_pack(pack, "xml")
+
+
+def test_no_mention_is_both_resolved_and_degraded():
+    """The guarantee `allow_degraded_resolved` is a backstop for.
+
+    §27.8/REQ-API-005 makes `not node_degraded` a precondition of RESOLVED,
+    so the pack's "do not inject a degraded link as fact" branch is
+    unreachable and the policy option changes nothing. That is the correct
+    state — the guarantee is stronger where it is — but it is a guarantee
+    made in another module and nothing here was checking that it held.
+
+    The fixture has to reach the degraded state or it proves nothing, which
+    a first attempt did not: near-misses late in a long document exhaust the
+    fuzzy window budget, and those are the mentions that come back degraded.
+    """
+    import collections
+    import random
+
+    from ktrf.resolver import resolve
+
+    snap = compile_snapshot(load_glossary("examples/realorg_glossary.yaml"))
+    registered = [b.surface for b in snap.glossary.alias_bindings]
+    near_misses = ["금유감독원", "한국전려공사", "국토교퉁부", "과기정통부처",
+                   "기획재정무", "보건복지무", "행정안전무", "산업통상자원무"]
+    rng = random.Random(5)
+
+    total = 0
+    degraded = collections.Counter()
+    for _ in range(8):
+        parts = []
+        for _ in range(rng.randint(30, 90)):
+            pool = near_misses if rng.random() < 0.45 else registered
+            parts.append(f"{rng.choice(pool)}이(가) 협의에 참여했다고 한다.")
+        resp = resolve(snap, " ".join(parts)[:8000], mode="commit",
+                       options={"return_all_mentions": True})
+        for m in resp["mentions"]:
+            total += 1
+            if m.get("degraded"):
+                degraded[m["link_decision"]] += 1
+
+    assert total > 500, total
+    assert sum(degraded.values()) > 100, degraded  # the state was reached
+    assert degraded["RESOLVED"] == 0, degraded
