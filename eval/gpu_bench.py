@@ -13,7 +13,6 @@ Writes eval/out/gpu_bench.json and reports/GPU_BENCH.md.
 from __future__ import annotations
 
 import argparse
-import gc
 import json
 import platform
 import statistics
@@ -43,17 +42,18 @@ def _gpu_memory() -> dict | None:
 
     try:
         out = subprocess.run(
-            ["nvidia-smi", "--query-gpu=memory.used,memory.total",
+            ["nvidia-smi",
+             "--query-gpu=memory.used,memory.total,clocks.sm,temperature.gpu",
              "--format=csv,noheader,nounits"],
             capture_output=True, text=True, timeout=15)
     except (OSError, subprocess.SubprocessError):
         return None
     if out.returncode != 0 or not out.stdout.strip():
         return None
-    used, total = (int(x.strip())
-                   for x in out.stdout.strip().splitlines()[0].split(","))
-    return {"used_mib": used, "total_mib": total,
-            "busy": used >= _VRAM_BUSY_MIB}
+    used, total, sm_mhz, temp_c = (
+        int(x.strip()) for x in out.stdout.strip().splitlines()[0].split(","))
+    return {"used_mib": used, "total_mib": total, "sm_clock_mhz": sm_mhz,
+            "temperature_c": temp_c, "busy": used >= _VRAM_BUSY_MIB}
 
 
 def _hardware() -> dict:
@@ -133,15 +133,55 @@ def _summarize(samples: list[dict]) -> dict:
     return out
 
 
+def _one_draw(order: tuple[str, ...]) -> dict:
+    """One cpu+cuda pair in this process. Never more than one — see `main`."""
+    passages = _passages(1000)
+    out = {"_gpu_before": _gpu_memory()}
+    for dev in order:
+        r = bench_encoder(dev, passages)
+        out[dev] = r
+    out["_gpu_after"] = _gpu_memory()
+    return out
+
+
+def _draw_in_subprocess(order: tuple[str, ...]) -> dict | None:
+    import subprocess
+    import sys
+
+    r = subprocess.run(
+        [sys.executable, "-X", "utf8", "-m", "eval.gpu_bench",
+         "--draw", ",".join(order)],
+        cwd=str(ROOT), capture_output=True, text=True, timeout=1800)
+    if r.returncode != 0:
+        print(f"  draw failed: {r.stderr.strip()[:200]}")
+        return None
+    for line in reversed(r.stdout.splitlines()):
+        if line.startswith("{"):
+            return json.loads(line)
+    return None
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--repeats", type=int, default=3,
-                    help="draws per arm; the arms alternate between draws")
+                    help="draws per arm, one subprocess each; the arms "
+                         "alternate between draws")
+    ap.add_argument("--warmup-draws", type=int, default=0,
+                    help="leading draws run but excluded from the summary; "
+                         "0 by default — see the comment in main()")
+    ap.add_argument("--draw", default=None,
+                    help=argparse.SUPPRESS)  # internal: one pair, JSON to stdout
     args = ap.parse_args()
+
+    if args.draw:
+        res = _one_draw(tuple(args.draw.split(",")))
+        for k, r in res.items():
+            if not k.startswith("_"):
+                r.pop("_vectors", None)
+        print(json.dumps(res))
+        return
     if not E5_DIR.exists():
         raise SystemExit("e5 model dir missing — see README neural setup")
-    passages = _passages(1000)
-
     # Ask what else is on the card *before* measuring it. Today's first run
     # of this file reported a 15.1x speedup against August's 10.73x, and the
     # difference was an 8B model ollama had left resident from an unrelated
@@ -162,22 +202,62 @@ def main():
     # needs to be — whatever the machine is doing while the first arm runs is
     # over by the time the second one does — so the arms alternate and the
     # report publishes the median with the range beside it.
-    cpu_runs, gpu_runs = [], []
-    first_vectors = {}
-    for i in range(max(1, args.repeats)):
+    # One pair per process, for isolation: each draw gets a fresh CUDA
+    # session and cannot inherit whatever the previous one left behind.
+    #
+    # An earlier version of this comment claimed a measured in-process decay
+    # — 5,022 down to 2,112 passages/s across seven draws — and blamed
+    # accumulated sessions. That was wrong. Every run showing it turned out
+    # to have had an LLM loaded onto the card partway through; on a card
+    # verified idle per draw, eight draws stayed between 4,075 and 5,343
+    # with no trend, in-process or not. The isolation is still worth having
+    # and it is no longer carrying a claim it cannot support.
+    # `--warmup-draws` defaults to 0. There is one real warm-up effect: from
+    # a fully idle card — this one sits at 210 MHz against a 2,160 MHz
+    # ceiling — the first draws are genuinely slower (935, then 2,244, before
+    # settling near 4,600-4,900) while the clock ramps. But it only appears
+    # when the card has been idle, so it cannot be discarded by a fixed count
+    # without silently dropping good draws in every other case. Left off by
+    # default; the range in the report shows it when it happens.
+    warm = max(0, args.warmup_draws)
+    total = max(1, args.repeats) + warm
+    cpu_runs, gpu_runs, warmup, dropped = [], [], [], []
+    for i in range(total):
         order = ("cpu", "cuda") if i % 2 == 0 else ("cuda", "cpu")
-        for dev in order:
-            r = bench_encoder(dev, passages)
-            first_vectors.setdefault(dev, r["_vectors"])
-            r.pop("_vectors")
-            (cpu_runs if dev == "cpu" else gpu_runs).append(r)
-            print(f"  draw {i + 1} {dev}: {r['passages_per_second']} passages/s")
-            # Each draw builds its own InferenceSession. Left to Python's own
-            # timing, the CUDA sessions pile up and throughput decays inside a
-            # single process — 5,447 to 2,410 passages/s over seven draws,
-            # while seven *separate* processes stayed between 4,756 and 5,344.
-            # That decay was the harness measuring itself.
-            gc.collect()
+        res = _draw_in_subprocess(order)
+        if res is None:
+            continue
+        tag = "warmup" if i < warm else f"draw {i + 1 - warm}"
+        # Per draw, not per run. A whole-run flag is what caught the first
+        # instance of this, but it is too coarse to act on: an `ollama serve`
+        # left over from another shell loaded a model *partway through* a
+        # seven-draw run, so the card was clean at the start, busy at the end,
+        # and the four good draws were tarred with the three bad ones. The
+        # child reports what the card looked like around its own work, and a
+        # draw taken on a busy card is dropped rather than averaged in.
+        busy = ((res.get("_gpu_before") or {}).get("busy")
+                or (res.get("_gpu_after") or {}).get("busy"))
+        print(f"  {tag}: cpu {res['cpu']['passages_per_second']} "
+              f"| cuda {res['cuda']['passages_per_second']} passages/s"
+              + ("  DROPPED (card busy)" if busy else ""))
+        if busy:
+            dropped.append({"cpu": res["cpu"]["passages_per_second"],
+                            "cuda": res["cuda"]["passages_per_second"],
+                            "used_mib": (res.get("_gpu_after") or {})
+                            .get("used_mib")})
+            continue
+        if i < warm:
+            warmup.append({"cpu": res["cpu"]["passages_per_second"],
+                           "cuda": res["cuda"]["passages_per_second"]})
+            continue
+        cpu_runs.append(res["cpu"])
+        gpu_runs.append(res["cuda"])
+    if not cpu_runs:
+        raise SystemExit(
+            "no draw ran on an idle card — "
+            f"{len(dropped)} dropped for contention; stop whatever holds GPU "
+            f"memory (`ollama stop <model>`, or kill `ollama serve`) and "
+            f"re-run")
 
     cpu = _summarize(cpu_runs)
     gpu = _summarize(gpu_runs)
@@ -186,11 +266,14 @@ def main():
     if gpu["actual_device"] == "cuda":
         import math
 
+        # one extra in-process pair purely for the vectors: the drift check
+        # compares values, not speed, so the session effect cannot reach it
+        vecs = _one_draw(("cpu", "cuda"))
         dots = [
             sum(a * b for a, b in zip(u, v))
             / (math.sqrt(sum(a * a for a in u)) * math.sqrt(sum(b * b for b in v)))
-            for u, v in zip(first_vectors["cpu"][:100],
-                            first_vectors["cuda"][:100])
+            for u, v in zip(vecs["cpu"]["_vectors"][:100],
+                            vecs["cuda"]["_vectors"][:100])
         ]
         drift = round(1.0 - min(dots), 6)
 
@@ -212,7 +295,8 @@ def main():
     payload = {"manifest": run_manifest(ROOT), "hardware": hw,
                "gpu_memory_before": vram_before, "gpu_memory_after": vram_after,
                "gpu_contended": contended,
-               "repeats": max(1, args.repeats),
+               "repeats": len(cpu_runs), "warmup_discarded": warmup,
+               "draws_dropped_for_contention": dropped,
                "cpu": cpu, "gpu": gpu, "batch_speedup": speedup,
                "batch_speedup_range": speedup_range,
                "max_cosine_drift_cpu_vs_gpu": drift}
@@ -245,14 +329,18 @@ def main():
         "",
         f"표의 값은 arm을 번갈아 {payload['repeats']}회 반복한 **중앙값**이고,"
         " 괄호는 관측된 범위다 — 신뢰구간이 아니라 같은 커밋·같은 기계가"
-        " 실제로 낸 폭이다.",
+        " 실제로 낸 폭이다. 각 반복은 격리를 위해 **별도 프로세스**에서"
+        " 돌고, 매 draw마다 카드가 비어 있었는지 확인한다 — 다른 프로세스가"
+        " GPU 메모리를 점유한 draw는 중앙값에 넣지 않는다.",
         "",
-        f"- **배치 인코딩 speedup: {speedup}×**"
-        + (f" (관측 범위 {rng[0]}–{rng[1]}×)" if rng else "")
-        + " — compile-time 벡터 생성이 GPU의"
-        " 주 수혜 지점이다 (§11.1; 10만 entity 외삽은 아래 참조)."
-        " **이 배수를 한 자리 수준으로 인용하지 말 것**: 반복 측정의 폭이"
-        " 배수 자체의 20%를 넘는다.",
+        f"- **배치 인코딩 speedup: 중앙값 {speedup}×**"
+        + (f", 관측 범위 **{rng[0]}–{rng[1]}×**" if rng else "")
+        + " — compile-time 벡터 생성이 GPU의 주 수혜 지점이다."
+        " **배수를 소수점까지 인용하지 말 것**: 위 범위가 그대로 배수의"
+        " 불확실성이며, 유휴 상태에서 막 시작한 카드는 클럭이 오를 때까지"
+        " 느리다(이 기계는 유휴 시 210 MHz, 최대 2,160 MHz)."
+        " 이 리포트가 뒷받침하는 것은 배치 인코딩에서 GPU가 10배 이상"
+        " 빠르다는 것까지다 (§11.1; 10만 entity 외삽은 아래 참조).",
         f"- int8(CPU)↔fp32(GPU) 코사인 드리프트 최대 {drift} — §46.2"
         " quantization regression 지표. 두 artifact는 `encoder_id`가 다르므로"
         " 스냅샷 벡터는 상호 재사용되지 않는다(§11.3 강제).",
@@ -268,13 +356,29 @@ def main():
         f"- onnxruntime: `{hw.get('onnxruntime', 'unknown')}`"
         f" · providers `{hw.get('providers', 'unknown')}`",
         f"- platform: `{hw['platform']}`",
+        f"- 버린 warm-up draw {len(payload['warmup_discarded'])}회: "
+        + (", ".join(f"cpu {w['cpu']}/cuda {w['cuda']}"
+                     for w in payload["warmup_discarded"]) or "없음"),
         f"- 측정 전/후 GPU 메모리 사용량: "
         f"`{(vram_before or {}).get('used_mib', '?')}` / "
         f"`{(vram_after or {}).get('used_mib', '?')}` MiB of "
         f"`{(vram_before or {}).get('total_mib', '?')}` MiB",
+        f"- 측정 전/후 SM 클럭·온도: "
+        f"`{(vram_before or {}).get('sm_clock_mhz', '?')}` → "
+        f"`{(vram_after or {}).get('sm_clock_mhz', '?')}` MHz, "
+        f"`{(vram_before or {}).get('temperature_c', '?')}` → "
+        f"`{(vram_after or {}).get('temperature_c', '?')}` °C",
         "",
     ]
-    if contended:
+    if dropped:
+        lines += [
+            f"> 카드가 다른 프로세스에 점유된 상태에서 나온 draw"
+            f" {len(dropped)}회는 중앙값에서 **제외**했다"
+            f" ({', '.join(str(d['used_mib']) + ' MiB' for d in dropped)})."
+            " 제외된 값도 페이로드에 남아 있다.",
+            "",
+        ]
+    if contended and not cpu_runs:
         lines += [
             "> **이 수치는 빈 카드의 것이 아니다.** 측정 중 다른 프로세스가"
             f" GPU 메모리를 {_VRAM_BUSY_MIB} MiB 이상 점유하고 있었다 —"
