@@ -358,7 +358,10 @@ VALIDATED ───────────────→ REJECTED
    ├────────→ PROVISIONAL
    │              │
    │              ▼
-   └──────────── ACTIVE
+   └──────────── APPROVED
+                  │        (compile + activate)
+                  ▼
+                ACTIVE
                   │
                   ├──→ DEPRECATED
                   └──→ ROLLED_BACK
@@ -434,9 +437,25 @@ Provisional term은 다음과 같이 처리합니다.
                   expires_after_sessions="2" />
 ```
 
+### `APPROVED`
+
+승인 정책을 통과했지만 아직 어떤 snapshot에도 컴파일되지 않은 상태입니다.
+용어는 아직 resolve되지 않습니다.
+
+이 상태가 따로 있는 이유: 승인이 곧 활성화라고 보면 store의 상태와 resolver의
+현실이 갈라진다. 실제로 그랬다 — 승인 직후 상태는 `ACTIVE`인데
+`resolve("ZXQ")`는 빈 mention 목록을 반환하고 `snapshot_id`는 그대로였다.
+`ACTIVE`는 그 격차를 감출 수 없는 이름이어야 한다.
+
 ### `ACTIVE`
 
 승인 정책을 통과해 실제 glossary snapshot에 포함된 상태입니다.
+
+`TermProposalStore.activate(scope, base_layers=...)`가 이 전이의 유일한
+경로다. 컴파일이 성공한 뒤에만 상태가 바뀌고, 실패하면 모든 상태와 직전
+활성 snapshot이 그대로 남는다. `store.active_snapshot()`이 이 용어들이 실제로
+들어 있는 snapshot을 돌려준다 — 상태 필드만으로는 답할 수 없는 질문이고,
+그것이 이 분리의 요점이다. sidecar에서는 `activate_proposals` RPC.
 
 ---
 

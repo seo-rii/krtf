@@ -198,7 +198,7 @@ def test_a_mined_definition_does_not_auto_activate(detector, glossary):
     # and the scope the detector refuses to pick for the caller would have
     # activated it without anyone saying yes
     session = store.submit(**{**kwargs, "requested_scope": "session"})
-    assert decide_admission(session, TermAdmissionPolicy())[0] == "ACTIVE"
+    assert decide_admission(session, TermAdmissionPolicy())[0] == "APPROVED"
 
 
 def test_a_definition_of_something_already_bound_is_refused(detector, glossary):

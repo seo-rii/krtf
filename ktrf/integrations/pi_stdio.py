@@ -181,6 +181,24 @@ class PiRuntime:
         return store.approve(params["proposal_id"],
                              params.get("approver", "user")).to_dict()
 
+    def activate_proposals(self, params: dict) -> dict:
+        """params: {scope: "session"|"project"|"global"}
+
+        Compiles this scope's APPROVED terms on top of the layers already
+        loaded and, only if that succeeds, marks them ACTIVE and swaps the
+        runtime's snapshot. Approval used to report ACTIVE by itself, so a
+        term announced as live was not resolvable and `snapshot_id` had not
+        moved — the sidecar's own state and the resolver's disagreed.
+        """
+        store = self._require_proposals()
+        base = list(getattr(self.layer_result, "layers", None) or [])
+        report = store.activate(params.get("scope", "project"),
+                                base_layers=base or None)
+        # the resolver must answer from the snapshot that was just proved to
+        # contain these terms, not the one loaded before them
+        self.snapshot = store.active_snapshot()
+        return report
+
     def list_proposals(self, params: dict) -> dict:
         store = self._require_proposals()
         return {"proposals": [p.to_dict() for p in
@@ -212,6 +230,7 @@ HANDLERS = {
     "lookup": PiRuntime.lookup,
     "explain": PiRuntime.explain,
     "propose_term": PiRuntime.propose_term,
+    "activate_proposals": PiRuntime.activate_proposals,
     "validate_proposal": PiRuntime.validate_proposal,
     "route_proposal": PiRuntime.route_proposal,
     "approve_proposal": PiRuntime.approve_proposal,

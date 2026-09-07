@@ -192,13 +192,17 @@ def _submit(store, **kw):
     return store.submit(**args)
 
 
-def test_valid_proposal_passes_and_session_explicit_activates():
+def test_valid_proposal_passes_and_session_explicit_is_approved():
+    # Admission ends at APPROVED. ACTIVE is what `activate` reports once the
+    # term is compiled into a snapshot — approval alone used to claim it
+    # while `resolve` still found nothing.
     store = _store()
     p = _submit(store)
     p = store.validate(p.proposal_id, _snapshot())
     assert p.status == "VALIDATED", p.validation_report
     p = store.route(p.proposal_id)
-    assert p.status == "ACTIVE"
+    assert p.status == "APPROVED"
+    assert store.active_snapshot() is None
 
 
 def test_proposal_without_evidence_is_rejected():
@@ -274,7 +278,7 @@ def test_project_auto_promotion_requires_every_condition():
     r = store3.validate(r.proposal_id, _snapshot())
     r = store3.route(r.proposal_id, project_trusted=True,
                      evidence_count=3, distinct_sessions=2)
-    assert r.status == "ACTIVE"
+    assert r.status == "APPROVED"
 
 
 def test_human_approval_path_and_audit():
@@ -284,8 +288,12 @@ def test_human_approval_path_and_audit():
     p = store.route(p.proposal_id)
     assert p.status == "VALIDATED"  # global never auto-activates
     p = store.approve(p.proposal_id, "reviewer-1")
-    assert p.status == "ACTIVE"
+    assert p.status == "APPROVED"
     assert any(e["action"] == "transition" for e in store.audit)
+    # nothing is exported as active until something compiles it
+    assert store.active_terms_doc("global")["terms"] == []
+    store.activate("global")
+    assert store.get(p.proposal_id).status == "ACTIVE"
     doc = store.active_terms_doc("global")
     assert doc["terms"][0]["canonical"] == "Project Data Access Framework"
 
@@ -317,7 +325,7 @@ def test_decide_admission_is_pure():
     store = _store()
     p = _submit(store)
     state, reason = decide_admission(p, TermAdmissionPolicy())
-    assert state == "ACTIVE" and "explicit" in reason
+    assert state == "APPROVED" and "explicit" in reason
 
 
 # ------------------------------------------------------------ explain
@@ -464,6 +472,9 @@ def test_sidecar_proposal_flow():
     approved = _rpc(rt, "approve_proposal",
                     {"proposal_id": p["proposal_id"],
                      "approver": "user"})["result"]
-    assert approved["status"] == "ACTIVE"
-    listing = _rpc(rt, "list_proposals", {"status": "ACTIVE"})["result"]
+    assert approved["status"] == "APPROVED"
+    listing = _rpc(rt, "list_proposals", {"status": "APPROVED"})["result"]
     assert len(listing["proposals"]) == 1
+    # and nothing claims to be active, because nothing has been compiled
+    assert _rpc(rt, "list_proposals",
+                {"status": "ACTIVE"})["result"]["proposals"] == []

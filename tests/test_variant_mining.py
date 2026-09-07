@@ -239,7 +239,7 @@ def test_an_approved_mined_name_stops_being_backlog(snap):
         canonical="카카오톡", short_definition="카카오가 운영하는 메신저"))
     assert store.validate(proposal.proposal_id, snap).status == "VALIDATED"
     assert store.route(proposal.proposal_id).status == "VALIDATED"  # not ACTIVE
-    assert store.approve(proposal.proposal_id, "reviewer").status == "ACTIVE"
+    assert store.approve(proposal.proposal_id, "reviewer").status == "APPROVED"
 
     # register the approved name beside its core, keeping the relation
     doc = yaml.safe_load(open("examples/realorg_glossary.yaml",

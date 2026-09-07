@@ -6,8 +6,8 @@ reasoning never writes to a durable dictionary.
 
 State model::
 
-    OBSERVED → PROPOSED → VALIDATED ─┬→ PROVISIONAL → ACTIVE
-                     │               └→ ACTIVE
+    OBSERVED → PROPOSED → VALIDATED ─┬→ PROVISIONAL → APPROVED → ACTIVE
+                     │               └→ APPROVED → ACTIVE
                      └→ REJECTED           │
                                            ├→ DEPRECATED
                                            └→ ROLLED_BACK
@@ -34,10 +34,11 @@ import unicodedata
 from dataclasses import dataclass, field, replace
 
 from ..errors import KtrfApiError
+from ..normalization import build_canonical_stream
 
 SCOPES = ("session", "project", "global")
 STATES = ("OBSERVED", "PROPOSED", "VALIDATED", "REJECTED", "PROVISIONAL",
-          "ACTIVE", "DEPRECATED", "ROLLED_BACK")
+          "APPROVED", "ACTIVE", "DEPRECATED", "ROLLED_BACK")
 ORIGINS = ("llm_proposal", "user_explicit", "document_definition",
            "deterministic_detector")
 
@@ -139,16 +140,28 @@ def validate_term_proposal(proposal: TermProposal, snapshot,
     reasons: list[str] = []
 
     surface = proposal.surface
-    checks["surface_nonempty"] = bool(surface.strip())
+    # Every string this proposal would register, not only the one it is
+    # named after. `active_terms_doc` exports `[p.surface, *p.aliases]`, so
+    # an alias becomes a live surface on approval — but the checks below
+    # only ever read `proposal.surface`, and a term whose *alias* collided
+    # with a registered binding validated cleanly and shipped the collision.
+    surfaces = (surface, *proposal.aliases)
+    checks["surface_nonempty"] = all(bool(x.strip()) for x in surfaces)
     checks["canonical_nonempty"] = bool(proposal.canonical.strip())
     checks["definition_nonempty"] = bool(proposal.short_definition.strip())
     checks["no_control_chars"] = not any(
         _CONTROL.search(x) for x in
-        (surface, proposal.canonical, proposal.short_definition))
+        (*surfaces, proposal.canonical, proposal.short_definition))
     checks["length_limits"] = (
         len(proposal.canonical) <= MAX_CANONICAL_CHARS
         and len(proposal.short_definition) <= MAX_DEFINITION_CHARS
-        and len(surface) <= MAX_CANONICAL_CHARS)
+        and all(len(x) <= MAX_CANONICAL_CHARS for x in surfaces))
+    # An alias equal to the surface, or repeated, is not a second surface —
+    # it is a duplicate binding waiting to be compiled.
+    normalized = [_collation_key(x) for x in surfaces]
+    checks["aliases_distinct"] = (
+        len(set(normalized)) == len(normalized)
+        and all(normalized))
 
     # the surface must have been observed, not imagined by the model
     checks["evidence_surface_present"] = any(
@@ -164,15 +177,24 @@ def validate_term_proposal(proposal: TermProposal, snapshot,
     checks["scope_known"] = proposal.requested_scope in SCOPES
     checks["origin_known"] = proposal.origin in ORIGINS
 
-    # alias collision: the surface must not already resolve elsewhere
-    collisions = []
+    # alias collision: no surface this proposal registers may already
+    # resolve elsewhere. Compared on the collation key rather than raw
+    # equality, so a width- or case-variant of a registered surface is the
+    # same collision — the matcher folds those, and a check that does not
+    # is a check the matcher can walk around.
+    collisions: dict[str, list[str]] = {}
     if snapshot is not None:
+        bound: dict[str, list[str]] = {}
         for b in snapshot.glossary.alias_bindings:
-            if b.surface == surface:
-                collisions.append(b.entity_id)
+            bound.setdefault(_collation_key(b.surface), []).append(b.entity_id)
+        for raw in surfaces:
+            hit = bound.get(_collation_key(raw))
+            if hit:
+                collisions[raw] = hit
     checks["no_alias_collision"] = not collisions
-    if collisions:
-        reasons.append(f"surface already bound to {sorted(set(collisions))}")
+    for raw, ids in collisions.items():
+        where = "surface" if raw == surface else "alias"
+        reasons.append(f"{where} {raw!r} already bound to {sorted(set(ids))}")
 
     # duplicate canonical under a different key
     duplicate = []
@@ -199,6 +221,17 @@ def validate_term_proposal(proposal: TermProposal, snapshot,
             "reasons": reasons}
 
 
+def _collation_key(surface: str) -> str:
+    """How the matcher would see this surface, for comparison only.
+
+    Raw equality let a registered surface be re-registered in any form the
+    normalizer folds away. This is deliberately the *matcher's* view rather
+    than a bespoke rule, so the check cannot drift away from what actually
+    collides at resolve time.
+    """
+    return build_canonical_stream(surface.strip()).text
+
+
 def decide_admission(proposal: TermProposal, policy: TermAdmissionPolicy,
                      *, project_trusted: bool = False,
                      evidence_count: int = 0,
@@ -213,7 +246,7 @@ def decide_admission(proposal: TermProposal, policy: TermAdmissionPolicy,
     explicit = proposal.origin in ("user_explicit", "document_definition")
     if scope == "session":
         if explicit and policy.allow_session_auto_explicit:
-            return "ACTIVE", "explicit user definition in session scope"
+            return "APPROVED", "explicit user definition in session scope"
         if policy.allow_session_auto_inferred:
             return "PROVISIONAL", "inferred term admitted provisionally"
         return "PROVISIONAL" if proposal.origin == "llm_proposal" \
@@ -232,7 +265,7 @@ def decide_admission(proposal: TermProposal, policy: TermAdmissionPolicy,
         if distinct_sessions < policy.project_min_distinct_sessions:
             return "VALIDATED", (f"distinct sessions {distinct_sessions} < "
                                  f"{policy.project_min_distinct_sessions}")
-        return "ACTIVE", "project auto-promotion conditions met"
+        return "APPROVED", "project auto-promotion conditions met"
     if not policy.allow_global_auto:
         return "VALIDATED", "global scope always requires confirmation"
     return "VALIDATED", "global auto-activation disabled by default"
@@ -248,6 +281,9 @@ class TermProposalStore:
         self._by_id: dict[str, TermProposal] = {}
         self._session_counts: dict[str, int] = {}
         self.audit: list[dict] = []
+        # None until `activate` compiles one. ACTIVE status and this field
+        # move together; nothing else may set either.
+        self._active_snapshot = None
 
     # ---------------------------------------------------------------- io
     def _log(self, action: str, proposal: TermProposal, **extra) -> None:
@@ -344,13 +380,22 @@ class TermProposalStore:
         return self._transition(proposal, state, reason)
 
     def approve(self, proposal_id: str, approver: str) -> TermProposal:
-        """Human approval — the only path to ACTIVE for project/global."""
+        """Human approval. Reaches APPROVED, never ACTIVE.
+
+        `PLAN_PI.md` defines ACTIVE as "승인 정책을 통과해 실제 glossary
+        snapshot에 포함된 상태" — approved *and* compiled in. This method
+        used to set ACTIVE directly, so a proposal reported itself as active
+        while `resolve` found nothing and `snapshot_id` had not moved: the
+        store's state and the resolver's reality were two different things
+        wearing one name. Activation is :meth:`activate`, which only reports
+        ACTIVE once a snapshot containing the term exists.
+        """
         proposal = self.get(proposal_id)
         if proposal.status not in ("VALIDATED", "PROVISIONAL"):
             raise KtrfApiError(
                 "INVALID_REQUEST",
                 f"cannot approve a {proposal.status} proposal")
-        return self._transition(proposal, "ACTIVE",
+        return self._transition(proposal, "APPROVED",
                                 f"approved by {approver}")
 
     def reject(self, proposal_id: str, approver: str,
@@ -360,9 +405,10 @@ class TermProposalStore:
 
     def rollback(self, proposal_id: str, reason: str = "") -> TermProposal:
         proposal = self.get(proposal_id)
-        if proposal.status != "ACTIVE":
+        if proposal.status not in ("ACTIVE", "APPROVED"):
             raise KtrfApiError("INVALID_REQUEST",
-                               "only ACTIVE terms can be rolled back")
+                               "only APPROVED or ACTIVE terms can be "
+                               "rolled back")
         return self._transition(proposal, "ROLLED_BACK", reason)
 
     def expire_provisional(self, turns_elapsed: int) -> list[TermProposal]:
@@ -393,11 +439,57 @@ class TermProposalStore:
             out = [p for p in out if p.requested_scope == scope]
         return sorted(out, key=lambda p: p.created_at)
 
-    def active_terms_doc(self, scope: str) -> dict:
-        """ACTIVE proposals for one scope as a Simple Terminology document,
-        ready for :func:`ktrf.registry.simple_schema.compile_simple_terms`."""
+    def active_snapshot(self):
+        """The snapshot the ACTIVE terms are actually compiled into.
+
+        ``None`` when nothing has been activated. A caller that wants to
+        know whether a term is live asks this and resolves against it; the
+        status field alone cannot answer, which is the whole point.
+        """
+        return self._active_snapshot
+
+    def activate(self, scope: str, *, base_layers=None, **compile_kw):
+        """Compile every APPROVED term in ``scope`` and, only if that
+        succeeds, mark them ACTIVE.
+
+        ``base_layers`` are the existing :class:`~ktrf.registry.layers.
+        TermLayer` objects this scope's terms are layered on top of. Failure
+        leaves every status and the previously active snapshot untouched —
+        a rejected compile must not be able to strand the store in a state
+        where something claims to be live and is not.
+        """
+        from .layers import TermLayer, compile_layered_snapshot
+
+        pending = [p for p in self.list(scope=scope)
+                   if p.status in ("APPROVED", "ACTIVE")]
+        if not pending:
+            raise KtrfApiError("INVALID_REQUEST",
+                               f"no approved terms in scope {scope!r}")
+        doc = self._terms_doc(pending)
+        layers = list(base_layers or [])
+        layers.append(TermLayer(scope=scope, doc=doc, trusted=True))
+        try:
+            snapshot, result = compile_layered_snapshot(layers, **compile_kw)
+        except Exception as exc:
+            # states unchanged on purpose — see the docstring
+            raise KtrfApiError(
+                "SNAPSHOT_UNAVAILABLE",
+                f"activation compile failed: {exc}",
+                details={"scope": scope, "terms": len(doc["terms"])}) from exc
+        self._active_snapshot = snapshot
+        for p in pending:
+            if p.status != "ACTIVE":
+                self._transition(p, "ACTIVE",
+                                 f"compiled into {snapshot.snapshot_id}")
+        return {"snapshot_id": snapshot.snapshot_id,
+                "terms": len(doc["terms"]),
+                "shadowed": getattr(result, "shadowed", None),
+                "conflicts": getattr(result, "conflicts", None)}
+
+    @staticmethod
+    def _terms_doc(proposals) -> dict:
         terms = []
-        for p in self.list(status="ACTIVE", scope=scope):
+        for p in proposals:
             key = re.sub(r"[^a-z0-9._-]+", "-",
                          p.canonical.lower()).strip("-") or p.proposal_id
             terms.append({
@@ -406,3 +498,8 @@ class TermProposalStore:
                 "short_definition": p.short_definition,
             })
         return {"schema_version": 1, "terms": terms}
+
+    def active_terms_doc(self, scope: str) -> dict:
+        """ACTIVE proposals for one scope as a Simple Terminology document,
+        ready for :func:`ktrf.registry.simple_schema.compile_simple_terms`."""
+        return self._terms_doc(self.list(status="ACTIVE", scope=scope))
