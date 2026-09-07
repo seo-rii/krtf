@@ -12,12 +12,12 @@
 
 | 모델 | 슬라이스 | A. LLM only | B. retrieval | C. KTRF | D. gold | helpful | harmful | GBR |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
-| qwen3:8b | `known_abbrev` | 0.6133 | 1.0 | **0.94** | 1.0 | +55 | −6 | 0.8448 |
+| qwen3:8b | `known_abbrev` | 0.6133 | 1.0 | **0.9933** | 1.0 | +58 | −1 | 0.9827 |
 | qwen3:8b | `private_glossary` | 0.0 | 1.0 | **1.0** | 1.0 | +150 | −0 | 1.0 |
-| qwen3:8b | `unseen_abbrev` | 0.7867 | 0.8267 | **0.9467** | 1.0 | +29 | −5 | 0.7501 |
-| gemma4:12b | `known_abbrev` | 0.8867 | 0.9933 | **0.8** | 1.0 | +14 | −27 | -0.7652 |
-| gemma4:12b | `private_glossary` | 0.0 | 1.0 | **0.92** | 1.0 | +138 | −0 | 0.92 |
-| gemma4:12b | `unseen_abbrev` | 0.8467 | 0.6067 | **0.34** | 1.0 | +0 | −76 | -3.3053 |
+| qwen3:8b | `unseen_abbrev` | 0.7867 | 0.8267 | **0.94** | 1.0 | +29 | −6 | 0.7187 |
+| gemma4:12b | `known_abbrev` | 0.8667 | 0.9933 | **0.8667** | 1.0 | +16 | −16 | 0.0 |
+| gemma4:12b | `private_glossary` | 0.0 | 1.0 | **0.9467** | 1.0 | +142 | −0 | 0.9467 |
+| gemma4:12b | `unseen_abbrev` | 0.8467 | 0.6067 | **0.3467** | 1.0 | +0 | −75 | -3.2616 |
 
 ## qwen3:8b
 
@@ -27,10 +27,10 @@
 |---|---:|---|---:|---:|---:|---:|---:|
 | A. LLM only | 0.4667 (210/450) | [0.421, 0.5128] | — | — | — | 0.0 | 0.0 |
 | B. retrieval glossary (RAG) | 0.9422 (424/450) | [0.9167, 0.9603] | 229 | 15 | 0.0 | 297.7 | 1.0 |
-| C. KTRF context pack | 0.9622 (433/450) | [0.9403, 0.9763] | 234 | 11 | 0.0 | 174.4 | 0.951 |
+| C. KTRF context pack | 0.9778 (440/450) | [0.9596, 0.9879] | 237 | 7 | 0.0 | 172.0 | 0.947 |
 | D. gold context (oracle) | 1.0 (450/450) | [0.9915, 1.0] | 240 | 0 | 0.0 | 118.8 | 1.0 |
 
-**Gold Benefit Recovery: 0.9291** — KTRF context가 이상적 context 효과의 몇 %를 회수하는가 ((C−A)/(D−A); D−A가 미미하면 N/A).
+**Gold Benefit Recovery: 0.9584** — KTRF context가 이상적 context 효과의 몇 %를 회수하는가 ((C−A)/(D−A); D−A가 미미하면 N/A).
 
 ### known_abbrev
 
@@ -38,10 +38,10 @@
 |---|---:|---|---:|---:|---:|---:|---:|
 | A. LLM only | 0.6133 (92/150) | [0.5335, 0.6875] | — | — | — | 0.0 | 0.0 |
 | B. retrieval glossary (RAG) | 1.0 (150/150) | [0.975, 1.0] | 58 | 0 | 0.0 | 320.4 | 1.0 |
-| C. KTRF context pack | 0.94 (141/150) | [0.8899, 0.9681] | 55 | 6 | 0.0 | 167.2 | 1.0 |
+| C. KTRF context pack | 0.9933 (149/150) | [0.9632, 0.9988] | 58 | 1 | 0.0 | 157.3 | 0.98 |
 | D. gold context (oracle) | 1.0 (150/150) | [0.975, 1.0] | 58 | 0 | 0.0 | 113.6 | 1.0 |
 
-**Gold Benefit Recovery: 0.8448** — KTRF context가 이상적 context 효과의 몇 %를 회수하는가 ((C−A)/(D−A); D−A가 미미하면 N/A).
+**Gold Benefit Recovery: 0.9827** — KTRF context가 이상적 context 효과의 몇 %를 회수하는가 ((C−A)/(D−A); D−A가 미미하면 N/A).
 
 ### private_glossary
 
@@ -49,7 +49,7 @@
 |---|---:|---|---:|---:|---:|---:|---:|
 | A. LLM only | 0.0 (0/150) | [0.0, 0.025] | — | — | — | 0.0 | 0.0 |
 | B. retrieval glossary (RAG) | 1.0 (150/150) | [0.975, 1.0] | 150 | 0 | 0.0 | 240.0 | 1.0 |
-| C. KTRF context pack | 1.0 (150/150) | [0.975, 1.0] | 150 | 0 | 0.0 | 142.8 | 1.0 |
+| C. KTRF context pack | 1.0 (150/150) | [0.975, 1.0] | 150 | 0 | 0.0 | 139.5 | 1.0 |
 | D. gold context (oracle) | 1.0 (150/150) | [0.975, 1.0] | 150 | 0 | 0.0 | 122.5 | 1.0 |
 
 **Gold Benefit Recovery: 1.0** — KTRF context가 이상적 context 효과의 몇 %를 회수하는가 ((C−A)/(D−A); D−A가 미미하면 N/A).
@@ -60,10 +60,10 @@
 |---|---:|---|---:|---:|---:|---:|---:|
 | A. LLM only | 0.7867 (118/150) | [0.7144, 0.8446] | — | — | — | 0.0 | 0.0 |
 | B. retrieval glossary (RAG) | 0.8267 (124/150) | [0.7581, 0.8789] | 21 | 15 | 0.405 | 332.8 | 1.0 |
-| C. KTRF context pack | 0.9467 (142/150) | [0.8983, 0.9727] | 29 | 5 | 0.0 | 213.2 | 0.853 |
+| C. KTRF context pack | 0.94 (141/150) | [0.8899, 0.9681] | 29 | 6 | 0.0001 | 219.2 | 0.86 |
 | D. gold context (oracle) | 1.0 (150/150) | [0.975, 1.0] | 32 | 0 | 0.0 | 120.2 | 1.0 |
 
-**Gold Benefit Recovery: 0.7501** — KTRF context가 이상적 context 효과의 몇 %를 회수하는가 ((C−A)/(D−A); D−A가 미미하면 N/A).
+**Gold Benefit Recovery: 0.7187** — KTRF context가 이상적 context 효과의 몇 %를 회수하는가 ((C−A)/(D−A); D−A가 미미하면 N/A).
 
 ## gemma4:12b
 
@@ -71,23 +71,23 @@
 
 | 조건 | accuracy | CI95 | helpful | harmful | McNemar p | ctx tokens | 주입률 |
 |---|---:|---|---:|---:|---:|---:|---:|
-| A. LLM only | 0.5778 (260/450) | [0.5317, 0.6226] | — | — | — | 0.0 | 0.0 |
-| B. retrieval glossary (RAG) | 0.8667 (390/450) | [0.8321, 0.895] | 184 | 54 | 0.0 | 297.7 | 1.0 |
-| C. KTRF context pack | 0.6867 (309/450) | [0.6424, 0.7278] | 152 | 103 | 0.0026 | 174.4 | 0.951 |
-| D. gold context (oracle) | 1.0 (450/450) | [0.9915, 1.0] | 190 | 0 | 0.0 | 118.8 | 1.0 |
+| A. LLM only | 0.5711 (257/450) | [0.525, 0.616] | — | — | — | 0.0 | 0.0 |
+| B. retrieval glossary (RAG) | 0.8667 (390/450) | [0.8321, 0.895] | 187 | 54 | 0.0 | 297.7 | 1.0 |
+| C. KTRF context pack | 0.72 (324/450) | [0.6768, 0.7595] | 158 | 91 | 0.0 | 172.0 | 0.947 |
+| D. gold context (oracle) | 1.0 (450/450) | [0.9915, 1.0] | 193 | 0 | 0.0 | 118.8 | 1.0 |
 
-**Gold Benefit Recovery: 0.2579** — KTRF context가 이상적 context 효과의 몇 %를 회수하는가 ((C−A)/(D−A); D−A가 미미하면 N/A).
+**Gold Benefit Recovery: 0.3472** — KTRF context가 이상적 context 효과의 몇 %를 회수하는가 ((C−A)/(D−A); D−A가 미미하면 N/A).
 
 ### known_abbrev
 
 | 조건 | accuracy | CI95 | helpful | harmful | McNemar p | ctx tokens | 주입률 |
 |---|---:|---|---:|---:|---:|---:|---:|
-| A. LLM only | 0.8867 (133/150) | [0.826, 0.928] | — | — | — | 0.0 | 0.0 |
-| B. retrieval glossary (RAG) | 0.9933 (149/150) | [0.9632, 0.9988] | 17 | 1 | 0.0001 | 320.4 | 1.0 |
-| C. KTRF context pack | 0.8 (120/150) | [0.7289, 0.8562] | 14 | 27 | 0.0596 | 167.2 | 1.0 |
-| D. gold context (oracle) | 1.0 (150/150) | [0.975, 1.0] | 17 | 0 | 0.0 | 113.6 | 1.0 |
+| A. LLM only | 0.8667 (130/150) | [0.803, 0.912] | — | — | — | 0.0 | 0.0 |
+| B. retrieval glossary (RAG) | 0.9933 (149/150) | [0.9632, 0.9988] | 20 | 1 | 0.0 | 320.4 | 1.0 |
+| C. KTRF context pack | 0.8667 (130/150) | [0.803, 0.912] | 16 | 16 | 1.0 | 157.3 | 0.98 |
+| D. gold context (oracle) | 1.0 (150/150) | [0.975, 1.0] | 20 | 0 | 0.0 | 113.6 | 1.0 |
 
-**Gold Benefit Recovery: -0.7652** — KTRF context가 이상적 context 효과의 몇 %를 회수하는가 ((C−A)/(D−A); D−A가 미미하면 N/A).
+**Gold Benefit Recovery: 0.0** — KTRF context가 이상적 context 효과의 몇 %를 회수하는가 ((C−A)/(D−A); D−A가 미미하면 N/A).
 
 ### private_glossary
 
@@ -95,10 +95,10 @@
 |---|---:|---|---:|---:|---:|---:|---:|
 | A. LLM only | 0.0 (0/150) | [0.0, 0.025] | — | — | — | 0.0 | 0.0 |
 | B. retrieval glossary (RAG) | 1.0 (150/150) | [0.975, 1.0] | 150 | 0 | 0.0 | 240.0 | 1.0 |
-| C. KTRF context pack | 0.92 (138/150) | [0.8654, 0.9536] | 138 | 0 | 0.0 | 142.8 | 1.0 |
+| C. KTRF context pack | 0.9467 (142/150) | [0.8983, 0.9727] | 142 | 0 | 0.0 | 139.5 | 1.0 |
 | D. gold context (oracle) | 1.0 (150/150) | [0.975, 1.0] | 150 | 0 | 0.0 | 122.5 | 1.0 |
 
-**Gold Benefit Recovery: 0.92** — KTRF context가 이상적 context 효과의 몇 %를 회수하는가 ((C−A)/(D−A); D−A가 미미하면 N/A).
+**Gold Benefit Recovery: 0.9467** — KTRF context가 이상적 context 효과의 몇 %를 회수하는가 ((C−A)/(D−A); D−A가 미미하면 N/A).
 
 ### unseen_abbrev
 
@@ -106,10 +106,10 @@
 |---|---:|---|---:|---:|---:|---:|---:|
 | A. LLM only | 0.8467 (127/150) | [0.7804, 0.8956] | — | — | — | 0.0 | 0.0 |
 | B. retrieval glossary (RAG) | 0.6067 (91/150) | [0.5268, 0.6812] | 17 | 53 | 0.0 | 332.8 | 1.0 |
-| C. KTRF context pack | 0.34 (51/150) | [0.269, 0.419] | 0 | 76 | 0.0 | 213.2 | 0.853 |
+| C. KTRF context pack | 0.3467 (52/150) | [0.2752, 0.4258] | 0 | 75 | 0.0 | 219.2 | 0.86 |
 | D. gold context (oracle) | 1.0 (150/150) | [0.975, 1.0] | 23 | 0 | 0.0 | 120.2 | 1.0 |
 
-**Gold Benefit Recovery: -3.3053** — KTRF context가 이상적 context 효과의 몇 %를 회수하는가 ((C−A)/(D−A); D−A가 미미하면 N/A).
+**Gold Benefit Recovery: -3.2616** — KTRF context가 이상적 context 효과의 몇 %를 회수하는가 ((C−A)/(D−A); D−A가 미미하면 N/A).
 
 ## 해석과 한계
 
@@ -127,9 +127,10 @@
 - budget_tokens: `800`
 - corpus_sentences: `114605`
 - corpus_sha256: `a9328475107ba227e1a16c4736a5acff`
-- git_commit: `ef4b2217d20f7e1b89beef81796e96a0a02e4978`
+- git_commit: `419d424`
 - glossary_bindings: `235`
 - glossary_sha256: `ed39351aecbc1b3ad26a94753b9a71f3`
+- measured_at: `2026-09-07`
 - policy_sha256: `025c3bfa7b786ae4`
 - prompt_sha256: `32732d36d06c4e9c`
 - seed: `11`
