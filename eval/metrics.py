@@ -8,7 +8,9 @@ reported as a *failure count*, never merged into coverage percentages
 
 from __future__ import annotations
 
+import json
 import math
+import time
 from dataclasses import dataclass, field
 
 CONDITIONS = {"E2E", "|mention", "|candidate", "|commit"}
@@ -165,13 +167,82 @@ def data_provenance(fingerprint: dict | None = None) -> str:
     return line
 
 
-def provenance_line(repo_root=None, extra: str = "",
-                    corpus: dict | None = None) -> str:
-    """Markdown footer naming the code and data a report was measured at."""
-    import time
+def run_manifest(repo_root=None, **fields) -> dict:
+    """Stamp one measurement unit with the code and clock that produced it.
 
-    commit = git_commit(repo_root) or "unknown"
-    stamp = time.strftime("%Y-%m-%d")
+    A *unit* is a row a report can show on its own — one model, one device.
+    Reports that accumulate units across invocations (`run_ab_grounding`
+    merges `runs` into the prior payload; `run_llm_rag --track hard` merges
+    into an earlier easy-track payload) otherwise have no way to say that
+    row 1 and row 5 were measured a week and four commits apart.
+    """
+    return {"git_commit": git_commit(repo_root) or "unknown",
+            # date, not seconds: two rows measured minutes apart in one
+            # invocation are the same measurement, and a per-second stamp
+            # would report every report as internally inconsistent.
+            "measured_at": time.strftime("%Y-%m-%d"), **fields}
+
+
+def manifest_agreement(manifests: dict) -> tuple[dict, dict]:
+    """Split per-row manifests into what every row shares and what it doesn't.
+
+    Returned as ``(shared, differing)``. The point is that a report with
+    merged rows cannot print one row's manifest as the provenance of all of
+    them: picking the first is not a summary, it is a claim about rows that
+    were never checked.
+    """
+    if not manifests:
+        return {}, {}
+    shared: dict = {}
+    differing: dict = {}
+    for key in sorted({k for m in manifests.values() for k in m}):
+        values = {name: m.get(key) for name, m in manifests.items()}
+        distinct = {json.dumps(v, ensure_ascii=False, sort_keys=True,
+                               default=str)
+                    for v in values.values()}
+        if len(distinct) == 1:
+            shared[key] = next(iter(values.values()))
+        else:
+            differing[key] = values
+    return shared, differing
+
+
+def manifest_provenance(manifests: dict) -> list[str]:
+    """Markdown provenance for a report whose rows may span separate runs."""
+    shared, differing = manifest_agreement(manifests)
+    lines = [f"- {k}: `{v}`" for k, v in sorted(shared.items())
+             if v is not None]
+    if not differing:
+        return lines
+    names = list(manifests)
+    lines += ["",
+              "**행마다 측정 조건이 다르다 — 아래 항목은 행별로 읽어야 한다."
+              " 이 표를 한 줄로 요약할 수 없다.**",
+              "",
+              "| 항목 | " + " | ".join(f"`{n}`" for n in names) + " |",
+              "|---|" + "---|" * len(names)]
+    for key, values in sorted(differing.items()):
+        cells = " | ".join(
+            f"`{values[n]}`" if values[n] is not None else "—" for n in names)
+        lines.append(f"| {key} | {cells} |")
+    return lines
+
+
+def provenance_line(repo_root=None, extra: str = "",
+                    corpus: dict | None = None,
+                    manifest: dict | None = None) -> str:
+    """Markdown footer naming the code and data a report was measured at.
+
+    ``manifest`` is what a re-render needs. Asking this process for the
+    commit and the date is right while the measurement is running and wrong
+    the moment a payload is re-rendered: a ``--render-only`` pass over an
+    August payload was stamping today's date and today's HEAD, which is the
+    exact failure this footer exists to prevent. Callers that hold the
+    payload pass the manifest it recorded.
+    """
+    commit = (manifest or {}).get("git_commit") or git_commit(repo_root) \
+        or "unknown"
+    stamp = (manifest or {}).get("measured_at") or time.strftime("%Y-%m-%d")
     tail = f" · {extra}" if extra else ""
     warn = (" **작업 트리가 커밋과 다르다 — 이 수치는 어떤 커밋에도 없는"
             " 코드의 것이다.**" if commit.endswith("-dirty") else "")
