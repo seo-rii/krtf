@@ -180,6 +180,49 @@ WEB_LICENSES = {
     "omarkamali/wikipedia-monthly": "CC BY-SA 4.0 (Wikipedia)",
 }
 
+# Korean Supreme/High Court precedents. Every corpus above is news, web or
+# encyclopedia — sentences written to be read quickly. This one is written to
+# be cited, and that shows up in exactly one place that matters here.
+#
+# Measured on 500 rows (offset 85,000; 선고 2022–2023, 83% 대법원) before
+# adding anything:
+#
+# - density is high — 8.4% of `전문` sentences carry a silver mention against
+#   2.2% for `web` — but that is *not* why it is here. Entities the five
+#   existing corpora never reach: zero.
+# - the boilerplate worry was measured and is not real: 0.1% of occurrences
+#   sit in a 【원고】-style caption line. (Asked because the C4 spam pages
+#   taught that a registered name inside machine structure is a mention in
+#   the most literal sense and says nothing.)
+# - 69.6% of the occurrences are *bare* — no Hangul tail at all — because
+#   administrative Korean spaces what news glues (`국토교통부 장관`, citation
+#   dates). So this corpus contributes to detection and barely to the tail
+#   census, and its silver recall must not be read as a like-for-like
+#   comparison against `wild`.
+# - the 30.4% that do carry a tail carry a *different* one. News gives 조사;
+#   here the head of the distribution is derivational and role-forming —
+#   `령`/`령으로` (43), `장관의`/`장관은`/`장관이`/`장관에게`, `지사는`. The
+#   parser already covers 장·장관·지사 as SUFFIX and does not cover `령`,
+#   which is the signal this corpus exists to produce. Note before acting on
+#   it that `국토교통부령` is an ordinance *issued by* the ministry, not the
+#   ministry — §16's asymmetry rule puts it in a withholding class, not
+#   SUFFIX.
+#
+# Two fields: `전문` is the bulk and includes document structure (party
+# lines, headers) alongside running text; `판결요지` is clean holding prose.
+LAW_SOURCES = [
+    ("joonhok-exo-ai/korean_law_open_data_precedents", "default", "train",
+     "전문", 400, True, 18000, 84000),
+    ("joonhok-exo-ai/korean_law_open_data_precedents", "default", "train",
+     "판결요지", 1200, True, 4000, 82000),
+]
+LAW_CACHE = DATA_DIR / "wild_law.jsonl"
+LAW_LICENSES = {
+    "joonhok-exo-ai/korean_law_open_data_precedents":
+        "OpenRAIL (dataset card); derived from 국가법령정보 공동활용 "
+        "판례 open data",
+}
+
 # Named corpora. `wild` is what every published report measures against and
 # must not gain domains casually — doing so moves every number for a reason
 # unrelated to any change.
@@ -189,6 +232,7 @@ CORPORA = {
     "holdout2": (HOLDOUT2_SOURCES, HOLDOUT2_CACHE, HOLDOUT_LICENSES),
     "holdout3": (HOLDOUT3_SOURCES, HOLDOUT3_CACHE, HOLDOUT_LICENSES),
     "web": (WEB_SOURCES, WEB_CACHE, WEB_LICENSES),
+    "law": (LAW_SOURCES, LAW_CACHE, LAW_LICENSES),
 }
 
 PAGE = 100

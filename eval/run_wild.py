@@ -44,7 +44,7 @@ from ktrf.tailparser import analyze_tail
 
 from .metrics import provenance_line, run_manifest, wilson_interval
 from .synthetic import absent_bindings_only, build_synthetic_glossary
-from .wild_data import load_corpus
+from .wild_data import CORPORA, load_corpus
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -408,8 +408,8 @@ def main():
     # `--help` would die on an em-dash. Every other harness here omits it.
     ap = argparse.ArgumentParser()
     ap.add_argument("--corpus", type=str, default="wild",
-                    help="named corpus from eval.wild_data.CORPORA "
-                         "(wild | holdout | holdout2 | web)")
+                    choices=sorted(CORPORA),
+                    help="named corpus from eval.wild_data.CORPORA")
     ap.add_argument("--render-only", type=str, default=None,
                     help="re-render the markdown from a saved wild*.json "
                          "without re-running the benchmark")
