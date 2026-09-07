@@ -221,31 +221,32 @@ def main():
     # default; the range in the report shows it when it happens.
     warm = max(0, args.warmup_draws)
     total = max(1, args.repeats) + warm
-    cpu_runs, gpu_runs, warmup, dropped = [], [], [], []
+    cpu_runs, gpu_runs, warmup, shared = [], [], [], []
     for i in range(total):
         order = ("cpu", "cuda") if i % 2 == 0 else ("cuda", "cpu")
         res = _draw_in_subprocess(order)
         if res is None:
             continue
         tag = "warmup" if i < warm else f"draw {i + 1 - warm}"
-        # Per draw, not per run. A whole-run flag is what caught the first
-        # instance of this, but it is too coarse to act on: an `ollama serve`
-        # left over from another shell loaded a model *partway through* a
-        # seven-draw run, so the card was clean at the start, busy at the end,
-        # and the four good draws were tarred with the three bad ones. The
-        # child reports what the card looked like around its own work, and a
-        # draw taken on a busy card is dropped rather than averaged in.
+        # Recorded per draw, and deliberately *not* used to drop draws.
+        # Occupancy looked like the explanation for a while — a resident 8B
+        # model is 7.8 GiB of 10.2 — but it does not predict throughput: nine
+        # draws taken with a model resident ran 4,826-5,484 passages/s, the
+        # fastest of the day, while the card sat at 0 MHz between them. What
+        # occupancy tells a reader is that the card was shared, which is
+        # worth knowing and is not the same as the measurement being void.
+        # Dropping on it made every draw of a run disappear while nothing
+        # was actually wrong.
         busy = ((res.get("_gpu_before") or {}).get("busy")
                 or (res.get("_gpu_after") or {}).get("busy"))
+        if busy:
+            shared.append({"cpu": res["cpu"]["passages_per_second"],
+                           "cuda": res["cuda"]["passages_per_second"],
+                           "used_mib": (res.get("_gpu_after") or {})
+                           .get("used_mib")})
         print(f"  {tag}: cpu {res['cpu']['passages_per_second']} "
               f"| cuda {res['cuda']['passages_per_second']} passages/s"
-              + ("  DROPPED (card busy)" if busy else ""))
-        if busy:
-            dropped.append({"cpu": res["cpu"]["passages_per_second"],
-                            "cuda": res["cuda"]["passages_per_second"],
-                            "used_mib": (res.get("_gpu_after") or {})
-                            .get("used_mib")})
-            continue
+              + ("  (card shared)" if busy else ""))
         if i < warm:
             warmup.append({"cpu": res["cpu"]["passages_per_second"],
                            "cuda": res["cuda"]["passages_per_second"]})
@@ -253,11 +254,7 @@ def main():
         cpu_runs.append(res["cpu"])
         gpu_runs.append(res["cuda"])
     if not cpu_runs:
-        raise SystemExit(
-            "no draw ran on an idle card — "
-            f"{len(dropped)} dropped for contention; stop whatever holds GPU "
-            f"memory (`ollama stop <model>`, or kill `ollama serve`) and "
-            f"re-run")
+        raise SystemExit("every draw failed — see the errors above")
 
     cpu = _summarize(cpu_runs)
     gpu = _summarize(gpu_runs)
@@ -296,7 +293,7 @@ def main():
                "gpu_memory_before": vram_before, "gpu_memory_after": vram_after,
                "gpu_contended": contended,
                "repeats": len(cpu_runs), "warmup_discarded": warmup,
-               "draws_dropped_for_contention": dropped,
+               "draws_with_a_shared_card": shared,
                "cpu": cpu, "gpu": gpu, "batch_speedup": speedup,
                "batch_speedup_range": speedup_range,
                "max_cosine_drift_cpu_vs_gpu": drift}
@@ -370,20 +367,15 @@ def main():
         f"`{(vram_after or {}).get('temperature_c', '?')}` °C",
         "",
     ]
-    if dropped:
+    if shared:
         lines += [
-            f"> 카드가 다른 프로세스에 점유된 상태에서 나온 draw"
-            f" {len(dropped)}회는 중앙값에서 **제외**했다"
-            f" ({', '.join(str(d['used_mib']) + ' MiB' for d in dropped)})."
-            " 제외된 값도 페이로드에 남아 있다.",
-            "",
-        ]
-    if contended and not cpu_runs:
-        lines += [
-            "> **이 수치는 빈 카드의 것이 아니다.** 측정 중 다른 프로세스가"
-            f" GPU 메모리를 {_VRAM_BUSY_MIB} MiB 이상 점유하고 있었다 —"
-            " 상주 LLM(`ollama`)이 가장 흔한 원인이며, `ollama stop <model>`"
-            " 후 재측정할 것. speedup은 카드 성능이 아니라 경합을 잰 값이다.",
+            f"> draw {len(shared)}회는 다른 프로세스가 GPU 메모리를"
+            f" {_VRAM_BUSY_MIB} MiB 이상 점유한 상태에서 측정됐다"
+            f" ({', '.join(str(d['used_mib']) + ' MiB' for d in shared)}) —"
+            " 상주 LLM(`ollama`)이 가장 흔한 원인이다. 제외하지는 않았다:"
+            " 이 기계에서 상주 모델이 있는 draw가 하루 중 가장 빠르기도 했고"
+            " (4,826–5,484 passages/s), 점유량은 처리량을 예측하지 못한다."
+            " 카드를 비우고 재측정하고 싶다면 `ollama stop <model>`.",
             "",
         ]
     lines += [
