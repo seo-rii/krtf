@@ -15,7 +15,7 @@
 | [docs/traceability.yaml](traceability.yaml) | REQ ↔ 테스트 추적성 (CI 강제) | 계약 |
 | [reports/EVALUATION.md](../reports/EVALUATION.md) | 카탈로그 conformance + release gate | 생성 리포트 |
 | [reports/BENCHMARKS.md](../reports/BENCHMARKS.md) | 적대적 anti-overfitting 매트릭스 | 생성 리포트 |
-| [reports/WILD_CORPUS.md](../reports/WILD_CORPUS.md) | 실 한국어 텍스트(KLUE) 평가 | 생성 리포트 |
+| [reports/WILD_CORPUS.md](../reports/WILD_CORPUS.md) | 실 한국어 텍스트 평가 — `wild` 코퍼스(11개 출처 114,605문장: KLUE 헤드라인·국민청원·판례·백과) | 생성 리포트 |
 | [reports/NEURAL_EVAL.md](../reports/NEURAL_EVAL.md) | Level B gate (UE splits, dense) | 생성 리포트 |
 | [reports/GPU_BENCH.md](../reports/GPU_BENCH.md) | GPU vs CPU 인코더 벤치마크 (G1) | 생성 리포트 |
 | [reports/LLM_RAG_COMPARE.md](../reports/LLM_RAG_COMPARE.md) | KTRF vs 범용 LLM+RAG (Ollama) | 생성 리포트 |
@@ -24,11 +24,11 @@
 | [reports/VARIANT_MINING.md](../reports/VARIANT_MINING.md) | 미등록 변형 채굴 백로그 (M4) | 생성 리포트 |
 | [reports/DOCLOCAL_AUDIT.md](../reports/DOCLOCAL_AUDIT.md) | 문서 내 정의 감사 — 별칭·미등록 이름 (M6) | 생성 리포트 |
 | [reports/LATENCY_SLO.md](../reports/LATENCY_SLO.md) | 지연·메모리·동시성 측정, degradation onset | 생성 리포트 |
-| [reports/DOCLOCAL_AUDIT_HOLDOUT.md](../reports/DOCLOCAL_AUDIT_HOLDOUT.md), [_HOLDOUT2](../reports/DOCLOCAL_AUDIT_HOLDOUT2.md) | 같은 감사를 **held-out 코퍼스**에 돌린 것 | 생성 리포트 |
+| [reports/DOCLOCAL_AUDIT_HOLDOUT.md](../reports/DOCLOCAL_AUDIT_HOLDOUT.md), [_HOLDOUT2](../reports/DOCLOCAL_AUDIT_HOLDOUT2.md), [_HOLDOUT3](../reports/DOCLOCAL_AUDIT_HOLDOUT3.md), [_WEB](../reports/DOCLOCAL_AUDIT_WEB.md) | 같은 감사를 **held-out 코퍼스**에 돌린 것 | 생성 리포트 |
 
 리포트 재생성: `python -m eval.run_eval` / `run_benchmarks` / `run_wild` / `run_neural_eval`.
 
-코퍼스는 이름으로 고른다: `--corpus wild|holdout|holdout2` (`eval.wild_data`의 `CORPORA`). `wild`는 공개 리포트가 재는 코퍼스이므로 도메인을 함부로 더하지 않는다 — 더하면 모든 수치가 변경과 무관한 이유로 움직인다.
+코퍼스는 이름으로 고른다: `--corpus` 는 `eval.wild_data`의 `CORPORA` 키를 받는다 — 현재 `wild`, `holdout`, `holdout2`, `holdout3`, `web`, `law`. 목록은 `python -m eval.run_wild --help`가 레지스트리에서 직접 뽑아 보여준다. `wild`는 공개 리포트가 재는 코퍼스이므로 도메인을 함부로 더하지 않는다 — 더하면 모든 수치가 변경과 무관한 이유로 움직인다. 새 도메인은 새 이름으로 등록하고, 각 코퍼스 정의 위의 주석이 무엇을 재려고 더했는지와 측정한 근거를 남긴다.
 
 ## 마일스톤 현황 (스펙 §51)
 

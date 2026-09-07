@@ -312,9 +312,16 @@ surface target is currently **not met** at scale; closing it is the top
 roadmap item).
 
 Real-text corpora are fetched by `eval/wild_data.py` from public HuggingFace
-datasets (KLUE, 국민청원 petitions, 판례 court decisions, KorQuAD,
-Wikipedia, KoBEST) — the repository ships the downloader, not the text; each
-source carries its own license.
+datasets — the repository ships the downloader, not the text; each source
+carries its own license. `wild` is the corpus every published report measures
+against (11 sources: KLUE, 국민청원 petitions, 판례 court decisions, KorQuAD,
+Wikipedia, KoBEST) and does not gain domains, because that would move every
+number for a reason unrelated to any change. Separate named corpora carry the
+domains it does not: `holdout`/`holdout2`/`holdout3` (long-form news bodies,
+informal comments, unread news splits), `web` (Common Crawl + Wikipedia,
+keyword-spam filtered), and `law` (recent court precedents). Pick one with
+`python -m eval.run_wild --corpus <name>`; each writes its own report, so the
+last run cannot stand in for a distribution it never read.
 
 ## Testing & requirements traceability
 
