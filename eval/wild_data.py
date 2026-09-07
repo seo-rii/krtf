@@ -180,36 +180,47 @@ WEB_LICENSES = {
     "omarkamali/wikipedia-monthly": "CC BY-SA 4.0 (Wikipedia)",
 }
 
-# Korean Supreme/High Court precedents. Every corpus above is news, web or
-# encyclopedia — sentences written to be read quickly. This one is written to
-# be cited, and that shows up in exactly one place that matters here.
+# Korean Supreme/High Court precedents — the *same dataset* `SOURCES` above
+# already draws on, at a different point in it. Read the manifest before
+# believing this is a new genre: `wild` keeps 12,000 sentences of these
+# precedents (rows from offset 50,000) alongside 12,000 청와대 petitions, so
+# court prose is not missing from the published corpus and adding it is not
+# what this is for.
 #
-# Measured on 500 rows (offset 85,000; 선고 2022–2023, 83% 대법원) before
-# adding anything:
+# What it adds is a *decade*. Sampled rows are 선고 2019-2021 here against
+# 2004 in `wild`'s slice, and the two produce almost disjoint uncovered
+# tails:
 #
-# - density is high — 8.4% of `전문` sentences carry a silver mention against
-#   2.2% for `web` — but that is *not* why it is here. Entities the five
-#   existing corpora never reach: zero.
-# - the boilerplate worry was measured and is not real: 0.1% of occurrences
-#   sit in a 【원고】-style caption line. (Asked because the C4 spam pages
-#   taught that a registered name inside machine structure is a mention in
-#   the most literal sense and says nothing.)
-# - 69.6% of the occurrences are *bare* — no Hangul tail at all — because
-#   administrative Korean spaces what news glues (`국토교통부 장관`, citation
-#   dates). So this corpus contributes to detection and barely to the tail
-#   census, and its silver recall must not be read as a like-for-like
-#   comparison against `wild`.
-# - the 30.4% that do carry a tail carry a *different* one. News gives 조사;
-#   here the head of the distribution is derivational and role-forming —
-#   `령`/`령으로` (43), `장관의`/`장관은`/`장관이`/`장관에게`, `지사는`. The
-#   parser already covers 장·장관·지사 as SUFFIX and does not cover `령`,
-#   which is the signal this corpus exists to produce. Note before acting on
-#   it that `국토교통부령` is an ordinance *issued by* the ministry, not the
-#   ministry — §16's asymmetry rule puts it in a withholding class, not
-#   SUFFIX.
+#   wild  (2004, 12,000 sentences): 346 tailed occurrences, 35 uncovered,
+#         headed by statute names written unspaced —
+#         `철거민에대한국민주택특별공급규칙`, `공유재산관리조례`,
+#         `서초구의정회설치및육성지원조례안에`.
+#   law   (2019-2021, 21,061 sentences): 609 tailed, 88 uncovered, and 59 of
+#         those are one lemma — `령`/`령으로`/`령에`/`령이`/`령의`, of which
+#         `wild` produces **zero**.
 #
-# Two fields: `전문` is the bulk and includes document structure (party
-# lines, headers) alongside running text; `판결요지` is clean holding prose.
+# Measured before adding anything, on 500 rows and then on the whole cache:
+#
+# - Entities the five existing corpora never reach: zero. Density is high
+#   (7.3% of sentences carry a silver mention against 2.2% for `web`) and
+#   that is not a reason either.
+# - The boilerplate worry was measured, not assumed — the C4 spam taught that
+#   a registered name inside machine structure is a mention in the most
+#   literal sense and says nothing. 0.1% of occurrences sit in a 【원고】-style
+#   caption line. Not the problem.
+# - 64.4% of occurrences are **bare**: administrative Korean spaces what news
+#   glues (`국토교통부 장관`, citation dates). This corpus's silver recall is
+#   therefore not a like-for-like reading against `wild`.
+#
+# `령` is a signal and is deliberately left as one. `국토교통부령` is an
+# ordinance *issued by* the ministry, not the ministry, so §16's asymmetry
+# rule puts it in a withholding class rather than SUFFIX — the opposite of
+# what "add the uncovered tail to the catalog" would do. Same for
+# `지방토지수용위원회`(7), a composed organisation, and `교육감`/`장선거`/`의회`.
+#
+# Two fields: `전문` is the bulk and carries document structure (party lines,
+# headers) alongside running text; `판결요지` is clean holding prose. Their
+# row ranges are disjoint from `wild`'s and from each other.
 LAW_SOURCES = [
     ("joonhok-exo-ai/korean_law_open_data_precedents", "default", "train",
      "전문", 400, True, 18000, 84000),
