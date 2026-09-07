@@ -436,6 +436,11 @@ def main():
 
     corpus = load_corpus()
     glossary = load_glossary(str(ROOT / "examples" / "realorg_glossary.yaml"))
+    # Stamped before the LLM calls, not after them. 450 paired cases across
+    # four conditions is ~1,800 requests and runs for hours; taking the stamp
+    # at the end lets a commit landing meanwhile retag a finished measurement
+    # with code it never ran (same fix as `run_wild`).
+    manifest = corpus_manifest(corpus, glossary, args.model)
     cases, holdout_glossary, private_glossary = build_cases(
         corpus, glossary, args.n_per_slice)
     from collections import Counter
@@ -495,7 +500,7 @@ def main():
         "budget_tokens": BUDGET_TOKENS,
         "cases": len(cases),
         "seed": SEED,
-        "manifest": corpus_manifest(corpus, glossary, args.model),
+        "manifest": manifest,
         "summary": summary,
         # full per-case artifacts: raw outputs, grade reasons, context
         # sizes — so grading can be revised offline and every flip audited

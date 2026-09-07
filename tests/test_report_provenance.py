@@ -253,3 +253,33 @@ def test_the_run_manifest_is_taken_before_the_measurement(monkeypatch):
     with pytest.raises(Stop):
         rw.main()
     assert order == ["manifest", "load_corpus"]
+
+
+def test_the_ab_manifest_is_taken_before_the_llm_calls(monkeypatch):
+    # 450 paired cases across four conditions is ~1,800 requests and runs for
+    # hours. Same failure as run_wild: a commit landing meanwhile would
+    # retag a finished measurement with code it never ran.
+    import eval.run_ab_grounding as ab
+
+    order = []
+
+    class Stop(Exception):
+        pass
+
+    monkeypatch.setattr(ab, "load_corpus", lambda *a, **k: [{"text": "x"}])
+    monkeypatch.setattr(ab, "load_glossary", lambda *a, **k: object())
+
+    def fake_manifest(corpus, glossary, model):
+        order.append("manifest")
+        return {"git_commit": "aaaaaaa", "measured_at": "2026-09-07"}
+
+    def fake_build(corpus, glossary, n):
+        order.append("build_cases")
+        raise Stop
+
+    monkeypatch.setattr(ab, "corpus_manifest", fake_manifest)
+    monkeypatch.setattr(ab, "build_cases", fake_build)
+    monkeypatch.setattr(sys, "argv", ["run_ab_grounding", "--model", "m"])
+    with pytest.raises(Stop):
+        ab.main()
+    assert order == ["manifest", "build_cases"]
