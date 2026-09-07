@@ -19,6 +19,8 @@ import pkgutil
 import subprocess
 import sys
 
+import pytest
+
 import eval as eval_pkg
 from eval.metrics import (manifest_agreement, manifest_provenance,
                           provenance_line, run_manifest)
@@ -224,3 +226,30 @@ def test_a_merged_report_never_stamps_one_measurement_time(tmp_path):
     text = out.read_text(encoding="utf-8")
     assert "측정 시점: commit" not in text
     assert "렌더링되었다" in text
+
+
+def test_the_run_manifest_is_taken_before_the_measurement(monkeypatch):
+    # These suites run for hours (`wild` took 21,347s, `web` 8,063s). Taking
+    # the stamp at the end lets a commit landing meanwhile retag a finished
+    # measurement with code it never ran.
+    import eval.run_wild as rw
+
+    order = []
+
+    def fake_manifest(root=None, **kw):
+        order.append("manifest")
+        return {"git_commit": "aaaaaaa", "measured_at": "2026-09-07"}
+
+    class Stop(Exception):
+        pass
+
+    def fake_load(name):
+        order.append("load_corpus")
+        raise Stop
+
+    monkeypatch.setattr(rw, "run_manifest", fake_manifest)
+    monkeypatch.setattr(rw, "load_corpus", fake_load)
+    monkeypatch.setattr(sys, "argv", ["run_wild", "--corpus", "wild"])
+    with pytest.raises(Stop):
+        rw.main()
+    assert order == ["manifest", "load_corpus"]

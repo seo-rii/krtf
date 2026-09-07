@@ -446,6 +446,10 @@ def main():
         print(f"rendered {md_path} from {args.render_only}")
         return
 
+    # Stamped before any work, not after it. These suites run for hours —
+    # `wild` took 21,347s and `web` 8,063s — and a commit landing meanwhile
+    # would otherwise retag a finished measurement with code it never ran.
+    manifest = run_manifest(ROOT, corpus=args.corpus)
     corpus = load_corpus(args.corpus)
     print(f"corpus: {len(corpus)} sentences ({args.corpus})")
     t0 = time.perf_counter()
@@ -468,7 +472,7 @@ def main():
             "fake_fp": run_fake_glossary_fp(corpus, encoder=enc),
         }
     payload = {
-        "manifest": run_manifest(ROOT, corpus=args.corpus),
+        "manifest": manifest,
         "corpus": args.corpus,
         "corpus_sentences": len(corpus),
         "corpus_by_source": dict(Counter(r["source"] for r in corpus)),
