@@ -40,7 +40,6 @@ import hashlib
 import json
 import random
 import re
-import subprocess
 import time
 import unicodedata
 from pathlib import Path
@@ -52,7 +51,7 @@ from ktrf.glossary import load_glossary
 from ktrf.resolver import resolve
 from ktrf.snapshot import compile_snapshot
 
-from .metrics import manifest_provenance, wilson_interval
+from .metrics import git_commit, manifest_provenance, wilson_interval
 from .run_llm_rag import OllamaError, ollama_chat
 from .run_neural_eval import HOLDOUT_ABBREVS, _holdout_glossary, _queries
 from .run_wild import silver_occurrences
@@ -82,7 +81,8 @@ def _full_name_answers(glossary, entity_id: str) -> list[str]:
     return sorted(out)
 
 
-def build_cases(corpus, glossary, n_per_slice: int) -> list[dict]:
+def build_cases(corpus, glossary,
+                n_per_slice: int) -> tuple[list[dict], object, object]:
     rng = random.Random(SEED)
     alias_to = {b.surface: (b.entity_id, b.kind)
                 for b in glossary.alias_bindings}
@@ -346,14 +346,12 @@ def corpus_manifest(corpus, glossary, model: str) -> dict:
         json.dumps([(b.alias_id, b.surface, b.entity_id)
                     for b in glossary.alias_bindings],
                    ensure_ascii=False).encode()).hexdigest()
-    try:
-        commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT,
-                                capture_output=True, text=True,
-                                timeout=10).stdout.strip() or None
-    except (OSError, subprocess.SubprocessError):
-        commit = None
     return {
-        "git_commit": commit,
+        # the shared helper, not a bare `git rev-parse`: that returned a full
+        # SHA with no `-dirty` suffix, so an A/B measured against uncommitted
+        # code was indistinguishable from one measured against a commit, and
+        # this was the only report whose stamp format differed from the rest
+        "git_commit": git_commit(ROOT) or "unknown",
         "measured_at": time.strftime("%Y-%m-%d"),
         "corpus_sentences": len(corpus),
         "corpus_sha256": text_hash[:32],
