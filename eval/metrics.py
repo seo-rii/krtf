@@ -164,6 +164,13 @@ def data_provenance(fingerprint: dict | None = None) -> str:
     declared = fp.get("declared_sentences")
     if declared is not None and declared != fp["sentences"]:
         line += f" **캐시가 선언한 {declared:,}문장과 불일치**"
+    missing = fp.get("incomplete_sources")
+    if missing:
+        line += (f" **출처 {len(missing)}개가 불완전하게 받아졌다"
+                 f" ({', '.join(missing)}) — 이 수치는 선언된 코퍼스가 아니라"
+                 f" 실제로 받아진 것에 대한 값이다**")
+    elif missing is None:
+        line += " · 캐시가 출처별 완결성을 기록하기 전에 생성됨"
     return line
 
 

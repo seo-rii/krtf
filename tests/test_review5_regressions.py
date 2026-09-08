@@ -315,3 +315,61 @@ def test_the_published_schema_accepts_both_methods():
     for snap_ in (_realorg(),):
         resp = resolve(snap_, "한국전력공사가 발표했다.")
         assert validate_resolve_response(resp) == []
+
+
+# --------------------------------------------------------------------- F-14
+def _write_cache(path, meta, texts=("한국전력공사가 발표했다.",)):
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(json.dumps({"meta": meta}, ensure_ascii=False) + "\n")
+        for t in texts:
+            f.write(json.dumps({"text": t, "source": "ds:cfg:train"},
+                               ensure_ascii=False) + "\n")
+
+
+def _load(monkeypatch, tmp_path, meta):
+    import eval.wild_data as wd
+
+    cache = tmp_path / "corpus.jsonl"
+    _write_cache(cache, meta)
+    monkeypatch.setitem(wd.CORPORA, "probe", ([], cache, {}))
+    monkeypatch.setattr(wd, "download", lambda **kw: cache)
+    wd.load_corpus("probe")
+    return wd.corpus_fingerprint()
+
+
+def test_an_incomplete_download_is_carried_into_the_footer(monkeypatch,
+                                                           tmp_path):
+    """The loop abandons a source after eight errors and keeps the others, so
+    a corpus that lost one produced a cache shaped exactly like a whole one."""
+    from eval.metrics import provenance_line
+
+    fp = _load(monkeypatch, tmp_path, {
+        "sentences": 1, "by_source": {"ds:cfg:train": 1},
+        "sources": {"ds:cfg:train": {"complete": False}},
+        "incomplete_sources": ["ds:cfg:train"]})
+    assert fp["incomplete_sources"] == ["ds:cfg:train"]
+    assert "불완전" in provenance_line(".", corpus=fp)
+
+
+def test_a_complete_download_says_nothing_extra(monkeypatch, tmp_path):
+    from eval.metrics import provenance_line
+
+    fp = _load(monkeypatch, tmp_path, {
+        "sentences": 1, "by_source": {"ds:cfg:train": 1},
+        "sources": {"ds:cfg:train": {"complete": True}},
+        "incomplete_sources": []})
+    assert fp["incomplete_sources"] == []
+    line = provenance_line(".", corpus=fp)
+    assert "불완전" not in line and "기록하기 전에" not in line
+
+
+def test_a_cache_predating_the_accounting_does_not_claim_completeness(
+        monkeypatch, tmp_path):
+    """Absence of the record is not evidence every source arrived; defaulting
+    it to an empty list would have every existing cache assert that."""
+    from eval.metrics import provenance_line
+
+    fp = _load(monkeypatch, tmp_path,
+               {"sentences": 1, "by_source": {"ds:cfg:train": 1}})
+    assert fp["incomplete_sources"] is None
+    assert "기록하기 전에" in provenance_line(".", corpus=fp)

@@ -316,6 +316,13 @@ def download(force: bool = False, verbose: bool = True,
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     rows: list[dict] = []
     seen: set[str] = set()
+    # Per source, what was asked for and what arrived. The loop gives up on a
+    # source after eight consecutive errors and carries on with the others, so
+    # a corpus that lost a source mid-download produced a cache indentical in
+    # shape to a complete one — same `sentences`, same `by_source`, nothing
+    # saying a third of it never came. Recorded rather than printed: the
+    # console line scrolled away and the cache is what every later run reads.
+    per_source: dict[str, dict] = {}
     for (dataset, config, split, field, max_rows, do_split,
          max_keep, start_offset) in sources:
         fetched = 0
@@ -354,10 +361,21 @@ def download(force: bool = False, verbose: bool = True,
             fetched += len(got)
             offset += PAGE
             time.sleep(0.15)  # be polite to the public API
+        key = f"{dataset}:{config}:{split}"
+        # "complete" means the loop stopped because it had what it asked for,
+        # not because it ran out of patience or the split ran dry early.
+        reached_target = (fetched >= max_rows
+                          or (max_keep is not None and kept >= max_keep))
+        per_source[key] = {
+            "requested_rows": max_rows, "fetched_rows": fetched,
+            "kept_sentences": kept, "max_keep": max_keep,
+            "consecutive_errors_at_end": errors,
+            "complete": bool(reached_target and errors <= 8),
+        }
         if verbose:
-            print(f"  {dataset}:{config}:{split}: {fetched} rows fetched, "
-                  f"{kept} sentences kept"
-                  + (f" ({errors} errors)" if errors else ""))
+            print(f"  {key}: {fetched} rows fetched, {kept} sentences kept"
+                  + (f" ({errors} errors)" if errors else "")
+                  + ("" if per_source[key]["complete"] else "  INCOMPLETE"))
     if not rows:
         raise WildDataUnavailable("cannot reach HuggingFace datasets-server")
     by_source: dict[str, int] = {}
@@ -366,7 +384,11 @@ def download(force: bool = False, verbose: bool = True,
     with open(cache, "w", encoding="utf-8") as f:
         f.write(json.dumps({"meta": {"licenses": licenses,
                                      "sentences": len(rows),
-                                     "by_source": by_source}},
+                                     "by_source": by_source,
+                                     "sources": per_source,
+                                     "incomplete_sources": sorted(
+                                         k for k, v in per_source.items()
+                                         if not v["complete"])}},
                            ensure_ascii=False) + "\n")
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
@@ -418,6 +440,16 @@ def load_corpus(name: str = "wild") -> list[dict]:
         "name": name,
         "sha256": digest.hexdigest()[:16],
         "sentences": len(out),
+        # Carried into the report footer: a benchmark measured on a corpus
+        # that lost a source is not the benchmark it claims to be, and the
+        # only place that can be noticed is where the numbers are published.
+        #
+        # `None` when the cache predates this accounting — which is not the
+        # same as "no source was incomplete", and defaulting it to an empty
+        # list would have every existing cache assert completeness it was
+        # never in a position to know.
+        "incomplete_sources": (meta.get("incomplete_sources")
+                               if "sources" in meta else None),
         # the recorded count and the row count disagreeing means a truncated
         # or hand-edited cache, which is worth seeing in the footer
         "declared_sentences": meta.get("sentences"),
