@@ -168,7 +168,15 @@ def validate_term_proposal(proposal: TermProposal, snapshot,
         e.surface_present and e.trusted_source
         for e in proposal.evidence_refs)
 
-    text = f"{proposal.canonical}\n{proposal.short_definition}"
+    # Every string the proposal would register, for content as well as
+    # for structure. The previous commit widened the emptiness,
+    # control-character, length and collision checks to the aliases and
+    # left these two reading `canonical` and `short_definition` alone —
+    # so an injection string passed validation in the *surface*, which is
+    # the field that becomes a live matchable term and is rendered into a
+    # terminology card.
+    text = "\n".join((proposal.canonical, proposal.short_definition,
+                      *surfaces))
     if policy.reject_instructional_definitions:
         checks["not_instructional"] = not bool(_INSTRUCTIONAL.search(text))
     if policy.reject_sensitive_content:
