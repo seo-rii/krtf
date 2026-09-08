@@ -206,7 +206,20 @@ def resolve(
                                f"malformed UTF-8 at byte {e.start}") from e
     if mode not in ("fast", "aggressive", "commit"):
         raise KtrfApiError("INVALID_REQUEST", f"unknown mode {mode!r}")
-    nbytes = len(text.encode("utf-8"))
+    try:
+        nbytes = len(text.encode("utf-8"))
+    except UnicodeEncodeError as e:
+        # A `str` can hold an unpaired surrogate that no UTF-8 encoder will
+        # accept, and a JSON decoder will hand one over from an escape in
+        # ordinary request traffic — this does not require a hand-written
+        # literal. The bytes branch above was already typed; this one raised
+        # a bare UnicodeEncodeError straight through the API boundary, which
+        # a host cannot tell apart from a crash in the resolver.
+        raise KtrfApiError(
+            "INVALID_UTF8",
+            f"text is not encodable as UTF-8 at position {e.start} "
+            f"(unpaired surrogate?)",
+            details={"position": e.start}) from e
     if nbytes > policy.sync_max_input_bytes:
         raise KtrfApiError(
             "INPUT_TOO_LARGE",

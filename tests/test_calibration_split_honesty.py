@@ -8,7 +8,8 @@ reporting `set_confidence = 1 - alpha` as though nothing had changed.
 
 import pytest
 
-from ktrf.calibration import TrainingExample, TunedCalibrator, fit_calibrator
+from ktrf.calibration import (TrainingExample, TunedCalibrator,
+                              fit_calibrator, fit_calibrator_from_folds)
 
 
 def _ex(score, label, group="g", idx=0):
@@ -27,22 +28,35 @@ def test_a_clean_split_keeps_the_guarantee():
     assert cal.split_disjoint
 
 
+def _leaked():
+    """A fold split the caller got wrong: no positive on the conformal side.
+
+    `fit_calibrator` no longer produces this from label/parity-correlated
+    input — it stratifies — so the leak is reached the way it can still
+    happen, through the fold API, whose contract puts the split in the
+    caller's hands and only promises to *report* a violation.
+    """
+    fit = [_ex(0.9, 1) for _ in range(10)] + [_ex(0.1, 0) for _ in range(10)]
+    conformal = [_ex(0.1, 0) for _ in range(20)]
+    return fit_calibrator_from_folds(fit, conformal, alpha=0.1, n_min=1)
+
+
 def test_positives_only_on_the_fit_side_voids_disjointness():
-    """Every positive lands on the even side, so the conformal half has none
-    and the quantiles must be taken from rows the Platt map already saw."""
-    examples = []
-    for i in range(40):
-        on_fit_side = i % 2 == 0
-        examples.append(_ex(0.9 if on_fit_side else 0.1,
-                            1 if on_fit_side else 0))
-    cal = fit_calibrator(examples, alpha=0.1, n_min=1)
-    assert not cal.split_disjoint
+    assert not _leaked().split_disjoint
 
 
-def test_the_flag_survives_serialisation():
+def test_a_label_pattern_lined_up_with_row_parity_no_longer_leaks():
+    """The fix. Every positive on an even index used to put them all on one
+    side of the split; an export ordered by correction kind or by time does
+    exactly that without anyone contriving it."""
     examples = [_ex(0.9 if i % 2 == 0 else 0.1, 1 if i % 2 == 0 else 0)
                 for i in range(40)]
     cal = fit_calibrator(examples, alpha=0.1, n_min=1)
+    assert cal.split_disjoint, "stratified halves should both hold positives"
+
+
+def test_the_flag_survives_serialisation():
+    cal = _leaked()
     assert not cal.split_disjoint
     assert not TunedCalibrator.from_dict(cal.to_dict()).split_disjoint
 
@@ -64,9 +78,7 @@ def test_a_leaked_calibrator_marks_its_prediction_sets_invalid():
     # which is the point of the seal — this test is about the flag, not that
     snap = compile_snapshot(load_glossary("examples/realorg_glossary.yaml"),
                             seal=False)
-    examples = [_ex(0.9 if i % 2 == 0 else 0.1, 1 if i % 2 == 0 else 0)
-                for i in range(40)]
-    leaked = fit_calibrator(examples, alpha=0.1, n_min=1)
+    leaked = _leaked()
     assert not leaked.split_disjoint
     snap.calibrator = leaked
 

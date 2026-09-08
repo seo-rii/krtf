@@ -429,6 +429,33 @@ class FittedSplit:
     locked: list[TrainingExample]
 
 
+def _stratified_halves(
+        examples: list[TrainingExample],
+) -> tuple[list[TrainingExample], list[TrainingExample]]:
+    """Two disjoint halves that both contain positives when any exist.
+
+    The ungrouped split used to be raw row parity — `examples[0::2]` and
+    `[1::2]` — which any label pattern correlated with row index defeats. It
+    is not a contrived alignment: a correction export ordered by kind or by
+    time puts like labels together, and then one half can hold every positive.
+    Both degenerate fallbacks in `fit_calibrator_from_folds` then fire and the
+    Platt map is fit on all the rows, including the ones supplying the
+    conformal quantiles, so the coverage guarantee is gone. It was recorded
+    (`split_disjoint=False`) rather than hidden, but recording a loss is worse
+    than not taking it.
+
+    Alternating *within* each label class instead makes the halves independent
+    of input order, and keeps them disjoint.
+    """
+    a: list[TrainingExample] = []
+    b: list[TrainingExample] = []
+    for want in (1, 0):
+        rows = [e for e in examples if bool(e.label) is bool(want)]
+        a.extend(rows[0::2])
+        b.extend(rows[1::2])
+    return a, b
+
+
 def fit_with_folds(examples: list[TrainingExample], alpha: float = 0.05,
                    n_min: int = 500,
                    shares: dict[str, float] | None = None) -> FittedSplit:
@@ -451,9 +478,10 @@ def fit_with_folds(examples: list[TrainingExample], alpha: float = 0.05,
         # nothing is locked and none is claimed to be: a held-out coverage
         # measured on rows the fit saw is the number this whole change exists
         # to stop reporting.
+        platt_half, conformal_half = _stratified_halves(examples)
         return FittedSplit(
             calibrator=fit_calibrator_from_folds(
-                examples[0::2], examples[1::2], alpha=alpha, n_min=n_min,
+                platt_half, conformal_half, alpha=alpha, n_min=n_min,
                 split_basis="row"),
             split=None,
             locked=[],

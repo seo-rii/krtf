@@ -170,7 +170,18 @@ class ResolveJobManager:
             except UnicodeDecodeError as e:
                 raise KtrfApiError("INVALID_UTF8",
                                    f"malformed UTF-8 at byte {e.start}") from e
-        nbytes = len(text.encode("utf-8"))
+        try:
+            nbytes = len(text.encode("utf-8"))
+        except UnicodeEncodeError as e:
+            # same class as the sync path in `resolve`: a `str` holding an
+            # unpaired surrogate is not encodable and must not leave the API
+            # boundary as a bare UnicodeEncodeError. The review only exercised
+            # the sync entry point; this one had it too.
+            raise KtrfApiError(
+                "INVALID_UTF8",
+                f"text is not encodable as UTF-8 at position {e.start} "
+                f"(unpaired surrogate?)",
+                details={"position": e.start}) from e
         if nbytes > self.async_max_input_bytes:
             raise KtrfApiError(
                 "INPUT_TOO_LARGE",
@@ -292,6 +303,21 @@ class ResolveJobManager:
                 job.status = "FAILED"
                 job.error = e.to_dict()["error"]
             return self.status(job_id)
+        except Exception as e:
+            # Anything the resolver did not raise deliberately — an encoder
+            # fault, a driver error — used to propagate with the job left
+            # RUNNING and its chunk reset to PENDING. The caller saw an
+            # exception; every later `status()` said the job was still going,
+            # so a polling host waited forever on work nothing was doing.
+            # The status becomes terminal here and the exception still
+            # propagates: an unexpected fault must not be swallowed into a
+            # tidy error object as though it were an anticipated one.
+            with self._lock:
+                if job.status == "RUNNING":
+                    job.status = "FAILED"
+                    job.error = {"code": "INTERNAL",
+                                 "message": f"{type(e).__name__}: {e}"}
+            raise
         with self._lock:
             if (job.status == "RUNNING"
                     and all(st == "DONE" for st in job.chunk_state)):

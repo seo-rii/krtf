@@ -205,8 +205,18 @@ def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False,
     # digests are recomputed from the loaded glossary/policy, so tampering
     # with glossary.yaml (any field, descriptions included) or policy.json
     # produces a mismatch and the bundle is refused
+    # Every runtime catalog the manifest records, not a subset of them.
+    # `normalization_profiles_hash`, `fuzzy_confusion_hash` and
+    # `abbrev_signature_hash` were written at compile time and never read
+    # back, so a bundle built against different normalization profiles, a
+    # different confusion table or a different abbreviation signature set
+    # loaded clean and resolved differently under the same `snapshot_id` —
+    # the one thing the id is supposed to rule out. A hash that is recorded
+    # and not verified is a comment.
     for key in ("compatibility_id", "normalizer_hash",
-                "morphology_rules_hash", "entities_hash", "policy_hash",
+                "normalization_profiles_hash", "morphology_rules_hash",
+                "fuzzy_confusion_hash", "abbrev_signature_hash",
+                "entities_hash", "policy_hash",
                 "segmentation_guard_hash"):
         if snap.manifest.get(key) != manifest.get(key):
             raise KtrfApiError(

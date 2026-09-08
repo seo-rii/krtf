@@ -125,7 +125,12 @@ def grade(rows: list[dict], snap) -> list[dict]:
         # was a particle and reports nothing after, and both are right.
         # `DISTINCT` gets no such licence: staying silent there is a failure
         # to warn, which is exactly what invariant ② exists to prevent.
-        rec["identity_correct"] = (
+        # ... but only for a mention that exists. `identity_got` is None both
+        # when an emitted mention stayed silent and when nothing was emitted
+        # at all, and the silence licence was crediting both: a miss scored
+        # as a correct SAME. The denominator here is emitted mentions, so a
+        # row that produced nothing must not add to the numerator.
+        rec["identity_correct"] = rec["emitted"] and (
             rec["identity_got"] == _IDENTITY.get(g["full_identity"])
             or (g["full_identity"] == "SAME" and rec["identity_got"] is None))
         rec["relation_correct"] = (bool(g["relation"])
