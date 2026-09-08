@@ -373,3 +373,26 @@ def test_a_cache_predating_the_accounting_does_not_claim_completeness(
                {"sentences": 1, "by_source": {"ds:cfg:train": 1}})
     assert fp["incomplete_sources"] is None
     assert "기록하기 전에" in provenance_line(".", corpus=fp)
+
+
+# --------------------------------------------------------------------- F-16
+def test_exceeded_means_exceeded_not_skipped():
+    """`exceeded` was `bool(skipped_stages)`. The budget governs the optional
+    Level B stages and the exact pass never yields to it, so a response can
+    blow the budget inside mandatory work with nothing to skip — which is
+    precisely the case a host gating on this field needs to see. `fast` mode
+    runs no Level B stage at all, so `skipped_stages` is empty by
+    construction and only the real meaning can make this True."""
+    resp = resolve(_realorg(), "한국전력공사가 오늘 발표했다." * 20,
+                   mode="fast", options={"deadline_ms": 1})
+    d = resp["deadline"]
+    assert d["skipped_stages"] == []
+    assert d["elapsed_ms"] > d["budget_ms"]
+    assert d["exceeded"] is True
+
+
+@pytest.mark.parametrize("budget", [1, 60_000])
+def test_the_deadline_report_is_internally_consistent(budget):
+    d = resolve(_realorg(), "한국전력공사가 발표했다.",
+                options={"deadline_ms": budget})["deadline"]
+    assert d["exceeded"] == (d["elapsed_ms"] > d["budget_ms"])

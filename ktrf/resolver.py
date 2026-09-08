@@ -598,10 +598,19 @@ def resolve(
     if deadline_ms:
         # what the budget actually bought, whether or not it was exceeded: a
         # deadline that silently changed the answer would be worse than none
+        _elapsed_ms = round(1000 * (_time.perf_counter() - _t0), 3)
         resp["deadline"] = {
             "budget_ms": deadline_ms,
-            "elapsed_ms": round(1000 * (_time.perf_counter() - _t0), 3),
-            "exceeded": bool(deadline_skipped),
+            "elapsed_ms": _elapsed_ms,
+            # Whether the budget was exceeded — which is not the same as
+            # whether a stage was skipped, and used to be computed as the
+            # latter. The budget governs the optional Level B stages; the
+            # exact pass is a deterministic guarantee and never yields to it.
+            # So a large input can blow the budget inside mandatory work with
+            # nothing to skip, and `deadline_ms=1000` returned after 1,992ms
+            # reporting `exceeded: false` beside `elapsed_ms: 1992`. That is
+            # exactly the case a host gating on this field needs to see.
+            "exceeded": _elapsed_ms > deadline_ms,
             "skipped_stages": list(deadline_skipped),
         }
     if options.get("return_trace"):
