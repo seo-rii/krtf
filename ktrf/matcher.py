@@ -96,6 +96,13 @@ class BoundaryResult:
     notes: list[str] = field(default_factory=list)
 
 
+#: Country markers Korean news glues onto an organisation name to mark a
+#: foreign counterpart. Korea's own (`南`, `韓`) are excluded on purpose —
+#: see the boundary check that reads this.
+FOREIGN_COUNTRY_MARKERS = frozenset(
+    "美中日英獨佛露伊西濠印墨伯蘭比丁瑞北臺台越泰")
+
+
 def _script(ch: str) -> str:
     if is_hangul(ch):
         return "hangul"
@@ -130,6 +137,25 @@ def check_boundary(
     next_ch = units[last + 1].ch if last + 1 < len(units) else None
     core_last_ch = units[last].ch
     res = BoundaryResult(PASS)
+
+    # ---- left: a country marker names a different country's body ----
+    # Korean headlines write `美국방부`, `中외교부`, `日공정위` — the marker is
+    # part of the name and the body is the *foreign* counterpart. No left
+    # policy caught it: the marker is hanja, so it is neither a Hangul run nor
+    # a Latin one, and every one of the 30 occurrences across the six corpora
+    # committed to the Korean ministry (`美국방부` -> ORG_MND).
+    #
+    # This fails the boundary rather than damping a score, because it is the
+    # same fact as `left:hangul_attached`: the registered surface is part of a
+    # longer name, so it was never a mention of this entity. `ResolutionGuard`
+    # cannot help here — it never applies to Level A evidence, and this is an
+    # exact match.
+    #
+    # Korea's own markers are deliberately absent from the set. `南통일부` is
+    # South Korea's ministry as North Korean media writes it, and is the one
+    # occurrence of the pattern that resolves correctly today.
+    if prev_ch is not None and prev_ch in FOREIGN_COUNTRY_MARKERS:
+        return BoundaryResult(FAIL, notes=["left:foreign_country_marker"])
 
     # ---- left ----
     if policy_left == "any":

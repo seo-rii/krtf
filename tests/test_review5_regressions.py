@@ -19,10 +19,16 @@ defects, and each was verified rather than waved away:
   cp949 against a UTF-8 Korean glossary. Tampering with the glossary is
   refused (`entities_hash mismatch`).
 - **R17** the package itself files as a policy proposal, not a defect.
-- **R18/R19** are the two known false commits from `VARIANT_GOLD.md`; they
-  are resolution quality, not a contract, and are not addressed here.
+- **R19** (`kt` in a baseball headline committing to the telecom) is a
+  metonymy that needs context the surface does not carry. Left open; note
+  that `KT` is already in the eval's `DETECTION_ONLY` list, which stops the
+  scoring and not the commit.
 
-What follows pins the five that were real.
+**R18** was real and is fixed here: `美국방부` is the US department, and all
+30 occurrences of a country marker glued to a registered body committed to
+the Korean one.
+
+What follows pins the six that were real.
 """
 
 import json
@@ -218,3 +224,50 @@ def test_tampering_with_the_stored_glossary_is_refused(snap):
                      encoding="utf-8")
         with pytest.raises(KtrfApiError):
             load_snapshot(out)
+
+
+# --------------------------------------------------------------------- R18
+def _realorg():
+    return compile_snapshot(load_glossary("examples/realorg_glossary.yaml"))
+
+
+@pytest.mark.parametrize("text,surface", [
+    ("WP 美국방부 사우디 석유시설 피격에 신중 대응 권고", "국방부"),
+    ("中외교부 나토 정상회의 관련 브리핑", "외교부"),
+    ("美법무부 조세회피의혹 파나마 페이퍼스 면밀 검토", "법무부"),
+    ("日공정위 美 대형IT기업 부당거래 실태조사", "공정위"),
+    ("獨헌재 방송국 극우당 선거광고 내보내야", "헌재"),
+])
+def test_a_country_marker_blocks_the_domestic_commit(text, surface):
+    """`美국방부` is the US department; every one of the 30 occurrences of
+    this pattern across the six corpora committed to the Korean body."""
+    committed = [(m["surface"], (m.get("resolved_entity") or {}).get("entity_id"))
+                 for m in resolve(_realorg(), text)["mentions"]
+                 if m["link_decision"] == "RESOLVED"]
+    assert not any(s == surface for s, _ in committed), committed
+
+
+def test_the_candidate_survives_even_though_the_commit_does_not():
+    """Withholding a commit must not delete the reading — a host still needs
+    to see what the surface could have been (invariant ④)."""
+    resp = resolve(_realorg(), "WP 美국방부 사우디 석유시설 피격에 신중 대응 권고")
+    m = next(x for x in resp["mentions"] if x["surface"] == "국방부")
+    assert m["link_decision"] != "RESOLVED"
+    assert m.get("prediction_set", {}).get("members"), m
+
+
+def test_koreas_own_marker_is_not_treated_as_foreign():
+    """`南통일부` is South Korea's ministry as North Korean media writes it,
+    and is the one occurrence of the pattern that was already correct."""
+    resp = resolve(_realorg(), "北 북남관계 최악은 南통일부 반통일 망동 때문 궤변")
+    got = [(m.get("resolved_entity") or {}).get("entity_id")
+           for m in resp["mentions"] if m["link_decision"] == "RESOLVED"]
+    assert "ORG_MOU" in got, resp["mentions"]
+
+
+def test_an_unmarked_ministry_still_commits():
+    """The rule must not cost the ordinary case."""
+    resp = resolve(_realorg(), "국방부가 오늘 발표했다.")
+    got = [(m.get("resolved_entity") or {}).get("entity_id")
+           for m in resp["mentions"] if m["link_decision"] == "RESOLVED"]
+    assert "ORG_MND" in got, resp["mentions"]
