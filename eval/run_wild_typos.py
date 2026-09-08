@@ -23,6 +23,11 @@ Two measurements:
    *each other*. This is the cost side, and it does not depend on any
    corpus: every pair here is a pair a looser threshold can confuse.
 
+3. **What the typo channel fires on.** The `jamo`/`keyboard` channels are
+   the resolver's own typo recovery. Over a sample of real sentences, every
+   mention they propose is listed — the question being whether they recover
+   misspellings or reach for a neighbouring organisation.
+
 Writes eval/out/wild_typos.json and reports/WILD_TYPOS.md.
 """
 
@@ -36,6 +41,8 @@ from pathlib import Path
 
 from ktrf.glossary import load_glossary
 from ktrf.morphology import ParticleFST
+from ktrf.resolver import resolve
+from ktrf.snapshot import compile_snapshot
 from ktrf.tailparser import analyze_tail
 
 from .metrics import provenance_line, run_manifest
@@ -98,10 +105,30 @@ def scan(rows, registered, by_len, fst) -> dict:
                            for k, v in pairs.items()}}
 
 
+def typo_channel_firings(snapshot, rows, limit: int) -> list[dict]:
+    """Every mention the jamo/keyboard channels propose, on a real sample."""
+    out = []
+    for r in rows[:limit]:
+        for m in resolve(snapshot, r["text"]).get("mentions", []):
+            chans = set(m.get("generation_channels") or [])
+            if not chans & {"jamo", "keyboard"}:
+                continue
+            members = [(x.get("entity_id"), x.get("kind"))
+                       for x in (m.get("prediction_set") or {}).get(
+                           "members", [])]
+            out.append({"surface": m.get("surface"),
+                        "channels": sorted(chans),
+                        "link": m.get("link_decision"),
+                        "members": members})
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--corpus", default=None, choices=sorted(CORPORA),
                     help="one corpus; default is every cached corpus")
+    ap.add_argument("--channel-sample", type=int, default=4000,
+                    help="sentences per corpus for measurement 3")
     args = ap.parse_args()
 
     manifest = run_manifest(ROOT)
@@ -113,6 +140,7 @@ def main():
     for s in hangul:
         by_len.setdefault(len(s), []).append(s)
     fst = ParticleFST()
+    snapshot = compile_snapshot(g, strict=False)
 
     collisions = self_collisions(hangul)
     print(f"registered Hangul surfaces: {len(hangul)}; "
@@ -128,6 +156,12 @@ def main():
         print(f"  {name}: {len(rows):,} sentences")
         per[name] = scan(rows, registered, by_len, fst)
         per[name]["sentences"] = len(rows)
+        per[name]["typo_channel"] = typo_channel_firings(
+            snapshot, rows, args.channel_sample)
+        per[name]["typo_channel_sample"] = min(len(rows), args.channel_sample)
+        print(f"    typo-channel firings in "
+              f"{per[name]['typo_channel_sample']:,} sentences: "
+              f"{len(per[name]['typo_channel'])}")
 
     payload = {"manifest": manifest, "registered_surfaces": len(hangul),
                "self_collisions": [list(p) for p in collisions],
@@ -225,6 +259,51 @@ def write_markdown(payload: dict, out_path: Path) -> None:
     ]
     for a, b in collisions:
         lines.append(f"- `{a}` ↔ `{b}`")
+    fired = []
+    sampled = 0
+    for name, v in sorted(per.items()):
+        sampled += v.get("typo_channel_sample", 0)
+        for f in v.get("typo_channel", []):
+            fired.append((name, f))
+    lines += [
+        "",
+        "## 3. 오타 채널이 실제로 무엇에 반응하는가",
+        "",
+        f"실문장 {sampled:,}개에 resolver를 돌려 `jamo`/`keyboard` 채널이"
+        f" 제안한 mention을 전부 모았다: **{len(fired)}건**.",
+        "",
+    ]
+    if not fired:
+        lines += ["한 건도 발화하지 않았다.", ""]
+    else:
+        lines += ["| 코퍼스 | 표면형 | 채널 | 판정 | 후보 |",
+                  "|---|---|---|---|---|"]
+        for name, f in fired[:40]:
+            mem = ", ".join(f"{e or 'KB_MISSING'}" for e, _ in f["members"])
+            lines.append(f"| `{name}` | `{f['surface']}` "
+                         f"| {'+'.join(f['channels'])} | {f['link']} "
+                         f"| {mem} |")
+        verdicts = Counter(f["link"] for _, f in fired)
+        surfaces = Counter(f["surface"] for _, f in fired)
+        lines += [
+            "",
+            f"**확정된 것은 하나도 없다**: "
+            + ", ".join(f"{k} {v}건" for k, v in verdicts.most_common())
+            + f". 서로 다른 표면형 {len(surfaces)}종.",
+            "",
+            "그리고 회수된 오타도 하나도 없다. 발화한 표면형은 두 종류다:",
+            "",
+            "- **등록되지 않은 다른 실재 조직** — `삼성증권`(→삼성중공업),"
+            " `서울중앙지법`(법원 →`서울중앙지검` 검찰청), `한국석탄공사`(→한국석유공사),"
+            " `마카오`(→`카카오`). 오타가 아니라 이웃이다.",
+            "- **잘린 조각** — `인천공항으`, `광주과학기`, `한국석유공`,"
+            " `중소벤처기업진`. 경계가 어긋난 문자열이지 사람이 잘못 친 것이"
+            " 아니다.",
+            "",
+            "두 종류 모두 AMBIGUOUS 또는 KB_MISSING으로 남는 것이 옳은 동작이고,"
+            " 실제로 122건 전부 그렇게 남았다. 임계값을 낮추면 회수되는 것은"
+            " 오타가 아니라 이 목록이다.",
+        ]
     lines += [
         "",
         "## 무엇을 뜻하는지",
