@@ -28,7 +28,11 @@ defects, and each was verified rather than waved away:
 30 occurrences of a country marker glued to a registered body committed to
 the Korean one.
 
-What follows pins the six that were real.
+**F-05**, which had no runnable repro and so was triaged by hand, was
+also real: the default path emits `set_confidence` with no calibrator
+behind it.
+
+What follows pins the seven that were real.
 """
 
 import json
@@ -271,3 +275,43 @@ def test_an_unmarked_ministry_still_commits():
     got = [(m.get("resolved_entity") or {}).get("entity_id")
            for m in resp["mentions"] if m["link_decision"] == "RESOLVED"]
     assert "ORG_MND" in got, resp["mentions"]
+
+
+# --------------------------------------------------------------------- F-05
+def test_an_uncalibrated_set_says_it_is_heuristic():
+    """`{"set_confidence": 0.95}` was emitted bare on the default path, which
+    has no calibrator: a configured constant reading as a 95% guarantee."""
+    ps = resolve(_realorg(), "한국전력공사가 발표했다.")["mentions"][0]["prediction_set"]
+    assert ps["method"] == "HEURISTIC"
+    assert "coverage_scope" not in ps, "no procedure means no scope to name"
+
+
+def test_a_calibrated_set_names_the_procedure_and_its_scope():
+    from ktrf.calibration import TunedCalibrator
+
+    s = compile_snapshot(load_glossary("examples/realorg_glossary.yaml"),
+                         strict=False, seal=False)
+    s.calibrator = TunedCalibrator(0.0, math.log(9), 0.05, {"exact|multi": 1.0},
+                                   1.0, 1.0, {"exact|multi": 1000}, 10)
+    ps = resolve(s, "한국전력공사가 발표했다.")["mentions"][0]["prediction_set"]
+    assert ps["method"] == "CONFORMAL"
+    # the quantile is computed on the candidate pool, so it cannot speak for
+    # a gold entity retrieval never produced
+    assert ps["coverage_scope"] == "candidate_conditional"
+
+
+def test_the_method_is_not_a_second_coverage_flag():
+    """`coverage_valid` must keep meaning "the procedure ran and its
+    assumptions held". Folding "there was no procedure" into it would make it
+    False on nearly every response and say nothing on the ones that matter."""
+    ps = resolve(_realorg(), "한국전력공사가 발표했다.")["mentions"][0]["prediction_set"]
+    assert ps["method"] == "HEURISTIC"
+    assert "coverage_valid" not in ps
+
+
+def test_the_published_schema_accepts_both_methods():
+    from ktrf.schemas import validate_resolve_response
+
+    for snap_ in (_realorg(),):
+        resp = resolve(snap_, "한국전력공사가 발표했다.")
+        assert validate_resolve_response(resp) == []

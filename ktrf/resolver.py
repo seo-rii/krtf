@@ -1208,8 +1208,28 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
     m["prediction_set"] = {
         "set_confidence": (calibrator.set_confidence if calibrator is not None
                            else policy.set_confidence),
+        # What produced the number beside it. Without a fitted calibrator
+        # `set_confidence` is `policy.set_confidence` — a configured constant
+        # with no statistical procedure behind it — and it was emitted bare,
+        # so `{"set_confidence": 0.95}` read as a 95% coverage guarantee in
+        # the default configuration, which has no calibrator at all.
+        #
+        # It stays a number rather than becoming null: the nominal level is
+        # the caller's stated intent and is worth reporting. What was missing
+        # is the method. `coverage_valid` is deliberately NOT set here —
+        # it distinguishes "the conformal procedure ran and its assumptions
+        # held" from "it ran and they did not", and folding "no procedure"
+        # into the same boolean would make it False on almost every response
+        # and mean nothing on the ones where it matters.
+        "method": "CONFORMAL" if calibrator is not None else "HEURISTIC",
         "members": set_members,
     }
+    if calibrator is not None:
+        # The guarantee is over the candidate set the retrieval produced, not
+        # over the document: a gold entity that never entered the pool cannot
+        # be covered by a quantile computed on the pool. Naming the scope
+        # stops `set_confidence` being read as end-to-end recall.
+        m["prediction_set"]["coverage_scope"] = "candidate_conditional"
     if set_truncated:
         m["prediction_set"]["truncated"] = True
         if calibrator is not None:
