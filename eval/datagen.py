@@ -290,8 +290,24 @@ def generate(glossary: Glossary) -> list[EvalExample]:
             short = c[0] + c[-1]
             t = f"{c}(이하 {short})가 주관한다. {short} 측 답변을 기다린다."
             pos = t.index(short, t.index(")"))
+            # The defining full name is a mention too, and annotating only the
+            # abbreviation left it outside the gold. It is a registered
+            # surface in running text, so the resolver commits it — and the
+            # document was not catalog-exhaustive precisely *because* that
+            # name sat in the residual, which made the commit unjudged. Two of
+            # those were the whole of `unlabeled_commits`, the release gate's
+            # only failing criterion: precision could not be measured, only
+            # bounded.
+            #
+            # Adding it is stricter rather than convenient. If the resolver
+            # ever stopped committing the full name, this gold would count
+            # the miss; it does not exist to absorb a commit the resolver
+            # happens to make. The abbreviation inside `(이하 …)` stays
+            # unannotated on purpose — §18 makes that the definition of the
+            # short form, not a use of it.
             add(t, "doc_local", "B",
-                [GoldMention((pos, pos + len(short)), e.entity_id, short)])
+                [GoldMention((0, len(c)), e.entity_id, c),
+                 GoldMention((pos, pos + len(short)), e.entity_id, short)])
 
     # ---- multi-mention (§37.7) ----
     surfaces: dict[str, str] = {}

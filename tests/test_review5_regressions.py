@@ -463,3 +463,51 @@ def test_a_session_proposal_is_not_promoted_to_a_wider_scope():
     p = store.route(p.proposal_id, project_trusted=True, evidence_count=9,
                     distinct_sessions=9)
     assert p.requested_scope == "session"
+
+
+# ------------------------------------------------- the release gate's blocker
+def test_the_defining_full_name_is_annotated_in_doc_local_fixtures():
+    """`precision_is_measurable` was the gate's only failing criterion, and
+    its whole content was two commits: the `X(이하 Y)` fixtures annotated the
+    abbreviation and not the defining full name, so the resolver's correct
+    commit on `한국전력공사` fell outside the gold and could not be judged.
+
+    Pinned because the annotation is what makes precision a measurement
+    rather than a ceiling — and because this gold must keep being able to
+    *fail* the resolver, not merely absorb what it does."""
+    from eval.datagen import generate, mark_exhaustive
+    from ktrf.glossary import load_glossary as _lg
+
+    glossary = _lg("examples/demo_glossary.yaml")
+    examples = generate(glossary)
+    mark_exhaustive(examples, glossary)
+    doc_local = [e for e in examples if e.slice == "doc_local"]
+    assert doc_local, "no doc_local fixtures generated"
+    for ex in doc_local:
+        spans = sorted(g.span for g in ex.gold)
+        assert spans[0][0] == 0, (
+            f"the defining full name is unannotated in {ex.text!r}")
+        assert len(ex.gold) >= 2, ex.text
+
+
+def test_no_commit_in_the_eval_corpus_is_left_unjudged():
+    """The gate criterion itself, as a test rather than a report row."""
+    from eval.datagen import generate, mark_exhaustive
+    from eval.run_eval import _cp
+    from ktrf.glossary import load_glossary as _lg
+
+    glossary = _lg("examples/demo_glossary.yaml")
+    snap = compile_snapshot(glossary)
+    examples = generate(glossary)
+    mark_exhaustive(examples, glossary)
+
+    unjudged = []
+    for ex in examples:
+        if ex.exhaustive or ex.expect_no_mention:
+            continue
+        gold_spans = {g.span for g in ex.gold}
+        for m in resolve(snap, ex.text, mode="commit",
+                         options={"return_all_mentions": True})["mentions"]:
+            if m.get("link_decision") == "RESOLVED" and _cp(m) not in gold_spans:
+                unjudged.append((ex.text, m["surface"]))
+    assert not unjudged, unjudged
