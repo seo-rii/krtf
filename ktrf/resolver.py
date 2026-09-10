@@ -31,7 +31,7 @@ from .morphology import DISTINCT, SAME
 from .segmentation import (BARE, GuardVerdict, MatchEvidence,
                            StructuralPath, distinct_cores, segment_token)
 from .snapshot import Snapshot
-from .tailparser import MentionProposal, parse_matches
+from .tailparser import MentionProposal, analyze_tail, parse_matches
 
 _TOKEN_RE = re.compile(r"[가-힣ㄱ-ㅣ]+|[A-Za-z][A-Za-z0-9]*|[0-9]+")
 _MIXED_RUN_RE = re.compile(r"[가-힣ㄱ-ㅣA-Za-z0-9]+")
@@ -72,6 +72,97 @@ TRUST_LEVELS = (
     "USER_PROVIDED", "UNTRUSTED_DOCUMENT",
 )
 _HARD_DENY_TRUST = {"SERVER_VERIFIED", "AUTH_CLAIM"}  # §12.4 [normative]
+
+# Korean administrative hierarchy, coarse to fine. A name at one level
+# followed by a name at a finer one is an address — `경기도 고양시`,
+# `서울시 강남구` — and the coarser name there qualifies the finer one rather
+# than naming its own government.
+_ADMIN_LEVEL = {
+    "특별자치도": 1, "도": 1,
+    "특별자치시": 2, "특별시": 2, "광역시": 2, "시": 2,
+    "군": 3, "구": 3,
+    "읍": 4, "면": 4, "동": 4, "리": 4,
+}
+_ADMIN_SUFFIXES = sorted(_ADMIN_LEVEL, key=len, reverse=True)
+# 2-4 syllables: every sub-provincial unit name is in that range
+# (`고양시`, `남동구`, `해운대구`, `영등포구`), and the bound is what keeps the
+# rule off compounds that merely end in a unit syllable — `고령친화도시`,
+# `여성일자리`, `행정중심복합도시`. Measured: it drops five misfires and zero
+# real addresses.
+_FOLLOWING_UNIT = re.compile(r"[ \t]+([가-힣]{2,8})(?![가-힣])")
+
+
+def _admin_level(token: str) -> int | None:
+    for suffix in _ADMIN_SUFFIXES:
+        if token.endswith(suffix) and len(token) > len(suffix):
+            return _ADMIN_LEVEL[suffix]
+    return None
+
+
+def _follower_level(token: str, fst) -> int | None:
+    """The unit level of a following token, allowing it to carry a 조사.
+
+    The first form of this rule required the token to end exactly at the
+    suffix, so `인천시 계산동의` and `인천시 연수구로` walked past it — the
+    unit is inflected, which in Korean is the ordinary case rather than the
+    exception. Splitting on the particle catches 73 more addresses across the
+    six corpora for two more misfires.
+
+    The remainder is handed to the tail parser rather than matched against a
+    particle list written here: a second list would drift from the catalog
+    the rest of the resolver uses, and this is exactly the question that
+    catalog answers.
+    """
+    for n in (4, 3, 2):
+        if len(token) < n:
+            continue
+        head, rest = token[:n], token[n:]
+        level = _admin_level(head)
+        if level is None:
+            continue
+        if not rest:
+            return level
+        best = analyze_tail(rest, head[-1], fst)[0]
+        if best.residual_kind == "" and best.grammatical:
+            return level
+    return None
+
+
+def _address_qualifier(text: str, span: tuple[int, int], fst) -> bool:
+    """Whether this area name is qualifying a smaller unit that follows it.
+
+    The glossary registers these as 광역자치단체 — the government body — so
+    committing one inside `경기도 포천시 영북면 야미리` names an institution
+    where the text names a place. Human NER annotation marks that whole string
+    as a single location, and across the six cached corpora *every* one of the
+    328 occurrences of this shape committed the government entity.
+
+    The commit is withheld and the candidate kept, so a reader still sees the
+    reading (invariant ④). It cannot go through `ResolutionGuard`: these are
+    exact matches and the guard never applies to Level A.
+
+    The rule is lexical and therefore not perfect. It fires on 394
+    occurrences across those corpora, of which 13 are ordinary nouns that
+    happen to end in a unit syllable — `경상남도 고시`(5), `서울시 인구`,
+    `경기도 노동`, `인천시 공동`, `서울시 강동`, `경기도 대구`, `제주도 오려면`,
+    `경기도 가구이동`, `경기도 승리로`. Separating those needs a gazetteer, and
+    a stop-list fitted to the handful one corpus happens to contain would be
+    overfitting. Withholding 13 sound commits to stop 381 unsound ones is the
+    trade taken, and it is written down rather than tuned away.
+
+    What it does not reach: a bare geographic use with nothing after it —
+    `강원도의 한 환경업체`, `제주도, 울릉도 등 장거리 항로`. Human NER marks 36
+    of those in 5,000 sentences and they carry no structural signal at all.
+    """
+    here = _admin_level(text[span[0]:span[1]])
+    if here is None:
+        return False
+    m = _FOLLOWING_UNIT.match(text, span[1])
+    if m is None:
+        return False
+    there = _follower_level(m.group(1), fst)
+    return there is not None and there > here
+
 
 _CHANNEL_BASE = {
     "exact": 1.0, "normalized": 0.97, "doc_local": 0.85,
@@ -277,6 +368,9 @@ def resolve(
                             * _CHANNEL_BASE[p.channel]},
             surface_transform_cost=p.transform_cost,
             is_exact=True,
+            commit_blocked=("address_qualifier"
+                            if _address_qualifier(text, p.core_span,
+                                                  snapshot.fst) else None),
             provenance={"boundary": p.boundary_status,
                         "transforms": list(p.transforms)},
         ))

@@ -511,3 +511,54 @@ def test_no_commit_in_the_eval_corpus_is_left_unjudged():
             if m.get("link_decision") == "RESOLVED" and _cp(m) not in gold_spans:
                 unjudged.append((ex.text, m["surface"]))
     assert not unjudged, unjudged
+
+
+# ------------------------------------- address qualifier (found by NER gold)
+@pytest.mark.parametrize("text,surface", [
+    ("6일 경기도 고양시 킨텍스에서 열렸다.", "경기도"),
+    ("서울시 강남구 쇼룸에서 진행됐다.", "서울시"),
+    ("세종시 어진동 정부세종청사.", "세종시"),
+    ("28일 경기도 포천시 영북면 야미리 김모씨의 집.", "경기도"),
+    ("인천시 남동구 구월동 재개발 사업.", "인천시"),
+])
+def test_an_area_name_qualifying_a_smaller_unit_does_not_commit(text, surface):
+    """The glossary registers these as 광역자치단체 — the government body — so
+    committing one inside an address names an institution where the text names
+    a place. Human NER annotation marks the whole string as one location, and
+    all 328 occurrences of this shape across six corpora committed."""
+    committed = [m["surface"] for m in resolve(_realorg(), text)["mentions"]
+                 if m["link_decision"] == "RESOLVED"]
+    assert surface not in committed, committed
+
+
+def test_the_candidate_survives_the_withheld_address_commit():
+    m = next(x for x in resolve(_realorg(), "6일 경기도 고양시 킨텍스에서 열렸다."
+                                )["mentions"] if x["surface"] == "경기도")
+    assert m["link_decision"] != "RESOLVED"
+    assert m.get("prediction_set", {}).get("members"), m
+
+
+@pytest.mark.parametrize("text,entity", [
+    ("경기도가 오늘 대책을 발표했다.", "ORG_GYEONGGI"),
+    ("서울시는 예산을 늘렸다.", "ORG_SEOUL"),
+    # the 2-4 syllable bound keeps the rule off compounds that merely end in
+    # a unit syllable; without it this one was withheld
+    ("세종시 행정중심복합도시 건설청이 밝혔다.", "ORG_SEJONG"),
+])
+def test_the_government_itself_still_commits(text, entity):
+    got = [(m.get("resolved_entity") or {}).get("entity_id")
+           for m in resolve(_realorg(), text)["mentions"]
+           if m["link_decision"] == "RESOLVED"]
+    assert entity in got, got
+
+
+def test_the_known_residual_misfire_is_recorded_not_hidden():
+    """11 of 323 occurrences are ordinary nouns ending in a unit syllable.
+    Separating them needs a gazetteer; a stop-list fitted to the eight
+    patterns one corpus happens to show would be overfitting. The trade is
+    written down in `_address_qualifier`, and pinned here so it stays a
+    known cost rather than a surprise."""
+    got = [m["link_decision"] for m in
+           resolve(_realorg(), "경상남도 고시 제2022-1호를 공포한다.")["mentions"]
+           if m["surface"] == "경상남도"]
+    assert got and got[0] != "RESOLVED"
