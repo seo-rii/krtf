@@ -121,7 +121,8 @@ def overlaps(a: dict, b: dict) -> bool:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--split", default="validation")
-    ap.add_argument("--sentences", type=int, default=3000)
+    ap.add_argument("--sentences", type=int, default=5000,
+                    help="5,000 is the whole validation split — the published sample")
     args = ap.parse_args()
 
     manifest = run_manifest(ROOT, split=args.split)
