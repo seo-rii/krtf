@@ -562,3 +562,82 @@ def test_the_known_residual_misfire_is_recorded_not_hidden():
            resolve(_realorg(), "경상남도 고시 제2022-1호를 공포한다.")["mentions"]
            if m["surface"] == "경상남도"]
     assert got and got[0] != "RESOLVED"
+
+
+# ------------------------------------------------- dataset revision recording
+def test_a_cache_without_revisions_says_so(monkeypatch, tmp_path):
+    """The rows API cannot pin a revision. A cache that never wrote down which
+    one it read must not let the footer imply the current one."""
+    from eval.metrics import provenance_line
+
+    fp = _load(monkeypatch, tmp_path, {
+        "sentences": 1, "by_source": {"ds:cfg:train": 1},
+        "sources": {"ds:cfg:train": {"complete": True}},
+        "incomplete_sources": []})
+    assert fp["revisions"] is None
+    assert "리비전 미기록" in provenance_line(".", corpus=fp)
+
+
+def test_recorded_revisions_reach_the_footer(monkeypatch, tmp_path):
+    from eval.metrics import provenance_line
+
+    fp = _load(monkeypatch, tmp_path, {
+        "sentences": 1, "by_source": {"ds:cfg:train": 1},
+        "sources": {"ds:cfg:train": {"complete": True}},
+        "incomplete_sources": [],
+        "revisions": {"org/ds": "0123456789abcdef", "org/gone": None},
+        "revisions_moved": []})
+    line = provenance_line(".", corpus=fp)
+    assert "ds@0123456" in line
+    assert "조회 실패: org/gone" in line
+    assert "미기록" not in line and "바뀜" not in line
+
+
+def test_a_revision_that_moved_mid_download_is_flagged(monkeypatch, tmp_path):
+    from eval.metrics import provenance_line
+
+    fp = _load(monkeypatch, tmp_path, {
+        "sentences": 1, "by_source": {"ds:cfg:train": 1},
+        "sources": {"ds:cfg:train": {"complete": True}},
+        "incomplete_sources": [],
+        "revisions": {"org/ds": "aaaaaaaaaaaa"},
+        "revisions_moved": ["org/ds"]})
+    assert "도중 리비전이 바뀜 (org/ds)" in provenance_line(".", corpus=fp)
+
+
+def test_download_records_revision_before_and_after(monkeypatch, tmp_path):
+    """Recorded on both sides so a push landing during a download shows; a
+    lookup that failed on one side is unknown, not moved."""
+    import eval.wild_data as wd
+
+    monkeypatch.setattr(wd.time, "sleep", lambda s: None)
+    monkeypatch.setattr(wd, "_fetch_page", lambda *a: {
+        "partial": True,
+        "rows": [{"row": {"t": f"한국전력공사가 발표했다 {a[0]} {a[3]}."}}]})
+    sources = [("o/one", "c", "train", "t", 2, False, None, 0),
+               ("o/two", "c", "train", "t", 2, False, None, 0)]
+
+    def meta_for(before_after):
+        shas = iter(before_after)
+        monkeypatch.setattr(wd, "hub_revision", lambda d: next(shas))
+        cache = tmp_path / "c.jsonl"
+        wd.download(force=True, verbose=False, sources=sources, cache=cache,
+                    licenses={})
+        return json.loads(
+            cache.read_text(encoding="utf-8").splitlines()[0])["meta"]
+
+    meta = meta_for(["a" * 40, None, "a" * 40, "c" * 40])
+    assert meta["revisions"] == {"o/one": "a" * 40, "o/two": None}
+    assert meta["revisions_moved"] == []          # o/two unknown, not moved
+    assert meta["sources"]["o/one:c:train"]["revision"] == "a" * 40
+    assert meta["sources"]["o/one:c:train"]["server_partial_conversion"] is True
+    assert meta_for(["a" * 40, None, "b" * 40, None])["revisions_moved"]         == ["o/one"]
+
+
+def test_ner_gold_footer_names_the_annotations():
+    from eval.run_ner_gold import data_revision_note
+
+    assert data_revision_note({}) == "데이터셋 리비전 미기록"
+    note = data_revision_note({"revision": "f" * 40, "rows_sha256": "abc",
+                               "revision_moved": True})
+    assert "klue/klue@fffffff" in note and "`abc`" in note and "바뀜" in note

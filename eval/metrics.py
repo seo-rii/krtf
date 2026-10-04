@@ -171,7 +171,33 @@ def data_provenance(fingerprint: dict | None = None) -> str:
                  f" 실제로 받아진 것에 대한 값이다**")
     elif missing is None:
         line += " · 캐시가 출처별 완결성을 기록하기 전에 생성됨"
+    line += _revision_note(fp)
     return line
+
+
+def _revision_note(fp: dict) -> str:
+    """Which Hub commit of each dataset the corpus was read from.
+
+    Absent from a fingerprint built before it was recorded, and that is said
+    rather than left blank: a blank reads as "nothing to report", and the
+    thing it would be hiding is that a dataset push can move every number.
+    """
+    revs = fp.get("revisions")
+    if revs is None:
+        return " · 데이터셋 리비전 미기록"
+    known = {d: s for d, s in revs.items() if s}
+    note = ""
+    if known:
+        note += " · 리비전 " + ", ".join(
+            f"{d.rsplit('/', 1)[-1]}@{s[:7]}" for d, s in sorted(known.items()))
+    unknown = sorted(d for d, s in revs.items() if not s)
+    if unknown:
+        note += f" · 리비전 조회 실패: {', '.join(unknown)}"
+    moved = fp.get("revisions_moved") or []
+    if moved:
+        note += (f" **다운로드 도중 리비전이 바뀜 ({', '.join(moved)}) —"
+                 f" 행이 두 버전에서 섞였을 수 있다**")
+    return note
 
 
 def run_manifest(repo_root=None, **fields) -> dict:

@@ -305,6 +305,34 @@ def _fetch_page(dataset: str, config: str, split: str, offset: int) -> dict:
         return json.loads(resp.read().decode("utf-8"))
 
 
+HUB_API = "https://huggingface.co/api/datasets"
+
+
+def hub_revision(dataset: str) -> str | None:
+    """The Hub commit a dataset's ``main`` points at now, or None.
+
+    The datasets-server rows API takes no revision: it serves its own parquet
+    conversion of ``main``, whatever ``main`` is that day. A corpus downloaded
+    through it therefore cannot be *pinned*, and the next best thing is to
+    write down which version existed when the rows were read — otherwise a
+    dataset owner's push changes every number a report shows while its
+    footer, which hashes the cache it happened to build, stays truthful about
+    the wrong thing.
+
+    This names the Hub's ``main``, not the conversion the server read from,
+    which can lag a push. It is recorded before and after a download so that
+    a push landing *during* one is at least visible.
+    """
+    req = urllib.request.Request(
+        f"{HUB_API}/{dataset}", headers={"User-Agent": "ktrf-eval/0.1"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            sha = json.loads(resp.read().decode("utf-8")).get("sha")
+    except (OSError, ValueError):
+        return None
+    return sha if isinstance(sha, str) and sha else None
+
+
 def download(force: bool = False, verbose: bool = True,
              sources=None, cache: Path | None = None,
              licenses: dict | None = None) -> Path:
@@ -323,12 +351,15 @@ def download(force: bool = False, verbose: bool = True,
     # saying a third of it never came. Recorded rather than printed: the
     # console line scrolled away and the cache is what every later run reads.
     per_source: dict[str, dict] = {}
+    revisions_before = {d: hub_revision(d) for d in
+                        dict.fromkeys(src[0] for src in sources)}
     for (dataset, config, split, field, max_rows, do_split,
          max_keep, start_offset) in sources:
         fetched = 0
         kept = 0
         offset = start_offset
         errors = 0
+        partial = None
         while fetched < max_rows and (max_keep is None or kept < max_keep):
             try:
                 page = _fetch_page(dataset, config, split, offset)
@@ -345,6 +376,10 @@ def download(force: bool = False, verbose: bool = True,
                 time.sleep(2.0)
                 continue
             errors = 0  # consecutive-error budget: reset on success
+            if partial is None:
+                # the server converts only a prefix of a large dataset; past
+                # it the pages run dry and the source reads as incomplete
+                partial = bool(page.get("partial"))
             got = page.get("rows", [])
             if not got:
                 break
@@ -370,6 +405,8 @@ def download(force: bool = False, verbose: bool = True,
             "requested_rows": max_rows, "fetched_rows": fetched,
             "kept_sentences": kept, "max_keep": max_keep,
             "consecutive_errors_at_end": errors,
+            "revision": revisions_before[dataset],
+            "server_partial_conversion": partial,
             "complete": bool(reached_target and errors <= 8),
         }
         if verbose:
@@ -378,6 +415,10 @@ def download(force: bool = False, verbose: bool = True,
                   + ("" if per_source[key]["complete"] else "  INCOMPLETE"))
     if not rows:
         raise WildDataUnavailable("cannot reach HuggingFace datasets-server")
+    revisions_after = {d: hub_revision(d) for d in revisions_before}
+    # A lookup that failed on either side is unknown, not moved.
+    moved = sorted(d for d, sha in revisions_before.items()
+                   if sha and revisions_after[d] and revisions_after[d] != sha)
     by_source: dict[str, int] = {}
     for r in rows:
         by_source[r["source"]] = by_source.get(r["source"], 0) + 1
@@ -388,7 +429,9 @@ def download(force: bool = False, verbose: bool = True,
                                      "sources": per_source,
                                      "incomplete_sources": sorted(
                                          k for k, v in per_source.items()
-                                         if not v["complete"])}},
+                                         if not v["complete"]),
+                                     "revisions": revisions_before,
+                                     "revisions_moved": moved}},
                            ensure_ascii=False) + "\n")
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
@@ -450,6 +493,11 @@ def load_corpus(name: str = "wild") -> list[dict]:
         # never in a position to know.
         "incomplete_sources": (meta.get("incomplete_sources")
                                if "sources" in meta else None),
+        # Dataset -> Hub commit at download time. `None` for a cache built
+        # before revisions were recorded, for the same reason as above: an
+        # unrecorded version is not the current one.
+        "revisions": meta.get("revisions"),
+        "revisions_moved": meta.get("revisions_moved") or [],
         # the recorded count and the row count disagreeing means a truncated
         # or hand-edited cache, which is worth seeing in the footer
         "declared_sentences": meta.get("sentences"),
