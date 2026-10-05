@@ -49,7 +49,7 @@ from ktrf.glossary import load_glossary
 from ktrf.resolver import resolve
 from ktrf.snapshot import SnapshotRegistry, compile_snapshot
 
-from .metrics import provenance_line
+from .metrics import provenance_line, run_manifest
 from .synthetic import build_synthetic_glossary
 from .wild_data import corpus_fingerprint, load_corpus
 
@@ -253,6 +253,78 @@ def _deadline_effect(snap, text: str, unbounded: list[float],
     }
 
 
+SHAPE_REPEATS = 3
+
+
+def _fill(unit_of, limit_bytes: int) -> str:
+    """Append ``unit_of(i)`` until the next one would cross the byte limit."""
+    out, used, i = [], 0, 0
+    while True:
+        u = unit_of(i)
+        b = len(u.encode("utf-8"))
+        if used + b > limit_bytes or not u:
+            return "".join(out)
+        out.append(u)
+        used += b
+        i += 1
+
+
+def _input_shapes(snap, glossary, corpus: list[str], limit: int) -> list[dict]:
+    """Worst-case *shapes* at the input limit, not only natural text.
+
+    The rest of this report measures natural documents up to a few thousand
+    characters, while the API accepts ``sync_max_input_bytes``. Between the
+    two sat a request that took 33 s: registered names glued without spaces,
+    which made the boundary check quadratic in the run length. Nothing here
+    could have seen it — natural text has short runs, and every cell was far
+    below the limit. Each shape is timed at the full limit and at half of it;
+    `배율` near 2 is linear, near 4 is quadratic.
+    """
+    names = sorted({b.surface for b in glossary.alias_bindings
+                    if len(b.surface) >= 3
+                    and all("가" <= c <= "힣" for c in b.surface)},
+                   key=lambda x: (len(x), x))[:8] or ["가나다"]
+    rng = random.Random(SEED)
+    hangul = [chr(c) for c in range(0xAC00, 0xD7A4)]
+    rand_glued = "".join(rng.choice(hangul) for _ in range(limit // 3))
+    particles = ("은", "는", "이", "가", "을", "를", "에서", "으로부터의")
+    shapes = {
+        "자연 문서": lambda i: corpus[i % len(corpus)] + " ",
+        "등록 이름 반복 (띄어 씀)": lambda i: names[i % len(names)] + " ",
+        "등록 이름 반복 (붙여 씀)": lambda i: names[i % len(names)],
+        "등록 이름 + 조사": lambda i: (names[i % len(names)]
+                                   + particles[i % len(particles)] + " "),
+        "무작위 한글 (붙여 씀)": lambda i: rand_glued[i] if i < len(
+            rand_glued) else "",
+        "대문자 라틴 3자 토큰": lambda i: "".join(
+            chr(65 + (i * 7 + k * 3) % 26) for k in range(3)) + " ",
+    }
+    rows = []
+    for label, unit_of in shapes.items():
+        full = _fill(unit_of, limit)
+        half = _fill(unit_of, limit // 2)
+        row = {"shape": label, "chars": len(full),
+               "bytes": len(full.encode("utf-8"))}
+        for mode in ("commit", "fast"):
+            def med(text):
+                ts = []
+                for _ in range(SHAPE_REPEATS):
+                    t0 = time.perf_counter()
+                    resp = resolve(snap, text, mode=mode)
+                    ts.append((time.perf_counter() - t0) * 1000)
+                return statistics.median(ts), resp
+            t_full, resp = med(full)
+            t_half, _ = med(half)
+            row[mode] = {
+                "ms": round(t_full, 1),
+                "scaling": round(t_full / t_half, 2) if t_half else None,
+                "mentions": len(resp.get("mentions", [])),
+                "limits": list(resp.get("limits") or []),
+            }
+        rows.append(row)
+    return rows
+
+
 def measure(scales, sizes, repeats, threads) -> dict:
     corpus = [r["text"] if isinstance(r, dict) else r for r in load_corpus()]
     docs = _Documents(random.Random(SEED).sample(corpus, min(6000,
@@ -260,6 +332,8 @@ def measure(scales, sizes, repeats, threads) -> dict:
     rows, build, memory, concurrency, onsets = [], [], [], [], []
     deadlines: list[dict] = []
     sweeps: list[dict] = []
+    shapes: list[dict] = []
+    manifest = run_manifest(ROOT)
 
     for n in scales:
         doc, _meta = build_synthetic_glossary(n, seed=SEED)
@@ -323,6 +397,8 @@ def measure(scales, sizes, repeats, threads) -> dict:
             })
 
         onsets.append({"entities": n, **_degradation_onset(snap, docs)})
+        shapes.append({"entities": n, "rows": _input_shapes(
+            snap, glossary, docs.pool, snap.policy.sync_max_input_bytes)})
 
         # the budget is exercised at the largest size, where the tail is
         largest = docs.of(sizes[-1])
@@ -413,6 +489,8 @@ def measure(scales, sizes, repeats, threads) -> dict:
         "concurrency": concurrency,
         "concurrency_sweep": sweeps,
         "deadline": deadlines,
+        "input_shapes": shapes,
+        "manifest": manifest,
     }
 
 
@@ -626,6 +704,35 @@ def write_markdown(t: dict, control: dict | None, out_path: Path) -> None:
                     f" {r['throughput_per_s']} | {r['p50_ms']} |"
                     f" {r['p95_ms']} | {r['max_ms']} | {r['errors']} |")
 
+    if t.get("input_shapes"):
+        lines += [
+            "",
+            "## 3.7 입력 상한에서의 최악 형태",
+            "",
+            f"위 표들은 자연 문서를 최대 {max(r['doc_chars'] for r in t['latency']):,}"
+            f"자까지 잰다. API가 받는 것은 {limit:,}바이트다. 그 사이에 **요청 하나가"
+            " 33초** 걸리는 입력이 있었다 — 등록 이름을 띄어 쓰지 않고 이어"
+            " 붙이면 매 몇 글자마다 exact 매치가 생기고, 경계 검사가 매치마다"
+            " 붙은 run 전체를 훑어서 run 길이의 제곱이 됐다. `fast` 모드도"
+            " 같았고 `limits`는 비어 있었다. 선택 단계가 아니라 필수 작업이라"
+            " deadline으로 자를 수 있는 것이 아니었다.",
+            "",
+            "그래서 이 절은 **형태**를 상한에서 잰다. `배율`은 상한 대비 절반"
+            " 입력의 시간 비이며, 2 근처면 선형, 4 근처면 제곱이다.",
+            "",
+            "| entity | 형태 | 글자 | commit (ms) | 배율 | mention |"
+            " fast (ms) | 배율 | 잘린 단계 |",
+            "|---:|---|---:|---:|---:|---:|---:|---:|---|",
+        ]
+        for block in t["input_shapes"]:
+            for r in block["rows"]:
+                c, f = r["commit"], r["fast"]
+                cut = ", ".join(sorted(set(c["limits"]) | set(f["limits"])))
+                lines.append(
+                    f"| {block['entities']:,} | {r['shape']} | {r['chars']:,} |"
+                    f" {c['ms']:,} | {c['scaling']} | {c['mentions']:,} |"
+                    f" {f['ms']:,} | {f['scaling']} | {cut or '—'} |")
+
     lines += [
         "",
         "## 4. 요청당 메모리",
@@ -713,7 +820,7 @@ def write_markdown(t: dict, control: dict | None, out_path: Path) -> None:
         " 다르다. 축의 모양을 보기 위한 것이지 용량 계획을 위한 것이 아니다.",
         "",
         provenance_line(ROOT, f"entity {t['build'][-1]['entities']:,}까지",
-                        corpus=t.get("corpus")),
+                        corpus=t.get("corpus"), manifest=t.get("manifest")),
     ]
     out_path.write_text("\n".join(lines), encoding="utf-8")
 
