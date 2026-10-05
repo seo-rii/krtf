@@ -206,7 +206,13 @@ class FuzzyIndex:
         for g in _ngrams(qjamo):
             for eid in self._ngram_index.get(g, ()):
                 counts[eid] = counts.get(eid, 0) + 1
-        shortlist = sorted(counts, key=counts.get, reverse=True)[: self.shortlist_size]
+        # Ties broken on entry order, explicitly. `_ngrams` returns a set, so
+        # `counts` fills in hash order, and a sort that keeps that order among
+        # equal counts let the truncation below pick *which* tied entries
+        # survive by PYTHONHASHSEED: one input and one snapshot answered with
+        # three prediction-set members in some processes and two in others.
+        shortlist = sorted(counts, key=lambda eid: (-counts[eid], eid))[
+            : self.shortlist_size]
         out: list[FuzzyCandidate] = []
         for eid in shortlist:
             e = self._entries[eid]
