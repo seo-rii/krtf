@@ -92,6 +92,7 @@ class NewTermDefinition:
     pattern: str                        # "paren" | "iha"
 
     def to_proposal(self, *, short_definition: str, entry_id: str,
+                    trusted_source: bool,
                     requested_scope: str = "project") -> dict:
         """Keyword arguments for :meth:`TermProposalStore.submit`.
 
@@ -102,6 +103,12 @@ class NewTermDefinition:
         host is processing a document the user handed it, and wrong for a
         document this detector merely found. The caller who knows which case
         it is chooses; the detector does not choose for them.
+
+        ``trusted_source`` has no default for the same reason. The detector
+        read the document and can vouch that the pattern is in it; it cannot
+        vouch for the document. It used to inherit ``EvidenceRef``'s old
+        default of True, which made every document this was run over
+        trusted evidence.
         """
         from .registry.proposals import EvidenceRef
 
@@ -117,7 +124,9 @@ class NewTermDefinition:
             "origin": "document_definition",
             "evidence_refs": (EvidenceRef(entry_id=str(entry_id),
                                           surface_present=True,
-                                          definition_pattern=True),),
+                                          definition_pattern=True,
+                                          trusted_source=bool(
+                                              trusted_source)),),
         }
 
 

@@ -61,15 +61,39 @@ MAX_CANONICAL_CHARS = 120
 MAX_DEFINITION_CHARS = 1000
 
 
+MAX_ENTRY_CHARS = 65_536
+
+
 @dataclass(frozen=True)
 class EvidenceRef:
-    """Where a proposal's surface was actually seen."""
+    """Where a proposal's surface was actually seen.
+
+    The flags are *findings*, not claims. :meth:`TermProposalStore.evidence_for`
+    computes them from text the host recorded; a ref built by hand is the
+    host vouching for them itself, which is why ``trusted_source`` defaults
+    to False — a ref nobody vouched for is not trusted evidence.
+    """
 
     entry_id: str
     surface_present: bool = False
     definition_pattern: bool = False
     session_id: str | None = None
-    trusted_source: bool = True
+    trusted_source: bool = False
+
+
+@dataclass(frozen=True)
+class EvidenceEntry:
+    """One piece of text the host saw: a user message, a trusted file.
+
+    Recorded by the host, never by the proposer. The model that proposes a
+    term can name entries; it cannot write them, so it cannot manufacture
+    the evidence its proposal is checked against.
+    """
+
+    entry_id: str
+    text: str
+    session_id: str = "default"
+    trusted: bool = False
 
 
 @dataclass(frozen=True)
@@ -251,7 +275,13 @@ def decide_admission(proposal: TermProposal, policy: TermAdmissionPolicy,
     score alone is never sufficient.
     """
     scope = proposal.requested_scope
-    explicit = proposal.origin in ("user_explicit", "document_definition")
+    # `origin` is the proposer's description of itself. Claiming
+    # "user_explicit" was enough for session auto-approval, so a model could
+    # promote its own guess by labelling it; the label now counts only when a
+    # trusted entry it cites actually carries the definition.
+    explicit = (proposal.origin in ("user_explicit", "document_definition")
+                and any(e.definition_pattern and e.trusted_source
+                        for e in proposal.evidence_refs))
     if scope == "session":
         if explicit and policy.allow_session_auto_explicit:
             return "APPROVED", "explicit user definition in session scope"
@@ -288,6 +318,7 @@ class TermProposalStore:
         self._clock = clock
         self._by_id: dict[str, TermProposal] = {}
         self._session_counts: dict[str, int] = {}
+        self._entries: dict[str, EvidenceEntry] = {}
         self.audit: list[dict] = []
         # None until `activate` compiles one. ACTIVE status and this field
         # move together; nothing else may set either.
@@ -300,6 +331,78 @@ class TermProposalStore:
             "proposal_id": proposal.proposal_id, "surface": proposal.surface,
             "scope": proposal.requested_scope, "status": proposal.status,
             **extra})
+
+    # ---------------------------------------------------------- evidence
+    def record_entry(self, entry_id: str, text: str, *,
+                     session_id: str = "default",
+                     trusted: bool = False) -> EvidenceEntry:
+        """Record text the host saw, for proposals to cite.
+
+        Entries are immutable: re-recording an id with different text or
+        trust is refused. Evidence that can be rewritten after a proposal
+        cited it is not evidence of anything.
+        """
+        if not isinstance(entry_id, str) or not entry_id.strip():
+            raise KtrfApiError("INVALID_REQUEST",
+                               "entry_id must be a non-empty string")
+        text = _clean(text, "text", MAX_ENTRY_CHARS)
+        entry = EvidenceEntry(entry_id=entry_id, text=text,
+                              session_id=str(session_id),
+                              trusted=bool(trusted))
+        prior = self._entries.get(entry_id)
+        if prior is not None and prior != entry:
+            raise KtrfApiError(
+                "INVALID_REQUEST", f"entry {entry_id!r} was already "
+                                   "recorded with different content")
+        self._entries[entry_id] = entry
+        return entry
+
+    @staticmethod
+    def _contains(text: str, needle: str) -> bool:
+        key = _collation_key(needle)
+        return bool(key) and key in _collation_key(text)
+
+    def evidence_for(self, surface: str, canonical: str,
+                     entry_ids) -> tuple[EvidenceRef, ...]:
+        """Refs for the cited entries, with every flag computed here.
+
+        An id the host never recorded yields a ref that proves nothing
+        rather than an error: the proposal is kept for review and fails
+        ``evidence_surface_present`` at validation, which is where that
+        belongs. ``definition_pattern`` is the narrow, checkable reading of
+        "an explicit definition": the surface and its expansion both appear
+        in the one entry.
+        """
+        refs = []
+        for eid in entry_ids:
+            entry = self._entries.get(eid) if isinstance(eid, str) else None
+            if entry is None:
+                refs.append(EvidenceRef(entry_id=str(eid)))
+                continue
+            present = self._contains(entry.text, surface)
+            refs.append(EvidenceRef(
+                entry_id=entry.entry_id, surface_present=present,
+                definition_pattern=present
+                and self._contains(entry.text, canonical),
+                session_id=entry.session_id, trusted_source=entry.trusted))
+        return tuple(refs)
+
+    def ledger_support(self, proposal: TermProposal) -> dict:
+        """How often the recorded, trusted text defines this term.
+
+        Counted over the whole ledger, not only the entries the proposal
+        chose to cite, and over the surface *and* every alias being
+        registered. These are the numbers project auto-promotion gates on;
+        taking them from the caller let whoever asked for promotion say how
+        much evidence it had.
+        """
+        defining = [e for e in self._entries.values()
+                    if e.trusted and self._contains(e.text, proposal.canonical)
+                    and any(self._contains(e.text, x)
+                            for x in (proposal.surface, *proposal.aliases))]
+        return {"evidence_count": len(defining),
+                "distinct_sessions": len({e.session_id for e in defining}),
+                "entry_ids": sorted(e.entry_id for e in defining)}
 
     def submit(self, *, surface: str, canonical: str, short_definition: str,
                requested_scope: str = "session", origin: str = "llm_proposal",
@@ -434,8 +537,12 @@ class TermProposalStore:
     def get(self, proposal_id: str) -> TermProposal:
         proposal = self._by_id.get(proposal_id)
         if proposal is None:
-            raise KtrfApiError("NOT_FOUND",
-                               f"unknown proposal {proposal_id!r}")
+            # `NOT_FOUND` is not in the error table (PLAN §27.6), and an
+            # unregistered code is coerced to INTERNAL — a 500 marked
+            # retryable, telling a host to retry a lookup that cannot succeed
+            raise KtrfApiError("INVALID_REQUEST",
+                               f"unknown proposal {proposal_id!r}",
+                               details={"proposal_id": proposal_id})
         return proposal
 
     def list(self, status: str | None = None,

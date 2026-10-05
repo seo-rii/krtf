@@ -626,6 +626,27 @@ LLM이 신규 term을 **제안만** 합니다.
 기본 scope는 session이다.
 ```
 
+### Evidence는 host가 기록하고 sidecar가 판정한다
+
+모델은 `evidence_entry_ids`로 entry를 **가리키기만** 한다. 그 entry에 무엇이
+쓰여 있는지는 host가 `record_entry {entry_id, text, session_id, trusted}`로
+미리 기록하며, sidecar는 기록된 텍스트에서 다음을 직접 계산한다.
+
+* `surface_present` — matcher와 같은 정규화로 surface가 entry 안에 있는가
+* `definition_pattern` — surface와 canonical이 같은 entry에 함께 있는가
+* `trusted_source`, `session_id` — host가 기록한 값
+
+`propose_term`에 이 필드들을 직접 넣으면 거부한다. `route_proposal`도
+`project_trusted`·`evidence_count`·`distinct_sessions`를 받지 않는다. 신뢰는
+`load_layers(trusted_scopes=...)`에서, 횟수와 session 수는 ledger 전체에서
+(제안이 인용한 entry만이 아니라) 신뢰된 정의 entry를 세어 정한다.
+`origin: "user_explicit"`도 인용한 신뢰 entry에 정의가 실제로 있을 때만
+명시적 정의로 취급한다.
+
+신뢰 기준은 host가 정한다. 사용자 메시지와 신뢰된 프로젝트 파일은
+`trusted: true`, tool 결과·웹 페이지·untrusted 프로젝트 파일은 `false`.
+Entry는 한 번 기록되면 바꿀 수 없다.
+
 ## `ktrf_request_activation`
 
 Proposal 활성화를 요청합니다.
@@ -644,6 +665,8 @@ Proposal 활성화를 요청합니다.
 * global override
 * audit log 삭제
 * snapshot history 삭제
+* `record_entry` — evidence ledger에 쓰는 유일한 경로다. 모델이 이것을
+  호출할 수 있으면 자기 제안의 근거를 스스로 만들 수 있다
 
 ---
 

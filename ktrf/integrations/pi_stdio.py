@@ -19,7 +19,7 @@ working when terminology does not:
   encoder is only loaded if the host explicitly asks for one.
 
 Methods: ``initialize``, ``load_layers``, ``resolve``, ``resolve_context``,
-``lookup``, ``explain``, ``propose_term``, ``validate_proposal``,
+``lookup``, ``explain``, ``record_entry`` (host-only), ``propose_term``, ``validate_proposal``,
 ``route_proposal``, ``approve_proposal``, ``list_proposals``, ``health``,
 ``shutdown``.
 """
@@ -46,6 +46,11 @@ class PiRuntime:
         self.snapshot = None
         self.layer_result = None
         self.proposals = None
+        # What `load_layers` was told may be read, which is also what route
+        # treats as a trusted project. Unset until layers are loaded: a
+        # sidecar that has not been told the project is trusted must not
+        # assume it.
+        self.trusted_scopes: set[str] | None = set()
         self.started_at = time.time()
         self.requests = 0
 
@@ -72,8 +77,8 @@ class PiRuntime:
 
         sources = params.get("sources") or {}
         trusted = params.get("trusted_scopes")
-        layers = load_term_layers(
-            sources, set(trusted) if trusted is not None else None)
+        self.trusted_scopes = set(trusted) if trusted is not None else None
+        layers = load_term_layers(sources, self.trusted_scopes)
         encoder = None
         if params.get("encoder"):
             from ..encoders import load_encoder  # optional dependency
@@ -143,14 +148,44 @@ class PiRuntime:
             raise ValueError("call initialize first")
         return self.proposals
 
-    def propose_term(self, params: dict) -> dict:
-        from ..registry.proposals import EvidenceRef
+    def record_entry(self, params: dict) -> dict:
+        """params: {entry_id, text, session_id, trusted}
 
+        **Host-only.** The host records what it actually saw — a user
+        message, a file from a trusted project — and proposals cite it by
+        id. This method must never be exposed as a model tool: the ledger is
+        the one thing a proposer cannot write, and that is the whole of what
+        makes the evidence checks mean anything.
+        """
+        entry = self._require_proposals().record_entry(
+            params["entry_id"], params["text"],
+            session_id=params.get("session_id", "default"),
+            trusted=bool(params.get("trusted", False)))
+        return {"entry_id": entry.entry_id, "session_id": entry.session_id,
+                "trusted": entry.trusted, "chars": len(entry.text)}
+
+    # Fields a proposer used to assert and the sidecar now establishes.
+    # Refused rather than ignored: a host still sending them believes they
+    # count, and silently dropping them would hide that it is wrong.
+    _ATTESTED_EVIDENCE = ("surface_present", "definition_pattern",
+                          "trusted_source", "session_id")
+    _ATTESTED_ROUTING = ("project_trusted", "evidence_count",
+                         "distinct_sessions")
+
+    def propose_term(self, params: dict) -> dict:
         store = self._require_proposals()
-        evidence = tuple(
-            EvidenceRef(**{k: v for k, v in e.items()
-                           if k in EvidenceRef.__dataclass_fields__})
-            for e in params.get("evidence_refs") or [])
+        ids = list(params.get("evidence_entry_ids") or [])
+        for e in params.get("evidence_refs") or []:
+            if not isinstance(e, dict) or "entry_id" not in e:
+                raise ValueError("evidence_refs items need an entry_id")
+            claimed = sorted(set(e) & set(self._ATTESTED_EVIDENCE))
+            if claimed:
+                raise ValueError(
+                    f"evidence fields {claimed} are computed from recorded "
+                    f"entries (record_entry), not accepted from the proposer")
+            ids.append(e["entry_id"])
+        evidence = store.evidence_for(params["surface"], params["canonical"],
+                                      ids)
         proposal = store.submit(
             surface=params["surface"], canonical=params["canonical"],
             short_definition=params.get("short_definition", ""),
@@ -168,13 +203,28 @@ class PiRuntime:
                               self.snapshot).to_dict()
 
     def route_proposal(self, params: dict) -> dict:
+        """Admission routing on facts the sidecar holds.
+
+        Trust comes from ``load_layers(trusted_scopes=...)`` and the evidence
+        numbers from the ledger. Both used to be request parameters, so the
+        same call that asked for project auto-promotion also said how much
+        evidence there was and whether the project was trusted.
+        """
         store = self._require_proposals()
-        return store.route(
+        claimed = sorted(set(params) & set(self._ATTESTED_ROUTING))
+        if claimed:
+            raise ValueError(f"{claimed} are established by the sidecar "
+                             f"(load_layers trusted_scopes, record_entry), "
+                             f"not accepted per request")
+        support = store.ledger_support(store.get(params["proposal_id"]))
+        routed = store.route(
             params["proposal_id"],
-            project_trusted=bool(params.get("project_trusted", False)),
-            evidence_count=int(params.get("evidence_count", 0)),
-            distinct_sessions=int(params.get("distinct_sessions", 0))
-        ).to_dict()
+            project_trusted=(self.trusted_scopes is None
+                             or "project" in self.trusted_scopes),
+            evidence_count=support["evidence_count"],
+            distinct_sessions=support["distinct_sessions"]).to_dict()
+        routed["evidence_support"] = support
+        return routed
 
     def approve_proposal(self, params: dict) -> dict:
         store = self._require_proposals()
@@ -229,6 +279,7 @@ HANDLERS = {
     "resolve_context": PiRuntime.resolve_context,
     "lookup": PiRuntime.lookup,
     "explain": PiRuntime.explain,
+    "record_entry": PiRuntime.record_entry,
     "propose_term": PiRuntime.propose_term,
     "activate_proposals": PiRuntime.activate_proposals,
     "validate_proposal": PiRuntime.validate_proposal,

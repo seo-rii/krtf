@@ -169,9 +169,11 @@ def test_a_definition_supplies_the_canonical_but_never_the_meaning(detector):
     """The document says what it is called. It does not say what it is."""
     found = detector.extract_new_terms("국가공무원노동조합(국공노)이 성명을 냈다")[0]
     with pytest.raises(ValueError, match="short_definition"):
-        found.to_proposal(short_definition="   ", entry_id="doc-1")
+        found.to_proposal(short_definition="   ", entry_id="doc-1",
+                          trusted_source=True)
     kwargs = found.to_proposal(short_definition="공무원 노동조합",
-                               entry_id="doc-1")
+                               entry_id="doc-1",
+                               trusted_source=True)
     assert kwargs["canonical"] == "국가공무원노동조합"  # from the text
     assert kwargs["origin"] == "document_definition"
     assert kwargs["evidence_refs"][0].definition_pattern is True
@@ -181,7 +183,8 @@ def test_a_mined_definition_does_not_auto_activate(detector, glossary):
     """`document_definition` is an explicit origin, so scope decides."""
     found = detector.extract_new_terms("국가공무원노동조합(국공노)이 성명을 냈다")[0]
     kwargs = found.to_proposal(short_definition="공무원 노동조합",
-                               entry_id="doc-1")
+                               entry_id="doc-1",
+                               trusted_source=True)
     assert kwargs["requested_scope"] == "project"
 
     class _Snap:
@@ -459,3 +462,22 @@ def test_the_same_definition_repeated_is_still_one_definition(detector):
     assert len(bindings) == 2
     assert {b.alias_surface for b in bindings} == {"한전"}
     assert {b.long_form for b in bindings} == {"한국전력공사"}
+
+
+def test_the_detector_does_not_vouch_for_the_document(detector, glossary):
+    """It can say the pattern is in the text, not that the text is trusted.
+    Without being told, it does not get to pick — and told False, the
+    proposal fails the evidence check like any untrusted citation."""
+    found = detector.extract_new_terms("국가공무원노동조합(국공노)이 성명을 냈다")[0]
+    with pytest.raises(TypeError):
+        found.to_proposal(short_definition="공무원 노동조합",  # type: ignore
+                          entry_id="doc-1")
+
+    class _Snap:
+        pass
+    snap = _Snap()
+    snap.glossary = glossary
+    kwargs = found.to_proposal(short_definition="공무원 노동조합",
+                               entry_id="web-1", trusted_source=False)
+    report = validate_term_proposal(TermProposalStore().submit(**kwargs), snap)
+    assert report["checks"]["evidence_surface_present"] is False

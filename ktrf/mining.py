@@ -105,6 +105,7 @@ class NameGap:
                 "example_documents": list(self.example_documents)}
 
     def to_proposal(self, *, canonical: str, short_definition: str,
+                    trusted_source: bool,
                     requested_scope: str = "project") -> dict:
         """Keyword arguments for ``TermProposalStore.submit``.
 
@@ -119,6 +120,10 @@ class NameGap:
         scope. The evidence is stronger than an LLM proposal's all the same,
         because ``surface_present`` here is a reading of the corpus rather
         than a claim about it.
+
+        Whether the corpus it read is *trusted* is not the miner's to say —
+        a tenant's own documents and a crawled web sample are both corpora —
+        so ``trusted_source`` is required, like the two above.
         """
         from .registry.proposals import EvidenceRef
 
@@ -127,7 +132,8 @@ class NameGap:
                 "a mined name gap carries evidence, not meaning: "
                 "canonical and short_definition must come from a reviewer")
         refs = tuple(EvidenceRef(entry_id=str(doc), surface_present=True,
-                                 definition_pattern=False)
+                                 definition_pattern=False,
+                                 trusted_source=bool(trusted_source))
                      for doc in self.example_documents)
         return {"surface": self.surface, "canonical": canonical,
                 "short_definition": short_definition,

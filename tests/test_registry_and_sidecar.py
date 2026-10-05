@@ -186,8 +186,11 @@ def _submit(store, **kw):
     args = dict(surface="PDAF", canonical="Project Data Access Framework",
                 short_definition="프로젝트 데이터 접근 계층",
                 requested_scope="session", origin="user_explicit",
+                # a hand-built ref is the host vouching for it; the sidecar
+                # path computes these from recorded entries instead
                 evidence_refs=(EvidenceRef("msg-42", surface_present=True,
-                                           definition_pattern=True),))
+                                           definition_pattern=True,
+                                           trusted_source=True),))
     args.update(kw)
     return store.submit(**args)
 
@@ -456,18 +459,20 @@ def test_sidecar_proposal_flow():
     rt = PiRuntime()
     _rpc(rt, "initialize")
     _rpc(rt, "load_layers", {"sources": {"project": BILLING}})
+    _rpc(rt, "record_entry", {
+        "entry_id": "m-1", "session_id": "s1", "trusted": True,
+        "text": "PDAF는 Project Data Access Framework의 약자야."})
     p = _rpc(rt, "propose_term", {
         "surface": "PDAF", "canonical": "Project Data Access Framework",
         "short_definition": "프로젝트 데이터 접근 계층", "scope": "project",
-        "origin": "user_explicit",
-        "evidence_refs": [{"entry_id": "m-1", "surface_present": True}],
+        "origin": "user_explicit", "evidence_entry_ids": ["m-1"],
     })["result"]
+    assert p["evidence_refs"][0]["surface_present"] is True
     validated = _rpc(rt, "validate_proposal",
                      {"proposal_id": p["proposal_id"]})["result"]
     assert validated["status"] == "VALIDATED"
     routed = _rpc(rt, "route_proposal",
-                  {"proposal_id": p["proposal_id"],
-                   "project_trusted": True})["result"]
+                  {"proposal_id": p["proposal_id"]})["result"]
     assert routed["status"] == "VALIDATED"  # project needs confirmation
     approved = _rpc(rt, "approve_proposal",
                     {"proposal_id": p["proposal_id"],

@@ -232,17 +232,16 @@ def test_the_sidecar_can_activate_what_it_approved():
         "trusted_scopes": ["global"]})
     before_id = rt.snapshot.snapshot_id
 
+    rt.record_entry({"entry_id": "e1", "session_id": "s1", "trusted": True,
+                     "text": "제타파이프는 제타파이프라인을 줄여 부르는 말이다."})
     p = rt.propose_term({
         "surface": "제타파이프", "canonical": "제타파이프라인",
         "short_definition": "야간 배치 정산 사내 파이프라인",
         "scope": "project", "origin": "user_explicit",
-        "evidence_refs": [{"entry_id": "e1", "surface_present": True,
-                           "definition_pattern": True, "session_id": "s1",
-                           "trusted_source": True}]})
+        "evidence_entry_ids": ["e1"]})
     pid = p["proposal_id"]
     rt.validate_proposal({"proposal_id": pid})
-    routed = rt.route_proposal({"proposal_id": pid, "project_trusted": True,
-                                "evidence_count": 3, "distinct_sessions": 2})
+    routed = rt.route_proposal({"proposal_id": pid})
     approved = routed if routed["status"] == "APPROVED" else         rt.approve_proposal({"proposal_id": pid, "approver": "user"})
     assert approved["status"] == "APPROVED"
     assert rt.snapshot.snapshot_id == before_id

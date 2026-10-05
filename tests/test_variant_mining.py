@@ -106,9 +106,11 @@ def test_a_mined_name_cannot_become_a_proposal_without_a_reviewer():
     with pytest.raises(TypeError):
         gap.to_proposal()                      # type: ignore[call-arg]
     with pytest.raises(ValueError):
-        gap.to_proposal(canonical="  ", short_definition="메신저")
+        gap.to_proposal(canonical="  ", short_definition="메신저",
+                        trusted_source=True)
     with pytest.raises(ValueError):
-        gap.to_proposal(canonical="카카오톡", short_definition="")
+        gap.to_proposal(canonical="카카오톡", short_definition="",
+                        trusted_source=True)
 
 
 def test_a_mined_proposal_never_auto_activates():
@@ -123,7 +125,8 @@ def test_a_mined_proposal_never_auto_activates():
 
     gap = NameGap("ORG_KAKAO", "톡", "카카오톡", "UNKNOWN", "UNKNOWN",
                   10, 10, ("카카오톡으로 보냈다.",), ("3",))
-    kwargs = gap.to_proposal(canonical="카카오톡", short_definition="메신저")
+    kwargs = gap.to_proposal(canonical="카카오톡", short_definition="메신저",
+                             trusted_source=True)
     assert kwargs["origin"] == "deterministic_detector"
     policy = TermAdmissionPolicy()
     for scope in ("session", "project", "global"):
@@ -146,10 +149,12 @@ def test_mined_evidence_cites_documents_rather_than_asserting_the_surface():
     """
     gap = NameGap("ORG_KAKAO", "톡", "카카오톡", "UNKNOWN", "UNKNOWN",
                   10, 10, ("카카오톡으로 보냈다.",), ("3", "7"))
-    refs = gap.to_proposal(canonical="카카오톡",
-                           short_definition="메신저")["evidence_refs"]
+    refs = gap.to_proposal(canonical="카카오톡", short_definition="메신저",
+                           trusted_source=False)["evidence_refs"]
     assert [r.entry_id for r in refs] == ["3", "7"]
     assert all(r.surface_present for r in refs)
+    # the corpus's trust is the caller's to state, and it is carried as stated
+    assert not any(r.trusted_source for r in refs)
 
 
 def test_the_miner_writes_to_no_catalog():
@@ -236,7 +241,8 @@ def test_an_approved_mined_name_stops_being_backlog(snap):
     # a reviewer supplies the meaning the miner refused to invent
     store = TermProposalStore()
     proposal = store.submit(**gap.to_proposal(
-        canonical="카카오톡", short_definition="카카오가 운영하는 메신저"))
+        canonical="카카오톡", short_definition="카카오가 운영하는 메신저",
+        trusted_source=True))
     assert store.validate(proposal.proposal_id, snap).status == "VALIDATED"
     assert store.route(proposal.proposal_id).status == "VALIDATED"  # not ACTIVE
     assert store.approve(proposal.proposal_id, "reviewer").status == "APPROVED"
