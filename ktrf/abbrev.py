@@ -157,10 +157,34 @@ class AbbrevAligner:
                 "largest_bucket": max(buckets.values(), default=0),
                 "signatures": list(SIGNATURES)}
 
+    # Alignment depends on the token string alone; the span is copied into
+    # each result. A document that repeats a low-confidence name thousands of
+    # times aligned it thousands of times — at the input limit that was most
+    # of a commit-mode request, ~7 s of 8.5. Results are cached as plain
+    # tuples and rebuilt per call, since callers get mutable dataclasses.
+    _CACHE_MAX = 4096
+
     def align_token(self, token: str, span: tuple[int, int],
                     max_results: int = 5) -> list[AbbrevCandidate]:
         if len(token) < MIN_TOKEN:
             return []
+        cache = self.__dict__.setdefault("_align_cache", {})
+        key = (token, max_results)
+        hit = cache.get(key)
+        if hit is None:
+            hit = tuple((c.entity_id, c.surface, c.score, c.channel,
+                         c.target, c.signature)
+                        for c in self._align_uncached(token, span,
+                                                      max_results))
+            if len(cache) >= self._CACHE_MAX:
+                cache.clear()
+            cache[key] = hit
+        return [AbbrevCandidate(eid, span, surface, score, channel=channel,
+                                target=target, signature=signature)
+                for eid, surface, score, channel, target, signature in hit]
+
+    def _align_uncached(self, token: str, span: tuple[int, int],
+                        max_results: int) -> list[AbbrevCandidate]:
         out = self._align_subsequence(token, span)
         if token.isascii() and token.isalpha():
             out.extend(self._align_latin_acronym(token, span))

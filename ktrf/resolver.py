@@ -31,6 +31,7 @@ from .morphology import DISTINCT, SAME
 from .segmentation import (BARE, GuardVerdict, MatchEvidence,
                            StructuralPath, distinct_cores, segment_token)
 from .snapshot import Snapshot
+from .spans import GrowingSpanSet, SpanSet
 from .tailparser import MentionProposal, analyze_tail, parse_matches
 
 _TOKEN_RE = re.compile(r"[가-힣ㄱ-ㅣ]+|[A-Za-z][A-Za-z0-9]*|[0-9]+")
@@ -431,6 +432,7 @@ def resolve(
     # ---- fuzzy channels (Pass 1, not in fast: §26.1) ----
     exact_spans = [n.core_span for n in nodes.values()
                    if n.pool.exact]
+    exact_index = SpanSet(exact_spans)
     generation_cutoff: int | None = None
     if mode != "fast":
         trace["channels"].extend(["jamo", "keyboard"])
@@ -452,7 +454,7 @@ def resolve(
                 break
             if len(token) < 2:
                 continue
-            if any(span[0] < e and s < span[1] for s, e in exact_spans):
+            if exact_index.overlaps(*span):
                 continue
             # M1: the Level B channels read the same decomposition the exact
             # path uses, so a typo carrying a particle reaches the index as
@@ -582,10 +584,11 @@ def resolve(
         # (defining occurrences inside doc-local definitions are not scanned)
         covered = [n.core_span for n in nodes.values()]
         covered += [b.definition_span for b in local_bindings]
+        covered_index = SpanSet(covered)
         for span, token in _abbrev_tokens(text):
             if len(token) < 2 or len(token) > 12:
                 continue
-            if any(span[0] < e and s < span[1] for s, e in covered):
+            if covered_index.overlaps(*span):
                 continue
             # the same segmentation every other channel uses; this was a
             # private particle-strip loop that no other channel shared
@@ -1394,12 +1397,12 @@ def _select_primary(ordered: list[MentionNode]) -> set[tuple[int, int]]:
             min_alias(n),  # alias_id lexicographic
         ),
     )
-    selected: list[tuple[int, int]] = []
+    selected = GrowingSpanSet(n.core_span[0] for n in ranked)
     out: set[tuple[int, int]] = set()
     for n in ranked:
         s, e = n.core_span
-        if any(s < e2 and s2 < e for s2, e2 in selected):
+        if selected.overlaps(s, e):
             continue
-        selected.append((s, e))
+        selected.add(s, e)
         out.add((s, e))
     return out

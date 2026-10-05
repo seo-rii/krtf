@@ -158,3 +158,52 @@ def test_bounded_scans_keep_the_prefix_modifier_reading():
 
     assert "한전" in "".join(found("오늘 구한전 발표"))
     assert not any("한전" in s for s in found("오늘 가나다라마바사한전 발표"))
+
+
+def test_a_repeated_low_confidence_name_is_aligned_once():
+    """Abbreviation alignment depends on the token alone, and a document that
+    repeated a low-confidence name aligned it once per occurrence — ~7 s of
+    an 8.5 s commit-mode request at the input limit. Only past the proposal
+    budget do these names turn low-confidence and reach the aligner, which
+    is why the document is long. The answer must not change, only the work.
+    """
+    import json
+
+    from eval.synthetic import build_synthetic_glossary
+    from ktrf.glossary import load_glossary
+    from ktrf.snapshot import compile_snapshot
+
+    snap = compile_snapshot(load_glossary(
+        build_synthetic_glossary(1000, seed=20260903)[0]),
+        run_conformance=False)
+    aligner = snap.abbrev
+    calls = [0]
+    real = aligner._align_uncached
+
+    def counting(*a, **kw):
+        calls[0] += 1
+        return real(*a, **kw)
+
+    aligner._align_uncached = counting
+    # the latency harness's dense-name shape, which is what showed the cost
+    names = sorted({b.surface for b in snap.glossary.alias_bindings
+                    if len(b.surface) >= 3
+                    and all("가" <= c <= "힣" for c in b.surface)},
+                   key=lambda x: (len(x), x))[:8]
+    text = " ".join(names * 200)
+
+    def answer():
+        r = resolve(snap, text)
+        r.pop("elapsed_ms", None)
+        r.pop("deadline", None)
+        r.pop("trace", None)
+        return json.dumps(r, sort_keys=True, ensure_ascii=False, default=str)
+
+    cold = answer()
+    distinct = calls[0]
+    assert distinct > 0, "nothing reached the aligner; probe is vacuous"
+    # one alignment per distinct token, not per occurrence
+    assert distinct < 50, distinct
+    warm = answer()
+    assert calls[0] == distinct, "a warm cache re-aligned"
+    assert warm == cold
