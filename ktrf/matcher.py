@@ -19,7 +19,8 @@ from dataclasses import dataclass, field
 
 from .glossary import AliasBinding, Glossary
 from .hangul import is_hangul
-from .morphology import ParticleFST, match_latin_tail, match_prefix_modifier
+from .morphology import (LATIN_TAILS, PREFIXES, ParticleFST, match_latin_tail,
+                         match_prefix_modifier)
 from .normalization import (
     CanonicalStream,
     Channel,
@@ -165,7 +166,10 @@ def check_boundary(
             return BoundaryResult(FAIL, notes=["left:inside_latin_run"])
     elif policy_left == "hangul_token_boundary":
         if prev_ch is not None and _script(prev_ch) == "hangul":
-            left_run = _left_hangul_run(units, first)
+            left_run = _left_hangul_run(units, first, _MAX_PREFIX_LEN + 1)
+            if len(left_run) > _MAX_PREFIX_LEN:
+                # longer than any modifier, so it cannot be one
+                return BoundaryResult(FAIL, notes=["left:hangul_attached"])
             pfx = match_prefix_modifier(left_run)
             if pfx and len(pfx[0]) == len(left_run):
                 res.left_prefix = pfx
@@ -181,7 +185,7 @@ def check_boundary(
         return res
     if _is_token_boundary(core_last_ch, next_ch):
         return res
-    right_run = _right_run(units, last)
+    right_run = _right_run(units, last, _right_window(fst))
     if policy_right in ("particle_or_token_boundary", "latin_token_boundary"):
         if _script(next_ch) == "hangul":
             if policy_right == "particle_or_token_boundary" and fst.accepts_prefix(
@@ -210,20 +214,52 @@ def check_boundary(
     return BoundaryResult(FAIL, notes=[f"right:unknown_policy:{policy_right}"])
 
 
-def _left_hangul_run(units, first: int) -> str:
+# How far the boundary check has to look on either side of a core.
+#
+# Both scans used to walk the whole attached run, once per exact match. A
+# run of registered names written without spaces — `한국전력공사국토교통부`
+# repeated to the 64 KiB input limit — has a match every few characters and
+# a run as long as the input, so the boundary check alone was quadratic:
+# 33 seconds for one request, in `fast` mode, with nothing in `limits`
+# because none of it is optional work a budget could cut. Neither consumer
+# reads that far. The left run is only ever compared *whole* against a
+# prefix modifier, so anything longer than the longest modifier fails; the
+# right run is read by `accepts_prefix` and `match_latin_tail`, which look at
+# one catalog entry plus the character after it.
+_MAX_PREFIX_LEN = max(map(len, PREFIXES))
+
+
+def _right_window(fst: ParticleFST) -> int:
+    # +1: `_final_ok` and `match_latin_tail` both test the character *after*
+    # the entry, and cutting exactly at its end would read "run ended" there
+    key = len(fst.particles)
+    cached = getattr(fst, "_ktrf_right_window", None)
+    if cached is not None and cached[0] == key:
+        return cached[1]
+    longest = max(map(len, fst.particles), default=0)
+    window = max(longest, max(map(len, LATIN_TAILS))) + 1
+    fst._ktrf_right_window = (key, window)
+    return window
+
+
+def _left_hangul_run(units, first: int, limit: int | None = None) -> str:
     i = first - 1
     chars: list[str] = []
     while i >= 0 and _script(units[i].ch) == "hangul":
+        if limit is not None and len(chars) >= limit:
+            break
         chars.append(units[i].ch)
         i -= 1
     return "".join(reversed(chars))
 
 
-def _right_run(units, last: int) -> str:
-    """Characters after the core in the same attached run (no spaces)."""
+def _right_run(units, last: int, limit: int | None = None) -> str:
+    """Characters after the core in the same attached run (no spaces).
+
+    ``limit`` stops the scan early for callers that only read a prefix."""
     out: list[str] = []
     i = last + 1
-    while i < len(units):
+    while i < len(units) and (limit is None or len(out) < limit):
         ch = units[i].ch
         if _script(ch) in ("space",) or (_script(ch) == "other" and ch not in "'’"):
             break

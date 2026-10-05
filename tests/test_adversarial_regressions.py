@@ -103,3 +103,58 @@ def test_adversarial_hard_gates_smoke(synth):
     disc = run_multisense_discipline(snap, meta, rng, max_aliases=25)
     assert disc["arbitrary_commits"] == 0
     assert disc["sense_loss"] == 0
+
+
+# ------------------------------------------------- attached-run scan cost
+def _boundary_work(snap, text):
+    """Characters the boundary check classified while resolving ``text``."""
+    import ktrf.matcher as M
+
+    calls = [0]
+    real = M._script
+
+    def counting(ch):
+        calls[0] += 1
+        return real(ch)
+
+    M._script = counting
+    try:
+        resolve(snap, text, mode="fast")
+    finally:
+        M._script = real
+    return calls[0]
+
+
+def test_glued_names_cost_linear_not_quadratic_boundary_work():
+    """`한국전력공사국토교통부` repeated with no spaces: an exact match every few
+    characters, each inside one run as long as the input. Both boundary
+    scans walked the whole run per match, and a 64 KiB request took 33 s in
+    `fast` mode — with nothing in `limits`, because none of it is optional
+    work a deadline could cut. Counted rather than timed: four times the
+    input must be about four times the work, not sixteen."""
+    from ktrf.glossary import load_glossary
+    from ktrf.snapshot import compile_snapshot
+
+    snap = compile_snapshot(load_glossary("examples/realorg_glossary.yaml"),
+                            strict=False)
+    unit = "한국전력공사국토교통부"
+    small = _boundary_work(snap, unit * 40)
+    large = _boundary_work(snap, unit * 160)
+    assert large < 6 * small, (small, large)
+
+
+def test_bounded_scans_keep_the_prefix_modifier_reading():
+    """The left scan stops past the longest modifier; a real modifier must
+    still be read, and a longer attached run must still fail."""
+    from ktrf.glossary import load_glossary
+    from ktrf.snapshot import compile_snapshot
+
+    snap = compile_snapshot(load_glossary("examples/realorg_glossary.yaml"),
+                            strict=False)
+
+    def found(text):
+        return [m["surface"] for m in
+                resolve(snap, text).get("mentions", [])]
+
+    assert "한전" in "".join(found("오늘 구한전 발표"))
+    assert not any("한전" in s for s in found("오늘 가나다라마바사한전 발표"))
