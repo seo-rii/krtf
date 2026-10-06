@@ -223,3 +223,36 @@ def test_an_explicit_origin_needs_a_definition_in_the_evidence():
     definition, and it must not auto-approve."""
     assert _session(_rt(), DEFINING) == "APPROVED"            # control
     assert _session(_rt(), "제타파이프 로그 좀 봐줘.") != "APPROVED"
+
+
+def test_the_ledger_is_bounded(monkeypatch):
+    import ktrf.registry.proposals as P
+
+    monkeypatch.setattr(P, "MAX_ENTRIES", 3)
+    rt = _rt()
+    for i in range(3):
+        rt.record_entry({"entry_id": f"m-{i}", "text": "글"})
+    r = _call(rt, "record_entry", {"entry_id": "m-3", "text": "글"})
+    assert r["error"]["code"] == "RATE_LIMITED"
+    # re-recording an existing entry is not growth
+    assert "result" in _call(rt, "record_entry",
+                             {"entry_id": "m-0", "text": "글"})
+
+
+def test_routing_does_not_renormalise_the_ledger(monkeypatch):
+    """Each entry's matcher view is computed once, when it is recorded."""
+    import ktrf.registry.proposals as P
+
+    rt = _rt(**AUTO)
+    for i in range(5):
+        rt.record_entry({"entry_id": f"m-{i}", "session_id": f"s{i}",
+                         "trusted": True, "text": DEFINING * 50})
+    p = rt.propose_term({**TERM, "evidence_entry_ids": ["m-0"]})
+    rt.validate_proposal({"proposal_id": p["proposal_id"]})
+    seen = []
+    real = P._collation_key
+    monkeypatch.setattr(P, "_collation_key",
+                        lambda s: (seen.append(len(s)), real(s))[1])
+    routed = rt.route_proposal({"proposal_id": p["proposal_id"]})
+    assert routed["evidence_support"]["evidence_count"] == 5
+    assert max(seen) < len(DEFINING), "an entry's text was re-normalised"

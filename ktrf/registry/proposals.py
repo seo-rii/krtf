@@ -62,6 +62,10 @@ MAX_DEFINITION_CHARS = 1000
 
 
 MAX_ENTRY_CHARS = 65_536
+# Entries per store. The ledger is host-written, but a host that records
+# every turn of a long-lived session would otherwise grow it without limit,
+# and routing reads all of it.
+MAX_ENTRIES = 10_000
 
 
 @dataclass(frozen=True)
@@ -319,6 +323,10 @@ class TermProposalStore:
         self._by_id: dict[str, TermProposal] = {}
         self._session_counts: dict[str, int] = {}
         self._entries: dict[str, EvidenceEntry] = {}
+        # the matcher's view of each entry's text, computed once at record
+        # time: routing reads every entry, and normalising a 64K-character
+        # entry per check per call made it cost the whole history each time
+        self._entry_keys: dict[str, str] = {}
         self.audit: list[dict] = []
         # None until `activate` compiles one. ACTIVE status and this field
         # move together; nothing else may set either.
@@ -354,13 +362,16 @@ class TermProposalStore:
             raise KtrfApiError(
                 "INVALID_REQUEST", f"entry {entry_id!r} was already "
                                    "recorded with different content")
+        if prior is None and len(self._entries) >= MAX_ENTRIES:
+            raise KtrfApiError("RATE_LIMITED",
+                               f"evidence ledger holds {MAX_ENTRIES} entries")
         self._entries[entry_id] = entry
+        self._entry_keys[entry_id] = _collation_key(text)
         return entry
 
-    @staticmethod
-    def _contains(text: str, needle: str) -> bool:
+    def _contains(self, entry: EvidenceEntry, needle: str) -> bool:
         key = _collation_key(needle)
-        return bool(key) and key in _collation_key(text)
+        return bool(key) and key in self._entry_keys[entry.entry_id]
 
     def evidence_for(self, surface: str, canonical: str,
                      entry_ids) -> tuple[EvidenceRef, ...]:
@@ -379,11 +390,11 @@ class TermProposalStore:
             if entry is None:
                 refs.append(EvidenceRef(entry_id=str(eid)))
                 continue
-            present = self._contains(entry.text, surface)
+            present = self._contains(entry, surface)
             refs.append(EvidenceRef(
                 entry_id=entry.entry_id, surface_present=present,
                 definition_pattern=present
-                and self._contains(entry.text, canonical),
+                and self._contains(entry, canonical),
                 session_id=entry.session_id, trusted_source=entry.trusted))
         return tuple(refs)
 
@@ -397,8 +408,8 @@ class TermProposalStore:
         much evidence it had.
         """
         defining = [e for e in self._entries.values()
-                    if e.trusted and self._contains(e.text, proposal.canonical)
-                    and any(self._contains(e.text, x)
+                    if e.trusted and self._contains(e, proposal.canonical)
+                    and any(self._contains(e, x)
                             for x in (proposal.surface, *proposal.aliases))]
         return {"evidence_count": len(defining),
                 "distinct_sessions": len({e.session_id for e in defining}),
