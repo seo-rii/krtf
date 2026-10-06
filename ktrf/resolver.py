@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 
 from .calibration import calibration_group
 from .candidates import Candidate, CandidatePool
+from .context_cues import namesake_cue
 from .errors import KtrfApiError
 from .offsets import OffsetMap, check_span_invariant
 from .normalization import build_canonical_stream
@@ -163,6 +164,22 @@ def _address_qualifier(text: str, span: tuple[int, int], fst) -> bool:
         return False
     there = _follower_level(m.group(1), fst)
     return there is not None and there > here
+
+
+def _exact_block(snapshot, text: str, p) -> str | None:
+    """Why an exact match must not commit here, or None.
+
+    Both rules are about the same thing: the string is the registered name,
+    and the sentence shows it naming something else — a place inside an
+    address, or the team a company owns. Neither can go through
+    `ResolutionGuard`, which never applies to Level A.
+    """
+    if _address_qualifier(text, p.core_span, snapshot.fst):
+        return "address_qualifier"
+    entity = snapshot.glossary.entity(p.entity_id)
+    namesakes = (entity.metadata or {}).get("namesakes") if entity else None
+    kind = namesake_cue(text, p.core_span, namesakes)
+    return f"namesake_context:{kind}" if kind else None
 
 
 _CHANNEL_BASE = {
@@ -369,9 +386,7 @@ def resolve(
                             * _CHANNEL_BASE[p.channel]},
             surface_transform_cost=p.transform_cost,
             is_exact=True,
-            commit_blocked=("address_qualifier"
-                            if _address_qualifier(text, p.core_span,
-                                                  snapshot.fst) else None),
+            commit_blocked=_exact_block(snapshot, text, p),
             provenance={"boundary": p.boundary_status,
                         "transforms": list(p.transforms)},
         ))

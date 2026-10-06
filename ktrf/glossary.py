@@ -269,6 +269,22 @@ def load_glossary(source: str | dict) -> Glossary:
         )
         for e in data.get("entities") or []
     ]
+    # `metadata.namesakes` withholds commits (ktrf.context_cues), so a
+    # misspelled kind is not a no-op to tolerate: it is a rule the tenant
+    # believes is on and is not.
+    from .context_cues import CUES
+    for e in entities:
+        namesakes = e.metadata.get("namesakes")
+        if namesakes is None:
+            continue
+        if not isinstance(namesakes, list) or not all(
+                isinstance(k, str) for k in namesakes):
+            raise GlossaryError(f"{e.entity_id}: metadata.namesakes must be "
+                                f"a list of strings")
+        unknown = sorted(set(namesakes) - set(CUES))
+        if unknown:
+            raise GlossaryError(f"{e.entity_id}: unknown namesake kinds "
+                                f"{unknown}; known: {sorted(CUES)}")
 
     families = [
         AliasFamily(

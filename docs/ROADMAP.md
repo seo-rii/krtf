@@ -404,6 +404,21 @@ resolver는 관여하지 않고, 그래서 기존 수치는 움직이지 않는�
 성질이다. 다만 문서는 그것이 무엇인지는 말하지 않으므로 `short_definition`은
 사람 몫으로 남는다. 수치는 [DOCLOCAL_AUDIT.md](../reports/DOCLOCAL_AUDIT.md).
 
+**문자열은 맞는데 가리키는 것이 다른 exact 매치.** exact 채널은
+`ResolutionGuard`를 거치지 않으므로, 등록 이름이 다른 것을 가리키는 문장은
+별도 규칙이 `commit_blocked`로 확정만 보류한다(후보는 남는다).
+
+- `address_qualifier` — `경기도 포천시`의 `경기도`는 정부가 아니라 주소다.
+- `namesake_context:<kind>` — glossary가 `metadata.namesakes`로 선언한
+  동명 대상이 문장에 드러날 때. 스포츠 기사는 구단을 모기업 이름으로 부르므로
+  (`대한항공 7연승`, `kt 김진욱 감독`) 여섯 코퍼스의 그런 출현 244건이 전부
+  회사로 확정됐다. 어떤 entity가 동명 대상을 갖는지는 tenant가 아는 것이라
+  선언은 데이터에 두고, `ktrf/context_cues.py`는 그 종류의 문장이 어떻게
+  생겼는지만 안다. 단서는 영역 밖에서 나오지 않는 것만 쓴다 — `경기`·`시즌`·
+  `선수`·`감독`(단독)은 첫 측정에서 `경기 침체`·`실적 시즌`·`금융감독원`에
+  걸렸다. 남은 오보류는 회사가 스포츠를 다루는 기사(`KT 5G 야구 웹예능`)
+  같은 혼합 문장 4건 정도이며, 틀린 확정이 아니라 침묵이 된다.
+
 ## Pi Extension 통합 (PLAN_PI.md, 6단계)
 
 KTRF를 Pi Coding Agent의 terminology grounding 레이어로 배포하는 계획.

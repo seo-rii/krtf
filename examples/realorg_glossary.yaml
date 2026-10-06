@@ -7,7 +7,7 @@ schema_version: "3"
 entities:
   - {entity_id: ORG_MSIT, canonical: 과학기술정보통신부, description: 과학기술과 정보통신 정책을 담당하는 중앙행정기관, domain_ids: [GOV]}
   - {entity_id: ORG_MSIP, canonical: 미래창조과학부, description: 과학기술정보통신부의 전신인 중앙행정기관, domain_ids: [GOV]}
-  - {entity_id: ORG_KEPCO, canonical: 한국전력공사, description: 대한민국의 전력 공기업, domain_ids: [ENERGY]}
+  - {entity_id: ORG_KEPCO, canonical: 한국전력공사, description: 대한민국의 전력 공기업, domain_ids: [ENERGY], metadata: {namesakes: [sports_team]}}
   - {entity_id: ORG_KHNP, canonical: 한국수력원자력, description: 원자력과 수력 발전을 담당하는 공기업, domain_ids: [ENERGY]}
   - {entity_id: ORG_FSC, canonical: 금융위원회, description: 금융 정책을 총괄하는 중앙행정기관, domain_ids: [FINANCE]}
   - {entity_id: ORG_FSS, canonical: 금융감독원, description: 금융기관 감독 기구, domain_ids: [FINANCE]}
@@ -47,7 +47,7 @@ entities:
   - {entity_id: ORG_LG_ELEC, canonical: LG전자, description: 전자제품 제조 대기업, domain_ids: [CORP]}
   - {entity_id: ORG_HYUNDAI_MOTOR, canonical: 현대자동차, description: 자동차 제조 대기업, domain_ids: [CORP]}
   - {entity_id: ORG_SKT, canonical: SK텔레콤, description: 이동통신 사업자, domain_ids: [CORP]}
-  - {entity_id: ORG_KT, canonical: KT, description: 유무선 통신 사업자, domain_ids: [CORP]}
+  - {entity_id: ORG_KT, canonical: KT, description: 유무선 통신 사업자, domain_ids: [CORP], metadata: {namesakes: [sports_team]}}
   - {entity_id: ORG_KTNG, canonical: KT&G, description: 담배와 인삼 제품 제조 기업, domain_ids: [CORP]}
   - {entity_id: ORG_NAVER, canonical: 네이버, description: 인터넷 포털과 IT 서비스 기업, domain_ids: [CORP]}
   - {entity_id: ORG_KAKAO, canonical: 카카오, description: 모바일 플랫폼과 IT 서비스 기업, domain_ids: [CORP]}
@@ -72,7 +72,7 @@ entities:
   - {entity_id: ORG_POSCO, canonical: 포스코, description: 철강 제조 대기업, domain_ids: [CORP]}
   - {entity_id: ORG_DSME, canonical: 대우조선해양, description: 조선과 해양플랜트 제조 기업, domain_ids: [CORP]}
   - {entity_id: ORG_DHIC, canonical: 두산중공업, description: 발전설비와 담수화 플랜트 기업, domain_ids: [CORP]}
-  - {entity_id: ORG_KAL, canonical: 대한항공, description: 국적 항공사, domain_ids: [CORP]}
+  - {entity_id: ORG_KAL, canonical: 대한항공, description: 국적 항공사, domain_ids: [CORP], metadata: {namesakes: [sports_team]}}
   - {entity_id: ORG_ASIANA, canonical: 아시아나항공, description: 국적 항공사, domain_ids: [CORP]}
   - {entity_id: ORG_JEJUAIR, canonical: 제주항공, description: 저비용 항공사, domain_ids: [CORP]}
   - {entity_id: ORG_HANJIN, canonical: 한진해운, description: 컨테이너 해운 기업, domain_ids: [CORP]}
