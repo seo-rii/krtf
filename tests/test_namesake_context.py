@@ -118,3 +118,19 @@ def test_declaring_a_namesake_changes_the_snapshot_identity():
     a = compile_snapshot(load_glossary(doc), strict=False).snapshot_id
     b = compile_snapshot(load_glossary(plain), strict=False).snapshot_id
     assert a != b
+
+
+@pytest.mark.parametrize("text,surface,blocked", [
+    ("프로배구 대한항궁 삼성화재에 역전승", "대한항궁", True),    # jamo
+    ("gkswjs 장병철 감독 가빈 만족", "gkswjs", True),            # keyboard
+    ("한국전럭이 전기요금을 올렸다", "한국전럭", False),         # control
+])
+def test_recovered_typos_face_the_same_rule(snap, text, surface, blocked):
+    """A typo of the name arrives through jamo or keyboard recovery, not the
+    exact channel, and only fell below the commit threshold by accident of
+    calibration. The rule is applied after every merge so no channel, and
+    no merge of unblocked evidence, can carry the company past it."""
+    m = _first(snap, text, surface)
+    reasons = {x.get("commit_blocked") for x in m["prediction_set"]["members"]
+               if x.get("entity_id")}
+    assert ("namesake_context:sports_team" in reasons) is blocked, reasons

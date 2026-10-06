@@ -666,6 +666,24 @@ def resolve(
                 degraded |= _rerank(nodes, snapshot, text, context, mode,
                                     policy, trace)
 
+    # ---- namesake context, for every channel ----
+    # `_exact_block` covers exact matches as they are proposed. A typo of the
+    # same name reaches the pool through jamo or keyboard recovery instead,
+    # and nothing stopped it committing the company in a sports sentence
+    # except that such matches happen to fall below the threshold today.
+    # Applied after every merge, so unblocked evidence from another channel
+    # cannot lift it — the pool's merge would otherwise do exactly that.
+    for n in nodes.values():
+        for c in n.pool.all_candidates():
+            if c.commit_blocked is not None:
+                continue
+            entity = snapshot.glossary.entity(c.entity_id)
+            kind = namesake_cue(
+                text, n.core_span,
+                (entity.metadata or {}).get("namesakes") if entity else None)
+            if kind:
+                c.commit_blocked = f"namesake_context:{kind}"
+
     # ---- decisions + response assembly ----
     ordered = sorted(nodes.values(), key=lambda n: (n.core_span[0],
                                                     -(n.core_span[1] - n.core_span[0])))
