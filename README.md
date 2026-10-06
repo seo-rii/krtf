@@ -44,6 +44,13 @@ KTRF models each of these explicitly:
   the whole surface still means what the core means — and a glossary can
   register `COMPOSES_TO` to name the derivative outright rather than leave it
   to inference.
+- **A right string can name the wrong thing** — `경기도` inside
+  `경기도 포천시 영북면` is an address, and `대한항공 7연승` is a volleyball
+  team. Exact matches never pass through the Level B guard, so these get
+  their own rules that withhold the commit and keep the candidate. Which
+  entities share a name with something else is declared in the glossary
+  (`metadata.namesakes: [sports_team]`); the library only knows what such a
+  sentence looks like.
 - **Recovery channels** — jamo-level weighted edit distance, dubeolsik
   keyboard-mapping recovery, document-local alias detection, and
   abbreviation alignment for unseen short forms, each guarded by explicit
@@ -343,9 +350,12 @@ artifact bundles, HTTP service layer) is specified in PLAN.md §34 but not
 implemented here. Known limitations are tracked honestly in
 [docs/ROADMAP.md](docs/ROADMAP.md) — including current statistical limits of
 the evaluation (silver labels are rule-derived approximations, not human
-gold; sample sizes gate how tight the CI floors can be) and deferred
-operational hardening (latency SLO gates, deep snapshot immutability,
-concurrency load tests).
+gold; sample sizes gate how tight the CI floors can be). Latency is measured
+— including worst-case input shapes at the size limit — but gated only
+relatively (`--compare`), because an absolute SLO needs reference hardware
+that has not been chosen. A live snapshot is sealed against rebinding and
+re-verified at activation; mutation through a reference is caught by
+`verify_integrity()`, not prevented.
 
 Reports carry the commit they were measured at. Where a report has not been
 regenerated since a resolver change, it says so at the top rather than
