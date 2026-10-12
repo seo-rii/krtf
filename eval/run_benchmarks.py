@@ -58,21 +58,28 @@ def _holdout_trial(seed: int, alpha: float, scale: int) -> tuple[int, int, dict]
 
     def make(n, group, pos_mu, neg_mu, spread):
         out = []
-        for _ in range(n):
+        for index in range(n):
+            # Candidate rows from one generated mention remain one source event.
+            event_id = f"synthetic:{seed}:{group}:{index}"
             out.append(TrainingExample(
-                pos_mu + spread * (rng.random() - 0.5), group, 1))
+                pos_mu + spread * (rng.random() - 0.5), group, 1,
+                event_id=event_id, document_id=event_id, sample_source="synthetic_audit"))
             out.append(TrainingExample(
-                neg_mu + spread * (rng.random() - 0.5), group, 0))
+                neg_mu + spread * (rng.random() - 0.5), group, 0,
+                event_id=event_id, document_id=event_id, sample_source="synthetic_audit"))
         return out
 
     pool = (make(400 * scale, "exact|multi", 1.0, 0.55, 0.5)
             + make(150 * scale, "fuzzy|multi", 0.8, 0.45, 0.6)
             + make(20 * scale, "dense|multi", 0.6, 0.35, 0.6))
-    rng.shuffle(pool)
-    cut = int(len(pool) * 0.7)
-    cal = fit_calibrator(pool[:cut], alpha=alpha, n_min=80)
+    events = sorted({e.event_id for e in pool})
+    rng.shuffle(events)
+    train_events = set(events[:int(len(events) * .7)])
+    fit_pool = [e for e in pool if e.event_id in train_events]
+    heldout_pool = [e for e in pool if e.event_id not in train_events]
+    cal = fit_calibrator(fit_pool, alpha=alpha, n_min=80)
     per_group: dict[str, list[int]] = {}
-    for e in pool[cut:]:
+    for e in heldout_pool:
         if e.label != 1:
             continue
         inc, _ = cal.in_prediction_set(

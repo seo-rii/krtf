@@ -20,6 +20,8 @@ own license, so the repo ships the downloader, not the text).
 from __future__ import annotations
 
 import json
+import hashlib
+from datetime import datetime, timezone
 import re
 import time
 import urllib.error
@@ -29,6 +31,8 @@ from pathlib import Path
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 CACHE = DATA_DIR / "wild_corpus.jsonl"
+DOCUMENTS = DATA_DIR / "wild_documents.jsonl"
+PROVENANCE_VERSION = 2
 API = "https://datasets-server.huggingface.co/rows"
 
 # (dataset, config, split, text_field, max_rows, split_sentences,
@@ -94,14 +98,44 @@ def _fetch_page(dataset: str, config: str, split: str, offset: int) -> dict:
         return json.loads(resp.read().decode("utf-8"))
 
 
+def _dataset_revision(dataset: str) -> str | None:
+    """Resolve the immutable dataset revision; never fabricate one on failure."""
+    req = urllib.request.Request(
+        "https://huggingface.co/api/datasets/" + dataset,
+        headers={"User-Agent": "ktrf-eval/0.1"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as response:
+            return json.loads(response.read().decode("utf-8")).get("sha")
+    except (OSError, ValueError):
+        return None
+
+
+def _sentence_spans(text: str, split_sentences: bool):
+    """Retain offsets in the parent document rather than reconstructing them."""
+    starts = [0] + [m.end() for m in _SENT_SPLIT.finditer(text)] if split_sentences else [0]
+    ends = [m.start() for m in _SENT_SPLIT.finditer(text)] + [len(text)] if split_sentences else [len(text)]
+    for start, end in zip(starts, ends):
+        fragment = text[start:end]
+        trimmed = fragment.strip()
+        if trimmed and (not split_sentences or _MIN_LEN <= len(trimmed) <= _MAX_LEN):
+            start += len(fragment) - len(fragment.lstrip())
+            yield trimmed, start, start + len(trimmed)
+
+
 def download(force: bool = False, verbose: bool = True) -> Path:
     if CACHE.exists() and not force:
         return CACHE
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     rows: list[dict] = []
     seen: set[str] = set()
+    documents: dict[str, dict] = {}
+    revisions: dict[str, str | None] = {}
+    collected_at = datetime.now(timezone.utc).isoformat()
     for (dataset, config, split, field, max_rows, do_split,
          max_keep, start_offset) in SOURCES:
+        if dataset not in revisions:
+            revisions[dataset] = _dataset_revision(dataset)
+        revision = revisions[dataset]
         fetched = 0
         kept = 0
         offset = start_offset
@@ -125,19 +159,34 @@ def download(force: bool = False, verbose: bool = True) -> Path:
             got = page.get("rows", [])
             if not got:
                 break
-            for r in got:
-                raw = (r["row"].get(field) or "").strip()
-                for text in _sentences(raw, do_split):
+            for row_position, r in enumerate(got):
+                raw = (r["row"].get(field) or "")
+                row_id = str(r["row"].get("guid", r["row"].get("id", r.get("row_idx", offset + row_position))))
+                source = f"{dataset}:{config}:{split}"
+                document_hash = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+                # Content identity joins duplicated documents across splits/sources;
+                # source row identity remains separately available for provenance.
+                document_id = "sha256:" + document_hash
+                provenance = {"document_id": document_id, "parent_document_id": document_id,
+                              "source_row_id": row_id, "dataset": dataset, "config": config,
+                              "split": split, "text_field": field, "source": source,
+                              "dataset_revision": revision, "revision_kind": "observed_hub_revision", "collected_at": collected_at,
+                              "document_sha256": document_hash, "provenance_version": PROVENANCE_VERSION}
+                for text, sentence_start, sentence_end in _sentence_spans(raw, do_split):
                     if max_keep is not None and kept >= max_keep:
                         break
                     if len(text) >= _MIN_LEN and text not in seen:
                         seen.add(text)
                         kept += 1
-                        rows.append({"text": text,
-                                     "source": f"{dataset}:{config}:{split}"})
+                        rows.append({**provenance, "text": text,
+                                     "sentence_span": [sentence_start, sentence_end],
+                                     "text_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest()})
+                        documents.setdefault(document_id, {**provenance, "text": raw, "family_ids": []})
             fetched += len(got)
             offset += PAGE
             time.sleep(0.15)  # be polite to the public API
+        if revision is not None and _dataset_revision(dataset) != revision:
+            raise WildDataUnavailable(f"dataset revision changed or became unavailable during acquisition: {dataset}")
         if verbose:
             print(f"  {dataset}:{config}:{split}: {fetched} rows fetched, "
                   f"{kept} sentences kept"
@@ -147,9 +196,15 @@ def download(force: bool = False, verbose: bool = True) -> Path:
     by_source: dict[str, int] = {}
     for r in rows:
         by_source[r["source"]] = by_source.get(r["source"], 0) + 1
+    with open(DOCUMENTS, "w", encoding="utf-8") as f:
+        for document in documents.values():
+            f.write(json.dumps(document, ensure_ascii=False) + "\n")
     with open(CACHE, "w", encoding="utf-8") as f:
         f.write(json.dumps({"meta": {"licenses": LICENSES,
                                      "sentences": len(rows),
+                                     "provenance_version": PROVENANCE_VERSION,
+                                     "dataset_revisions": revisions,
+                                     "documents": len(documents),
                                      "by_source": by_source}},
                            ensure_ascii=False) + "\n")
         for r in rows:

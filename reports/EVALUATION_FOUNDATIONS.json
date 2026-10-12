@@ -1,0 +1,44 @@
+{
+  "status": "PREPARATION_SMOKE_ONLY",
+  "human_gold_status": "NOT_ANNOTATED",
+  "quality_claim": false,
+  "sources": [
+    {
+      "source": "konec",
+      "revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "source_url": "https://raw.githubusercontent.com/korean-named-entity/konec/b6c98a457f9b13379a815bb153ae94dee2872cd4/konec/konec-dev.tsv",
+      "imported_documents": 5000,
+      "selected_documents": 20,
+      "partitions": {
+        "train": 14,
+        "validation": 4,
+        "test": 2
+      },
+      "manifest_seal_sha256": "e63e62e598c709ea8af569cae04c73382c885020664f4d04db80662fe31cf141",
+      "source_file_sha256": "5345b4a62802307c71070c0666a04b454525dd1d13035b3853d883c62d4a7195",
+      "import_exclusions": {
+        "empty_source_sentence_ids": [
+          "토큰,",
+          "토큰",
+          "문장",
+          "주석",
+          "컬럼명"
+        ]
+      }
+    },
+    {
+      "source": "koneobench",
+      "revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "source_url": "https://raw.githubusercontent.com/bcmilab/ko-neobench/d251cd9ab3ba2ca90cba434979deead637af4161/data/task2/Task2_Source%20Word%20Identification.csv",
+      "imported_documents": 396,
+      "selected_documents": 20,
+      "partitions": {
+        "train": 6,
+        "validation": 7,
+        "test": 7
+      },
+      "manifest_seal_sha256": "f34fec8a8157c3fc6b92853aef6be120d0f3c39bc407ea0234619041bb0d3b5e",
+      "source_file_sha256": "d59b597f478b840d2b7ee9213f63d5c750c82b1b117e9d4aca56148e3f286957"
+    }
+  ]
+}
