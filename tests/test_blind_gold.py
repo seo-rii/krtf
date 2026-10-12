@@ -229,3 +229,11 @@ def test_ner_import_records_empty_headers_as_exclusions():
     rows = import_ner_tsv("## empty ignored\n\n## valid text\n가\tO\n", source="konec", revision="sha", collected_at="now")
     assert len(rows) == 1 and rows[0]["text"] == "가"
     assert rows[0]["import_exclusions"] == {"empty_source_sentence_ids": ["empty"]}
+
+
+def test_fixed_risk_declared_budget_covers_both_tails_and_stages():
+    from eval.fixed_risk import validate_thresholds
+    result = validate_thresholds([], [], thresholds=[.5, .9], groups=['exact', 'fuzzy'], epsilon=.1)
+    total_tail_budget = (result['tune_alpha_per_hypothesis'] * 2 * 2 * 2
+                         + result['test_alpha_per_group'] * 2 * 2)
+    assert total_tail_budget == result['familywise_alpha']

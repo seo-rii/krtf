@@ -106,7 +106,7 @@ manifest, gold, prediction 해시와 문서별 분자/분모를 남긴다. 같�
 - tuning에서 exact one-sided Clopper–Pearson UCB와 모든 threshold×group에
   대한 Bonferroni 보정을 적용하고, 통과한 규칙 중 확정 수가 가장 큰 것을 택한다.
 - 독립 test에서 선택한 규칙만 검증한다. 그룹 수에 대한 보정을 적용하고,
-  두 단계에 전체 alpha의 절반씩 배정한다. 실패한 test를 보고 threshold를 다시
+  두 단계에 전체 alpha의 절반씩 배정하고, 각 단계에서 상·하한 두 꼬리에 다시 나눈다. 실패한 test를 보고 threshold를 다시
   고르지 않는다. 재탐색에는 새로운 봉인 test가 필요하다.
 - group별 확정률, 오류 수, 오류 UCB, 선택 threshold를 구분해 반환한다.
   빈/작은 표본이나 UCB가 위험 한도를 넘는 경우 `INSUFFICIENT_DATA`다.

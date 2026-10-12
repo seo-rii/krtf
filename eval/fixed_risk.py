@@ -73,9 +73,11 @@ def validate_thresholds(tune: list[AuditEvent], test: list[AuditEvent], *,
             seen_documents.add((event.group, event.document_id))
     if {e.document_id for e in tune} & {e.document_id for e in test} or {e.event_id for e in tune} & {e.event_id for e in test}:
         raise ValueError("tuning and final validation must be document-disjoint")
-    # Spend half of the family-wise failure budget on each independent stage.
-    tune_alpha = alpha / (2 * len(groups) * len(thresholds))
-    test_alpha = alpha / (2 * len(groups))
+    # Split the family-wise budget between independent stages AND tails:
+    # PASS uses upper bounds and FAIL uses lower bounds. Both reported
+    # decisions must fit inside the declared simultaneous error budget.
+    tune_alpha = alpha / (4 * len(groups) * len(thresholds))
+    test_alpha = alpha / (4 * len(groups))
     result = {"conditioning": "error_given_commit", "risk_unit": "independent_document_audit_event",
               "epsilon": epsilon, "familywise_alpha": alpha,
               "tune_alpha_per_hypothesis": tune_alpha, "test_alpha_per_group": test_alpha,
