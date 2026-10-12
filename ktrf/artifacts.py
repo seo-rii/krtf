@@ -247,24 +247,27 @@ def finetune(
 
     fusion = snapshot.fusion
     manifest = dict(snapshot.manifest)
-    if fit_fusion_model:
-        # learned fusion (§23, V2) — needs feature-bearing mention states
-        # (responses produced with options.return_features)
-        from .fusion import fit_fusion
-
-        if extra_examples:
-            raise ValueError("fusion refit needs source features; extra_examples contain scores only")
-        fit_rows, _ = partition_examples([e for _, e in fusion_rows])
-        fitting_ids = {id(e) for e in fit_rows}
-        fusion = fit_fusion([(f, e.label) for f, e in fusion_rows if id(e) in fitting_ids])
-        manifest["fusion_hash"] = _hash(fusion.to_dict())
-        # the ranking_score scale changed: refit calibration on the fusion
-        # model's own outputs so Platt + conformal stay consistent
-        examples = [
-            dataclasses.replace(e, ranking_score=fusion.predict(f))
-            for f, e in fusion_rows
-        ]
     try:
+        if fit_fusion_model:
+            # learned fusion (§23, V2) — needs feature-bearing mention states
+            # (responses produced with options.return_features)
+            from .fusion import fit_fusion
+
+            if extra_examples:
+                raise ValueError("fusion refit needs source features; extra_examples contain scores only")
+            fit_rows, _ = partition_examples([e for _, e in fusion_rows])
+            fitting_ids = {id(e) for e in fit_rows}
+            fitting = [(f, e.label) for f, e in fusion_rows if id(e) in fitting_ids]
+            if len(fitting) < 20 or not any(y for _, y in fitting):
+                raise InsufficientCalibrationData("insufficient fusion fitting partition data")
+            fusion = fit_fusion(fitting)
+            manifest["fusion_hash"] = _hash(fusion.to_dict())
+            # the ranking_score scale changed: refit calibration on the fusion
+            # model's own outputs so Platt + conformal stay consistent
+            examples = [
+                dataclasses.replace(e, ranking_score=fusion.predict(f))
+                for f, e in fusion_rows
+            ]
         calibrator = fit_calibrator(examples, alpha=alpha, n_min=n_min)
     except InsufficientCalibrationData as exc:
         raise KtrfApiError("INVALID_REQUEST", str(exc),

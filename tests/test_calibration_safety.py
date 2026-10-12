@@ -116,10 +116,11 @@ def test_heuristic_never_advertises_coverage(snap):
     assert ps['coverage_scope'] == 'candidate_conditional'
 
 
-def test_insufficient_finetune_reports_status_and_keeps_snapshot(snap):
+@pytest.mark.parametrize('fit_fusion_model', [False, True])
+def test_insufficient_finetune_reports_status_and_keeps_snapshot(snap, fit_fusion_model):
     from ktrf.errors import KtrfApiError
     with pytest.raises(KtrfApiError) as exc:
-        finetune(snap, CorrectionStore())
+        finetune(snap, CorrectionStore(), fit_fusion_model=fit_fusion_model)
     assert exc.value.details['calibration_status'] == 'INSUFFICIENT_DATA'
     assert snap.calibrator is None
 
