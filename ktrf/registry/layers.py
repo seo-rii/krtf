@@ -22,7 +22,7 @@ system instructions.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from ..glossary import load_glossary
@@ -192,12 +192,13 @@ def compile_layered_snapshot(layers: list[TermLayer], *,
             f"layer conflicts require override: true — {result.conflicts}")
     snapshot = compile_snapshot(load_glossary(result.glossary_dict),
                                 **compile_kwargs)
-    snapshot.manifest["layers"] = [
+    manifest = dict(snapshot.manifest)
+    manifest["layers"] = [
         {"scope": lyr.scope, "source": lyr.source, "trusted": lyr.trusted}
         for lyr in sorted(layers, key=lambda x: _RANK[x.scope])]
-    snapshot.manifest["shadowed_surfaces"] = len(result.shadowed)
+    manifest["shadowed_surfaces"] = len(result.shadowed)
     # the manifest gained fields after compile, so the identity must be
     # recomputed — a stored id that does not match its manifest is refused
     # at load time (§47.3), and that equation must hold here too
-    snapshot.snapshot_id = compute_snapshot_id(snapshot.manifest)
+    snapshot = replace(snapshot, manifest=manifest, snapshot_id=compute_snapshot_id(manifest))
     return snapshot, result

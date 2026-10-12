@@ -6,6 +6,7 @@ Bundle layout (Python analog of §11.1's ``compiled-glossary/``)::
     ├── manifest.json        # hashes + conformance result (§11.2)
     ├── glossary.yaml        # source of truth for deterministic recompile
     ├── policy.json          # RuntimePolicy + CandidateBudget
+    ├── guard.json           # ResolutionGuard configuration
     └── calibrator.json      # optional TunedCalibrator artifact
 
 Loading recompiles the indexes deterministically from ``glossary.yaml`` and
@@ -38,8 +39,10 @@ from .candidates import CandidateBudget
 from .corrections import CorrectionStore
 from .errors import KtrfApiError
 from .glossary import glossary_to_dict, load_glossary
+from .immutable import thaw
 from .snapshot import (RuntimePolicy, Snapshot, compile_snapshot,
                        compute_snapshot_id, _hash)
+from .segmentation import ResolutionGuard
 
 
 def _policy_to_dict(p: RuntimePolicy) -> dict:
@@ -56,7 +59,7 @@ def save_snapshot(snapshot: Snapshot, out_dir: str | Path) -> Path:
     """Persist a compiled snapshot as an artifact bundle."""
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    gdict = glossary_to_dict(snapshot.glossary)
+    gdict = thaw(glossary_to_dict(snapshot.glossary))
     (out / "glossary.yaml").write_text(
         yaml.safe_dump(gdict, allow_unicode=True, sort_keys=False),
         encoding="utf-8",
@@ -65,6 +68,8 @@ def save_snapshot(snapshot: Snapshot, out_dir: str | Path) -> Path:
         json.dumps(_policy_to_dict(snapshot.policy), indent=2),
         encoding="utf-8",
     )
+    (out / "guard.json").write_text(
+        json.dumps(dataclasses.asdict(snapshot.guard), indent=2), encoding="utf-8")
     manifest = dict(snapshot.manifest)
     if snapshot.calibrator is not None:
         cal = snapshot.calibrator.to_dict()
@@ -110,7 +115,10 @@ def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False,
         glossary = load_glossary(str(d / "glossary.yaml"))
         policy = _policy_from_dict(
             json.loads((d / "policy.json").read_text(encoding="utf-8")))
-    except (OSError, ValueError, KeyError) as e:
+        guard_path = d / "guard.json"
+        guard = (ResolutionGuard(**json.loads(guard_path.read_text(encoding="utf-8")))
+                 if guard_path.exists() else ResolutionGuard())
+    except (OSError, ValueError, KeyError, TypeError) as e:
         raise KtrfApiError("SNAPSHOT_UNAVAILABLE",
                            f"unreadable bundle {d}: {e}") from e
 
@@ -118,14 +126,15 @@ def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False,
         glossary,
         tenant_id=manifest.get("tenant_id", "default"),
         policy=policy,
+        guard=guard,
         run_conformance=run_conformance,
     )
     # content-hash verification against the stored manifest (§47.3): the
     # digests are recomputed from the loaded glossary/policy, so tampering
     # with glossary.yaml (any field, descriptions included) or policy.json
     # produces a mismatch and the bundle is refused
-    for key in ("compatibility_id", "normalizer_hash",
-                "morphology_rules_hash", "entities_hash", "policy_hash"):
+    for key in ("compatibility_id", "resolver_semantics_version", "normalizer_hash",
+                "morphology_rules_hash", "segmentation_guard_hash", "entities_hash", "policy_hash"):
         if snap.manifest.get(key) != manifest.get(key):
             raise KtrfApiError(
                 "SNAPSHOT_UNAVAILABLE",
@@ -147,7 +156,7 @@ def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False,
         if manifest.get("calibrator_hash") != _hash(cal_dict):
             raise KtrfApiError("SNAPSHOT_UNAVAILABLE",
                                "bundle verification failed: calibrator_hash mismatch")
-        snap.calibrator = TunedCalibrator.from_dict(cal_dict)
+        snap = dataclasses.replace(snap, calibrator=TunedCalibrator.from_dict(cal_dict))
     vec_path = d / "entity-vectors.json"
     if vec_path.exists():
         # §11.3: vectors are only reusable under the exact same encoder
@@ -165,11 +174,12 @@ def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False,
             )
         from .dense import DenseArtifacts, VectorIndex
 
-        snap.dense = DenseArtifacts(
+        dense = DenseArtifacts(
             encoder,
             VectorIndex.from_dict(
                 json.loads(vec_path.read_text(encoding="utf-8"))),
         )
+        snap = dataclasses.replace(snap, runtime=dataclasses.replace(snap.runtime, dense=dense))
     fus_path = d / "fusion.json"
     if fus_path.exists():
         from .fusion import FusionModel
@@ -178,18 +188,17 @@ def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False,
         if manifest.get("fusion_hash") != _hash(fus_dict):
             raise KtrfApiError("SNAPSHOT_UNAVAILABLE",
                                "bundle verification failed: fusion_hash mismatch")
-        snap.fusion = FusionModel.from_dict(fus_dict)
+        snap = dataclasses.replace(snap, fusion=FusionModel.from_dict(fus_dict))
     if manifest.get("reranker_id"):
         if reranker is None or reranker.reranker_id != manifest["reranker_id"]:
             raise KtrfApiError(
                 "SNAPSHOT_UNAVAILABLE",
                 f"bundle expects reranker {manifest['reranker_id']!r}",
             )
-        snap.reranker = reranker
+        snap = dataclasses.replace(snap, runtime=dataclasses.replace(snap.runtime, reranker=reranker))
     # keep the persisted identity and conformance record
-    snap.manifest = manifest
-    snap.snapshot_id = manifest.get("snapshot_id", snap.snapshot_id)
-    return snap
+    return dataclasses.replace(snap, manifest=manifest,
+                               snapshot_id=manifest.get("snapshot_id", snap.snapshot_id))
 
 
 # ---------------------------------------------------------------------------

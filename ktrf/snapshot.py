@@ -27,6 +27,7 @@ from .fuzzy import FuzzyIndex
 from .glossary import (Glossary, GlossaryError, composition_index,
                        glossary_to_dict, has_errors, validate_glossary)
 from .matcher import ExactIndex
+from .immutable import freeze
 from .segmentation import ResolutionGuard
 from .morphology import (CONTEXTUAL_SUFFIX_CLASSES, DEFAULT_CHAIN_DEPTH,
                          PARTICLES, PREFIXES, SPLITTABLE_PARTICLES,
@@ -44,6 +45,7 @@ NORMALIZER_VERSION = "nrm-2"
 # miss a change to the rule itself (M2 moved the verdict from "head-final
 # only" to "any distinct part wins"). Bump this when that rule changes.
 TAIL_GRAMMAR_VERSION = "tail-2"
+RESOLVER_SEMANTICS_VERSION = "safety-2-path-union-1"
 
 
 @dataclass
@@ -65,27 +67,57 @@ class RuntimePolicy:
     set_confidence: float = 0.95  # target 1-alpha exposed in responses
     prediction_set_min_p: float = 0.15
     candidate_budget: CandidateBudget = field(default_factory=CandidateBudget)
+    rerank_input: str = "context"
+
+    def __post_init__(self):
+        if self.rerank_input not in ("surface", "context", "target", "path"):
+            raise ValueError("unknown rerank input variant")
 
 
-@dataclass
-class Snapshot:
-    snapshot_id: str
-    tenant_id: str
-    glossary: Glossary
+@dataclass(frozen=True)
+class SnapshotRuntime:
+    """Backend references and mutable runtime caches, outside config identity.
+
+    Native sessions/index internals are not made immutable by this holder.
+    Cache users must include snapshot identity in keys for shared runtimes.
+    """
     exact_index: ExactIndex
     fuzzy_index: FuzzyIndex
     abbrev: AbbrevAligner
     doclocal: DocLocalDetector
     fst: ParticleFST
+    dense: object | None = None
+    reranker: object | None = None
+    caches: dict = field(default_factory=dict, compare=False, repr=False)
+
+
+@dataclass(frozen=True)
+class Snapshot:
+    snapshot_id: str
+    tenant_id: str
+    glossary: Glossary
+    runtime: SnapshotRuntime
     policy: RuntimePolicy
     guard: ResolutionGuard
     compositions: dict
     manifest: dict
     diagnostics: list = field(default_factory=list)
     calibrator: object | None = None  # TunedCalibrator once finetuned (§48.3)
-    dense: object | None = None  # DenseArtifacts (V2 bi-encoder, §22.3)
-    reranker: object | None = None  # cross-encoder backend (§22.3)
     fusion: object | None = None  # learned FusionModel (§23, V2)
+
+    def __post_init__(self):
+        for name in ("glossary", "policy", "guard", "compositions", "manifest",
+                     "diagnostics", "calibrator", "fusion"):
+            object.__setattr__(self, name, freeze(getattr(self, name)))
+
+    # Preserve the resolver's existing backend access API.
+    exact_index = property(lambda self: self.runtime.exact_index)
+    fuzzy_index = property(lambda self: self.runtime.fuzzy_index)
+    abbrev = property(lambda self: self.runtime.abbrev)
+    doclocal = property(lambda self: self.runtime.doclocal)
+    fst = property(lambda self: self.runtime.fst)
+    dense = property(lambda self: self.runtime.dense)
+    reranker = property(lambda self: self.runtime.reranker)
 
     @property
     def glossary_version(self) -> str:
@@ -200,19 +232,20 @@ def compile_snapshot(
             f"strict validation failed: {[d for d in diagnostics if d.severity == 'error']}"
         )
 
-    policy = policy or RuntimePolicy()
-    guard = guard or ResolutionGuard()
+    # Indexes must also reference the detached config, not caller-owned data.
+    glossary = freeze(glossary)
+    policy = freeze(policy or RuntimePolicy())
+    guard = freeze(guard or ResolutionGuard())
     fst = ParticleFST()
     exact_index = ExactIndex(glossary, fst)
     snapshot = Snapshot(
         snapshot_id="",
         tenant_id=tenant_id,
         glossary=glossary,
-        exact_index=exact_index,
-        fuzzy_index=FuzzyIndex(glossary),
-        abbrev=AbbrevAligner(glossary),
-        doclocal=DocLocalDetector(exact_index),
-        fst=fst,
+        runtime=SnapshotRuntime(
+            exact_index=exact_index, fuzzy_index=FuzzyIndex(glossary),
+            abbrev=AbbrevAligner(glossary), doclocal=DocLocalDetector(exact_index),
+            fst=fst),
         policy=policy,
         guard=guard,
         compositions=composition_index(glossary),
@@ -231,6 +264,7 @@ def compile_snapshot(
         "glossary_id": glossary.glossary_id,
         "glossary_version": glossary.version,
         "compatibility_id": COMPATIBILITY_ID,
+        "resolver_semantics_version": RESOLVER_SEMANTICS_VERSION,
         "normalizer_hash": _hash(NORMALIZER_VERSION),
         "normalization_profiles_hash": _normalization_hash(),
         "morphology_rules_hash": _morphology_hash(),
@@ -257,14 +291,16 @@ def compile_snapshot(
     if encoder is not None:
         from .dense import DenseArtifacts
 
-        snapshot.dense = DenseArtifacts.build(glossary, encoder)
+        snapshot = dataclasses.replace(snapshot, runtime=dataclasses.replace(
+            snapshot.runtime, dense=DenseArtifacts.build(glossary, encoder)))
         manifest["entity_encoder_hash"] = encoder.encoder_id
         manifest["vector_dimension"] = snapshot.dense.index.dim
         manifest["index_type"] = "flat_ip"
     if reranker is not None:
-        snapshot.reranker = reranker
+        snapshot = dataclasses.replace(snapshot, runtime=dataclasses.replace(
+            snapshot.runtime, reranker=reranker))
         manifest["reranker_id"] = reranker.reranker_id
-    snapshot.manifest = manifest
+    snapshot = dataclasses.replace(snapshot, manifest=manifest)
 
     if run_conformance:
         from .conformance import generate_fixtures, run_fixtures
@@ -284,8 +320,8 @@ def compile_snapshot(
             )
     # identity is assigned only after every manifest field — including the
     # conformance record — is final (§11.2: the id names the whole artifact)
-    snapshot.snapshot_id = compute_snapshot_id(manifest)
-    return snapshot
+    return dataclasses.replace(snapshot, manifest=manifest,
+                               snapshot_id=compute_snapshot_id(manifest))
 
 
 class SnapshotRegistry:

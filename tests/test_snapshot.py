@@ -5,6 +5,7 @@ REQ-NRM-005 (conformance blocks activation), REQ-LVL-002.
 """
 
 import pytest
+from dataclasses import replace
 
 from ktrf.errors import KtrfApiError
 from ktrf.glossary import GlossaryError, load_glossary
@@ -60,7 +61,7 @@ def test_compatibility_mismatch_refused():
     # INV-015
     reg = SnapshotRegistry()
     snap = compile_snapshot(_glossary(), tenant_id="t1")
-    snap.manifest["compatibility_id"] = "ktrf-bundle-v99"
+    snap = replace(snap, manifest={**snap.manifest, "compatibility_id": "ktrf-bundle-v99"})
     with pytest.raises(KtrfApiError) as e:
         reg.activate(snap)
     assert e.value.code == "SNAPSHOT_UNAVAILABLE"
@@ -125,6 +126,6 @@ def test_conformance_failure_blocks_activation():
     # REQ-NRM-005/REQ-LVL-002: simulate a failing conformance report
     reg = SnapshotRegistry()
     snap = compile_snapshot(_glossary(), tenant_id="t1")
-    snap.manifest["conformance"] = {"total": 10, "passed": 9, "failed": 1}
+    snap = replace(snap, manifest={**snap.manifest, "conformance": {"total": 10, "passed": 9, "failed": 1}})
     with pytest.raises(KtrfApiError):
         reg.activate(snap)
