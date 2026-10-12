@@ -359,7 +359,7 @@ def resolve(
             paths = distinct_cores(
                 _paths_for(snapshot, text, token, span))[
                 :policy.max_segmentation_paths]
-            hit_span = None
+            hit_spans = []
             for path in paths:
                 cands = snapshot.abbrev.align_token(path.core, path.core_span)
                 if not cands:
@@ -385,11 +385,12 @@ def resolve(
                     ))
                 pass2 = True
                 n.pass2_applied = True
-                hit_span = path.core_span
-                break
-            if hit_span is not None:
-                # union of Pass-2 channels on the same proposal (§21.6)
-                dense_enrich(hit_span, _context_window(text, hit_span, 30))
+                hit_spans.append(path.core_span)
+            if hit_spans:
+                # Every bounded structural proposal competes; the first
+                # path producing an entity is not necessarily the right span.
+                for hit_span in hit_spans:
+                    dense_enrich(hit_span, _context_window(text, hit_span, 30))
             elif options.get("detect_unregistered_mentions") \
                     and any("가" <= c <= "힣" for c in token):
                 # open-world span proposals are Level C and stay behind the
@@ -455,6 +456,7 @@ def _rerank(nodes, snapshot: Snapshot, text: str, context: dict, mode: str,
     a thin margin, under the pair budget (§31.1). Scores merge into fusion
     as evidence — candidates are never removed (INV-010)."""
     from .dense import entity_profile_text
+    from .rerank import rerank_query
 
     pairs_used = 0
     degraded = False
@@ -475,7 +477,32 @@ def _rerank(nodes, snapshot: Snapshot, text: str, context: dict, mode: str,
             degraded = True  # INV-013
             break
         batch = ranked[: min(policy.max_rerank_candidates, budget_left)]
-        window = _context_window(text, n.core_span, 60)
+        variant = getattr(policy, "rerank_input", "context")
+        path = n.path
+        if variant == "path" and path is None:
+            proposal = n.proposal
+            tail = proposal.best_tail if proposal else None
+            full_span = proposal.full_span if proposal else n.core_span
+            prefix = proposal.prefix if proposal else None
+            path = StructuralPath(
+                text[full_span[0]:full_span[1]], full_span, n.surface, n.core_span,
+                kind=tail.kind if tail else BARE,
+                prefix=prefix["surface"] if prefix else "",
+                prefix_kind=prefix["kind"] if prefix else "",
+                prefix_span=prefix["span"] if prefix else None,
+                residual=tail.residual if tail else "",
+                residual_kind=tail.residual_kind if tail else "",
+                residual_parts=tail.residual_parts if tail else (),
+                residual_classes=tail.residual_classes if tail else (),
+                governing_class=tail.governing_class if tail else "",
+                full_identity=tail.full_identity if tail else SAME,
+                relation=tail.relation if tail else "IDENTITY",
+                particles=tail.particles if tail else (),
+                latin_tail=tail.latin_tail if tail else "",
+                latin_tail_kind=tail.latin_tail_kind if tail else "",
+                grammatical=tail.grammatical if tail else True,
+            )
+        window = rerank_query(text, n.core_span, variant, path, radius=60)
         pairs = []
         for c in batch:
             ent = snapshot.glossary.entity(c.entity_id)

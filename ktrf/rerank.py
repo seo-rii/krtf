@@ -19,9 +19,113 @@ Scores are evidence for fusion — they never delete candidates (INV-010).
 from __future__ import annotations
 
 import math
+import json
+from dataclasses import dataclass
 from pathlib import Path
 
+from .segmentation import MatchEvidence, ResolutionGuard, StructuralPath
+
 from .hangul import to_jamo_seq
+
+INPUT_VARIANTS = ("surface", "context", "target", "path")
+
+
+def rerank_query(text: str, span: tuple[int, int], variant: str = "target",
+                 path: StructuralPath | None = None, radius: int = 60) -> str:
+    """Build controlled query inputs with raw document offsets.
+
+    ``target`` marks which occurrence is being linked, even if the same
+    surface appears twice. ``path`` additionally exposes the supplied
+    structural hypothesis, including the full-surface semantic contract.
+    These formats are opt-in experiments; changing inputs needs recalibration.
+    """
+    start, end = span
+    if not 0 <= start < end <= len(text):
+        raise ValueError("target span must be inside the document")
+    if radius < 0:
+        raise ValueError("radius must be nonnegative")
+    if variant not in INPUT_VARIANTS:
+        raise ValueError(f"unknown input variant {variant!r}")
+    if path is not None and (path.core_span != span or path.core != text[start:end]):
+        raise ValueError("path must describe the target span")
+    if variant == "surface":
+        return text[start:end]
+    left, right = max(0, start - radius), min(len(text), end + radius)
+    if variant == "context":
+        return text[left:right]
+    marked = text[left:start] + "[TARGET]" + text[start:end] + "[/TARGET]" + text[end:right]
+    if variant == "target":
+        return marked
+    if path is None:
+        raise ValueError("path input requires a structural hypothesis")
+    # Include the contract even for a bare reading; as_dict omits defaults.
+    features = {**path.as_dict(), "full_identity": path.full_identity,
+                "relation": path.relation, "surface_span": list(path.surface_span)}
+    return marked + "\nPATH " + json.dumps(features, ensure_ascii=False, sort_keys=True)
+
+
+@dataclass(frozen=True)
+class LinkingHypothesis:
+    """One core/path/entity/full-surface reading; no commit authority."""
+
+    path: StructuralPath
+    entity_id: str
+    profile: str
+    channel: str = "abbrev"
+    transform_cost: float = 0.0
+
+
+@dataclass(frozen=True)
+class RankedHypothesis:
+    hypothesis: LinkingHypothesis
+    score: float  # relevance evidence, never a calibrated probability
+    commit_allowed: bool
+    guard_reasons: tuple[str, ...]
+
+
+def rank_hypotheses(text: str, hypotheses: list[LinkingHypothesis], scorer,
+                    variant: str = "target", guard: ResolutionGuard | None = None,
+                    radius: int = 60) -> list[RankedHypothesis]:
+    """Score every supplied hypothesis and retain every existing guard.
+
+    Retrieval/pair budgets must be applied once by the caller, before input
+    ablations, so every variant sees identical hypotheses. Ranking cannot
+    remove a blocked candidate or promote it to commit authority.
+    """
+    if not hypotheses:
+        return []
+    guard = guard or ResolutionGuard()
+    pairs = [(rerank_query(text, h.path.core_span, variant, h.path, radius), h.profile)
+             for h in hypotheses]
+    scores = scorer.score_pairs(pairs)
+    if len(scores) != len(hypotheses):
+        raise ValueError("reranker must return one score per hypothesis")
+    out = []
+    for h, score in zip(hypotheses, scores):
+        if not math.isfinite(score):
+            raise ValueError("reranker scores must be finite")
+        verdict = guard.evaluate(MatchEvidence.from_path(
+            h.channel, h.path, transform_cost=h.transform_cost))
+        out.append(RankedHypothesis(h, float(score), verdict.commit_allowed, verdict.reasons))
+    return sorted(out, key=lambda r: (-r.score, r.hypothesis.path.core_span,
+                                      r.hypothesis.entity_id, r.hypothesis.path.kind))
+
+
+def maxsim(query: list[list[float]], document: list[list[float]]) -> float:
+    """Sum per-query-token maximum dot products over document tokens.
+
+    Inputs are model-produced, masked token vectors (normally L2-normalized).
+    This is candidate reranking, not the single-vector VectorIndex protocol.
+    Padding/special-token masks belong to the model adapter.
+    """
+    if not query or not document:
+        raise ValueError("MaxSim requires nonempty token vectors")
+    dim = len(query[0])
+    if dim == 0 or any(len(v) != dim for v in [*query, *document]):
+        raise ValueError("token vectors must share a nonzero dimension")
+    if any(not math.isfinite(x) for v in [*query, *document] for x in v):
+        raise ValueError("token vectors must be finite")
+    return sum(max(sum(a * b for a, b in zip(q, d)) for d in document) for q in query)
 
 
 def _bigrams(s: str) -> set[str]:

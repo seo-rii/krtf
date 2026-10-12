@@ -13,4 +13,6 @@ eval/data/*
 # The hand-labelled gold is neither downloaded nor regenerable: it is a
 # person's reading of 160 sentences.
 !eval/data/variant_gold.jsonl
+# Constructed confusion hypotheses used by the controlled rerank smoke suite.
+!eval/data/rerank_confusion.jsonl
 models/

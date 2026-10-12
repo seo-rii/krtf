@@ -33,11 +33,41 @@ These components are trained in-house with dictionary-conditioned episodes, so w
 
 BAAI/bge-reranker-v2-m3 is a lightweight 568M multilingual reranker supporting 18+ languages including Korean, and Korean-optimized derivatives such as dragonkue/bge-reranker-v2-m3-ko are available. Since KTRF's sense cross-encoder is trained in-house anyway (§36), use these both as a pre-training baseline and as candidate initialization weights.
 
+### Controlled candidates added after the October review
+
+Official model cards checked on 2026-10-13. These are comparison candidates;
+no KTRF quality improvement has been measured for either model.
+
+| Candidate | Proposed role | Runtime and score contract |
+|---|---|---|
+| [KURE-Reranker-nano](https://huggingface.co/nlpai-lab/KURE-Reranker-nano) | Conditional pair scorer over an existing shortlist | 149M parameters, Korean/English, one scalar relevance score. A scalar or its sigmoid is not a calibrated entity probability; fit and validate separately. |
+| [KURE-v2](https://huggingface.co/nlpai-lab/KURE-v2) | Late-interaction candidate reranker | 154M parameters, 128 dimensions **per token**, MaxSim scoring. Start with a small fixed shortlist. It cannot replace a single-vector encoder in `VectorIndex` by changing the encoder name. |
+
+KURE-v2 token storage depends on entity profile length, vector dtype and
+compression; parameter count does not predict index memory. A separate search
+backend is justified only after candidate reranking shows value.
+
+Compare identical candidate sets and budgets using surface-only, surrounding
+context, marked target context, and marked target plus structural path. Include
+same-alias collisions, one-vowel near names, parent/child entities, organization
+versus officeholder, and ordinary-word overlaps. Keep truly ambiguous labels
+separate from context-resolvable cases. Rank `(core span, path, entity,
+full-surface identity)` hypotheses while retaining existing resolution guards.
+
+`python -m eval.run_rerank_ablation` runs the local lexical smoke baseline;
+`--backend onnx|scalar|maxsim --model-dir /local/model` selects an existing
+local export/checkpoint. The scalar adapter reads raw logits; the MaxSim adapter
+uses PyLate token masks and a shortlist, without changing the production index.
+All neural adapters use the same input length limit and serial batch-one calls.
+The included synthetic cases check experiment plumbing, not model quality.
+See [the experiment protocol](docs/RERANK_EXPERIMENTS.md) for independent data,
+guard and risk evaluation requirements.
+
 ## KTRF-Specific Validation Points
 
 1. **Don't trust public benchmarks at face value.** MTEB/AutoRAG-style benchmarks measure document retrieval, whereas KTRF retrieval is short-alias ↔ short-canonical/description matching — a different distribution. Measuring on the spec's `UE-canonical-only` and `UE-derived-abbreviation` splits (§42) plus your own golden set is mandatory; as one practitioner put it, model cards can't decide this for you — there is no substitute for labeling ~100 of your own queries and measuring directly.
 2. **Check licenses.** Conditions vary across KLUE-family (CC-BY-SA), Qwen (Apache), BGE/E5 (MIT), and Gemma-family (custom terms) — confirm on each model card before commercial deployment.
 3. **Tokenizer behavior on mixed alnum.** Verify how surfaces like `한전KDN` or `5G특화망` tokenize, and how easily a char/Jamo boundary head (§19.3) can be attached.
-4. **ONNX exportability** per §34 (all candidates above use standard architectures, so this is generally unproblematic).
+4. **ONNX exportability** per §34 must be verified per checkpoint: tokenizer behavior, input/output shapes, precision parity and runtime operators. KURE-v2 additionally requires token masking and MaxSim; the existing single-logit `OnnxCrossEncoder` does not implement that model. A model card is not evidence of compatibility with KTRF's ONNX interface.
 
 **Final recommendation:** Start with **KLUE-RoBERTa-base** as the V3 cross-encoder/termness base, **KURE-v1** for V2 bi-encoder initialization (multilingual-e5-base as the lightweight alternative), and **bge-reranker-v2-m3-ko** as the reranker comparison baseline — and drop KoBERT from consideration.
