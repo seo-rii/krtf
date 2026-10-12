@@ -35,12 +35,23 @@
     "quality_claim": false
   },
   "model_comparison": {
-    "status": "RUNNING_AT_IMPLEMENTATION_HANDOFF",
+    "status": "COMPLETED",
     "pid": 1078483,
     "log": "/home/seorii/logs/ktrf-kure-comparison-20261013-002836.log",
     "exit_status": "/home/seorii/logs/ktrf-kure-comparison-20261013-002836.status",
     "scope": "constructed_fixed_candidate_CPU_smoke",
-    "deployment_quality_claim": false
+    "deployment_quality_claim": false,
+    "measured_exit_status": 0,
+    "report_paths": [
+      "reports/rerank_nano_smoke.json",
+      "reports/rerank_kure_v2_smoke.json",
+      "reports/KURE_COMPARISON.md"
+    ],
+    "report_sha256": {
+      "reports/rerank_nano_smoke.json": "4ae340bbd1678099547951b019f2f761ee5f0b3a2b3c18cb9d51f5c6fa6469f2",
+      "reports/rerank_kure_v2_smoke.json": "94684f2a13f0370782090f695ecfbc65d1f574007a5f3e82aa3a83216d30c4aa",
+      "reports/KURE_COMPARISON.md": "23a415374ced2a706248c8ddee4b4395efe5445dd0caf72db480da26b2f91468"
+    }
   },
   "remaining_evidence": [
     "independently_annotated_real_documents",

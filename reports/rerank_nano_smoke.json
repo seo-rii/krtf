@@ -1,0 +1,1272 @@
+{
+  "schema_version": 1,
+  "task": "fixed_candidate_rerank_ablation",
+  "measured_at": "2026-10-12T15:32:01.483334+00:00",
+  "cases_sha256": "d59adf9c8bc5d94289112e3aaf1baa5dbc54bf2afebace9eb66b5ae982d65e93",
+  "source_kind": [
+    "synthetic_review_smoke"
+  ],
+  "scorer_id": "local-hf:KURE-Reranker-nano",
+  "backend": "scalar",
+  "model_sha256": "139bfeeeb05e6d36886461102645b7e987ff6ac042b935faf45cbde4bf5622f9",
+  "model_id": "nlpai-lab/KURE-Reranker-nano",
+  "model_revision": "f3b3eff2b5251f135b638891ebe7d6c5ae94cc3e",
+  "packages": {
+    "torch": "2.11.0",
+    "transformers": "5.3.0",
+    "pylate": "1.6.0",
+    "onnxruntime": null,
+    "tokenizers": "0.22.2"
+  },
+  "device": "cpu",
+  "python": "3.12.14",
+  "platform": "Linux-6.1.0-53-cloud-amd64-x86_64-with-glibc2.36",
+  "machine": "x86_64",
+  "omp_threads": "4",
+  "mkl_threads": "4",
+  "peak_rss_kib": 1306620,
+  "pair_budget_per_case": 8,
+  "batch_size": 1,
+  "max_length": 192,
+  "maxsim_query_length": null,
+  "maxsim_document_length": null,
+  "context_radius": 60,
+  "repeats": 1,
+  "coverage_valid": false,
+  "calibration_status": "INSUFFICIENT_DATA",
+  "limitations": [
+    "Relevance scores are not probabilities; no automatic commits are issued.",
+    "Ranking gains do not establish fixed-risk commit-rate gains.",
+    "Synthetic smoke data does not measure independent document quality.",
+    "Tokenization, scoring and transfer are timed; retrieval is excluded."
+  ],
+  "variants": {
+    "surface": {
+      "resolvable_cases": 9,
+      "exact_link_top1": 0.3333333333333333,
+      "family_macro_top1": 0.3333333333333333,
+      "candidate_exact_link_recall": 1.0,
+      "mean_candidate_count": 2,
+      "batch1_pair_p50_ms": 4597.642246999385,
+      "batch1_pair_p95_ms": 6959.4857480005885,
+      "batch1_pair_p99_ms": 8150.753609999811,
+      "measured_pair_calls": 24,
+      "cases": [
+        {
+          "case_id": "same_alias_billing",
+          "document_id": "synthetic:same_alias_billing",
+          "family_id": "same_alias",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "BILLING",
+            "core_span": [
+              0,
+              3
+            ],
+            "full_identity": "SAME",
+            "score": -5.827799320220947,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.5413141250610352,
+          "deterministic": true
+        },
+        {
+          "case_id": "same_alias_access",
+          "document_id": "synthetic:same_alias_access",
+          "family_id": "same_alias",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "BILLING",
+            "core_span": [
+              0,
+              3
+            ],
+            "full_identity": "SAME",
+            "score": -5.827799320220947,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.5413141250610352,
+          "deterministic": true
+        },
+        {
+          "case_id": "same_alias_ambiguous",
+          "document_id": "synthetic:same_alias_ambiguous",
+          "family_id": "same_alias",
+          "ambiguity": "ambiguous",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "BILLING",
+            "core_span": [
+              0,
+              3
+            ],
+            "full_identity": "SAME",
+            "score": -5.827799320220947,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.5413141250610352,
+          "deterministic": true
+        },
+        {
+          "case_id": "two_targets_billing",
+          "document_id": "synthetic:two_targets_document",
+          "family_id": "multiple_targets",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "BILLING",
+            "core_span": [
+              0,
+              3
+            ],
+            "full_identity": "SAME",
+            "score": -5.827799320220947,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.5413141250610352,
+          "deterministic": true
+        },
+        {
+          "case_id": "two_targets_access",
+          "document_id": "synthetic:two_targets_document",
+          "family_id": "multiple_targets",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "BILLING",
+            "core_span": [
+              18,
+              21
+            ],
+            "full_identity": "SAME",
+            "score": -5.827799320220947,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.5413141250610352,
+          "deterministic": true
+        },
+        {
+          "case_id": "near_vowel",
+          "document_id": "synthetic:near_vowel",
+          "family_id": "near_vowel",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "STRATEGY",
+            "core_span": [
+              0,
+              4
+            ],
+            "full_identity": "SAME",
+            "score": -6.064497947692871,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.8980512619018555,
+          "deterministic": true
+        },
+        {
+          "case_id": "parent_child",
+          "document_id": "synthetic:parent_child",
+          "family_id": "parent_child",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "KDN",
+            "core_span": [
+              0,
+              5
+            ],
+            "full_identity": "SAME",
+            "score": -6.669876575469971,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.5928611755371094,
+          "deterministic": true
+        },
+        {
+          "case_id": "org_vs_person",
+          "document_id": "synthetic:org_vs_person",
+          "family_id": "org_person",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "FSS",
+            "core_span": [
+              0,
+              4
+            ],
+            "full_identity": "SAME",
+            "score": -6.586852073669434,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.008946418762207031,
+          "deterministic": true
+        },
+        {
+          "case_id": "ordinary_overlap",
+          "document_id": "synthetic:ordinary_overlap",
+          "family_id": "ordinary_word",
+          "ambiguity": "nil",
+          "gold_in_shortlist": false,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "FSS",
+            "core_span": [
+              0,
+              4
+            ],
+            "full_identity": "SAME",
+            "score": -5.463926792144775,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.9179153442382812,
+          "deterministic": true
+        },
+        {
+          "case_id": "particle_paths",
+          "document_id": "synthetic:particle_paths",
+          "family_id": "segmentation",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "LABOR",
+            "core_span": [
+              0,
+              2
+            ],
+            "full_identity": "DISTINCT",
+            "score": -7.154854774475098,
+            "guard_allowed": false,
+            "guard_reasons": [
+              "typed_derivative",
+              "inferred_tail"
+            ]
+          },
+          "score_margin": 0.20863723754882812,
+          "deterministic": true
+        },
+        {
+          "case_id": "role_path_guard",
+          "document_id": "synthetic:role_path_guard",
+          "family_id": "org_person",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "FSS",
+            "core_span": [
+              0,
+              3
+            ],
+            "full_identity": "DISTINCT",
+            "score": -6.353143215179443,
+            "guard_allowed": false,
+            "guard_reasons": [
+              "typed_derivative",
+              "inferred_tail"
+            ]
+          },
+          "score_margin": 0.4011974334716797,
+          "deterministic": true
+        },
+        {
+          "case_id": "true_ambiguity_two_orgs",
+          "document_id": "synthetic:true_ambiguity_two_orgs",
+          "family_id": "near_vowel",
+          "ambiguity": "ambiguous",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "STRATEGY",
+            "core_span": [
+              21,
+              23
+            ],
+            "full_identity": "SAME",
+            "score": -5.957067489624023,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.6914491653442383,
+          "deterministic": true
+        }
+      ]
+    },
+    "context": {
+      "resolvable_cases": 9,
+      "exact_link_top1": 0.6666666666666666,
+      "family_macro_top1": 0.6666666666666666,
+      "candidate_exact_link_recall": 1.0,
+      "mean_candidate_count": 2,
+      "batch1_pair_p50_ms": 261.10978799988516,
+      "batch1_pair_p95_ms": 4794.619963000514,
+      "batch1_pair_p99_ms": 5003.898025999661,
+      "measured_pair_calls": 24,
+      "cases": [
+        {
+          "case_id": "same_alias_billing",
+          "document_id": "synthetic:same_alias_billing",
+          "family_id": "same_alias",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "BILLING",
+            "core_span": [
+              0,
+              3
+            ],
+            "full_identity": "SAME",
+            "score": -8.1109037399292,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.3127250671386719,
+          "deterministic": true
+        },
+        {
+          "case_id": "same_alias_access",
+          "document_id": "synthetic:same_alias_access",
+          "family_id": "same_alias",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "BILLING",
+            "core_span": [
+              0,
+              3
+            ],
+            "full_identity": "SAME",
+            "score": -7.015538692474365,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 1.1440434455871582,
+          "deterministic": true
+        },
+        {
+          "case_id": "same_alias_ambiguous",
+          "document_id": "synthetic:same_alias_ambiguous",
+          "family_id": "same_alias",
+          "ambiguity": "ambiguous",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "BILLING",
+            "core_span": [
+              0,
+              3
+            ],
+            "full_identity": "SAME",
+            "score": -7.713928699493408,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.10608434677124023,
+          "deterministic": true
+        },
+        {
+          "case_id": "two_targets_billing",
+          "document_id": "synthetic:two_targets_document",
+          "family_id": "multiple_targets",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "ACCESS",
+            "core_span": [
+              0,
+              3
+            ],
+            "full_identity": "SAME",
+            "score": -7.849371433258057,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.13696050643920898,
+          "deterministic": true
+        },
+        {
+          "case_id": "two_targets_access",
+          "document_id": "synthetic:two_targets_document",
+          "family_id": "multiple_targets",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "ACCESS",
+            "core_span": [
+              18,
+              21
+            ],
+            "full_identity": "SAME",
+            "score": -7.849371433258057,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.13696050643920898,
+          "deterministic": true
+        },
+        {
+          "case_id": "near_vowel",
+          "document_id": "synthetic:near_vowel",
+          "family_id": "near_vowel",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "KEPCO",
+            "core_span": [
+              0,
+              4
+            ],
+            "full_identity": "SAME",
+            "score": -6.240431785583496,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 1.52232027053833,
+          "deterministic": true
+        },
+        {
+          "case_id": "parent_child",
+          "document_id": "synthetic:parent_child",
+          "family_id": "parent_child",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "KDN",
+            "core_span": [
+              0,
+              5
+            ],
+            "full_identity": "SAME",
+            "score": -7.623289585113525,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.5542302131652832,
+          "deterministic": true
+        },
+        {
+          "case_id": "org_vs_person",
+          "document_id": "synthetic:org_vs_person",
+          "family_id": "org_person",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "FSS_CHIEF",
+            "core_span": [
+              0,
+              4
+            ],
+            "full_identity": "SAME",
+            "score": -7.496296405792236,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.4959383010864258,
+          "deterministic": true
+        },
+        {
+          "case_id": "ordinary_overlap",
+          "document_id": "synthetic:ordinary_overlap",
+          "family_id": "ordinary_word",
+          "ambiguity": "nil",
+          "gold_in_shortlist": false,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "FSC",
+            "core_span": [
+              0,
+              4
+            ],
+            "full_identity": "SAME",
+            "score": -7.184383869171143,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.43915414810180664,
+          "deterministic": true
+        },
+        {
+          "case_id": "particle_paths",
+          "document_id": "synthetic:particle_paths",
+          "family_id": "segmentation",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "LABOR",
+            "core_span": [
+              0,
+              2
+            ],
+            "full_identity": "DISTINCT",
+            "score": -8.412203788757324,
+            "guard_allowed": false,
+            "guard_reasons": [
+              "typed_derivative",
+              "inferred_tail"
+            ]
+          },
+          "score_margin": 0.1935291290283203,
+          "deterministic": true
+        },
+        {
+          "case_id": "role_path_guard",
+          "document_id": "synthetic:role_path_guard",
+          "family_id": "org_person",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "FSS_CHIEF",
+            "core_span": [
+              0,
+              4
+            ],
+            "full_identity": "SAME",
+            "score": -7.107419967651367,
+            "guard_allowed": true,
+            "guard_reasons": [
+              "inferred_tail"
+            ]
+          },
+          "score_margin": 0.8471102714538574,
+          "deterministic": true
+        },
+        {
+          "case_id": "true_ambiguity_two_orgs",
+          "document_id": "synthetic:true_ambiguity_two_orgs",
+          "family_id": "near_vowel",
+          "ambiguity": "ambiguous",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "KEPCO",
+            "core_span": [
+              21,
+              23
+            ],
+            "full_identity": "SAME",
+            "score": -6.846506595611572,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.44306278228759766,
+          "deterministic": true
+        }
+      ]
+    },
+    "target": {
+      "resolvable_cases": 9,
+      "exact_link_top1": 0.4444444444444444,
+      "family_macro_top1": 0.4166666666666667,
+      "candidate_exact_link_recall": 1.0,
+      "mean_candidate_count": 2,
+      "batch1_pair_p50_ms": 203.23950799865997,
+      "batch1_pair_p95_ms": 495.9766319989285,
+      "batch1_pair_p99_ms": 630.0411310003255,
+      "measured_pair_calls": 24,
+      "cases": [
+        {
+          "case_id": "same_alias_billing",
+          "document_id": "synthetic:same_alias_billing",
+          "family_id": "same_alias",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "ACCESS",
+            "core_span": [
+              0,
+              3
+            ],
+            "full_identity": "SAME",
+            "score": -7.298417568206787,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.057332515716552734,
+          "deterministic": true
+        },
+        {
+          "case_id": "same_alias_access",
+          "document_id": "synthetic:same_alias_access",
+          "family_id": "same_alias",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "BILLING",
+            "core_span": [
+              0,
+              3
+            ],
+            "full_identity": "SAME",
+            "score": -7.090116500854492,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.6985664367675781,
+          "deterministic": true
+        },
+        {
+          "case_id": "same_alias_ambiguous",
+          "document_id": "synthetic:same_alias_ambiguous",
+          "family_id": "same_alias",
+          "ambiguity": "ambiguous",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "BILLING",
+            "core_span": [
+              0,
+              3
+            ],
+            "full_identity": "SAME",
+            "score": -7.081852436065674,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.1934037208557129,
+          "deterministic": true
+        },
+        {
+          "case_id": "two_targets_billing",
+          "document_id": "synthetic:two_targets_document",
+          "family_id": "multiple_targets",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "BILLING",
+            "core_span": [
+              0,
+              3
+            ],
+            "full_identity": "SAME",
+            "score": -7.4089579582214355,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.4715099334716797,
+          "deterministic": true
+        },
+        {
+          "case_id": "two_targets_access",
+          "document_id": "synthetic:two_targets_document",
+          "family_id": "multiple_targets",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "ACCESS",
+            "core_span": [
+              18,
+              21
+            ],
+            "full_identity": "SAME",
+            "score": -7.632035255432129,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.1938190460205078,
+          "deterministic": true
+        },
+        {
+          "case_id": "near_vowel",
+          "document_id": "synthetic:near_vowel",
+          "family_id": "near_vowel",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "STRATEGY",
+            "core_span": [
+              0,
+              4
+            ],
+            "full_identity": "SAME",
+            "score": -7.193534851074219,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.18778562545776367,
+          "deterministic": true
+        },
+        {
+          "case_id": "parent_child",
+          "document_id": "synthetic:parent_child",
+          "family_id": "parent_child",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "KDN",
+            "core_span": [
+              0,
+              5
+            ],
+            "full_identity": "SAME",
+            "score": -7.4254374504089355,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.3840360641479492,
+          "deterministic": true
+        },
+        {
+          "case_id": "org_vs_person",
+          "document_id": "synthetic:org_vs_person",
+          "family_id": "org_person",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "FSS_CHIEF",
+            "core_span": [
+              0,
+              4
+            ],
+            "full_identity": "SAME",
+            "score": -6.918069839477539,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.47197437286376953,
+          "deterministic": true
+        },
+        {
+          "case_id": "ordinary_overlap",
+          "document_id": "synthetic:ordinary_overlap",
+          "family_id": "ordinary_word",
+          "ambiguity": "nil",
+          "gold_in_shortlist": false,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "FSS",
+            "core_span": [
+              0,
+              4
+            ],
+            "full_identity": "SAME",
+            "score": -7.522552490234375,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.06509971618652344,
+          "deterministic": true
+        },
+        {
+          "case_id": "particle_paths",
+          "document_id": "synthetic:particle_paths",
+          "family_id": "segmentation",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "LABOR",
+            "core_span": [
+              0,
+              2
+            ],
+            "full_identity": "DISTINCT",
+            "score": -7.955089092254639,
+            "guard_allowed": false,
+            "guard_reasons": [
+              "typed_derivative",
+              "inferred_tail"
+            ]
+          },
+          "score_margin": 0.016584396362304688,
+          "deterministic": true
+        },
+        {
+          "case_id": "role_path_guard",
+          "document_id": "synthetic:role_path_guard",
+          "family_id": "org_person",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "FSS",
+            "core_span": [
+              0,
+              3
+            ],
+            "full_identity": "DISTINCT",
+            "score": -6.793996810913086,
+            "guard_allowed": false,
+            "guard_reasons": [
+              "typed_derivative",
+              "inferred_tail"
+            ]
+          },
+          "score_margin": 0.03234052658081055,
+          "deterministic": true
+        },
+        {
+          "case_id": "true_ambiguity_two_orgs",
+          "document_id": "synthetic:true_ambiguity_two_orgs",
+          "family_id": "near_vowel",
+          "ambiguity": "ambiguous",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "KEPCO",
+            "core_span": [
+              21,
+              23
+            ],
+            "full_identity": "SAME",
+            "score": -7.095446586608887,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.16544437408447266,
+          "deterministic": true
+        }
+      ]
+    },
+    "path": {
+      "resolvable_cases": 9,
+      "exact_link_top1": 0.3333333333333333,
+      "family_macro_top1": 0.3333333333333333,
+      "candidate_exact_link_recall": 1.0,
+      "mean_candidate_count": 2,
+      "batch1_pair_p50_ms": 331.4379290004581,
+      "batch1_pair_p95_ms": 568.1396820000373,
+      "batch1_pair_p99_ms": 582.4977590000344,
+      "measured_pair_calls": 24,
+      "cases": [
+        {
+          "case_id": "same_alias_billing",
+          "document_id": "synthetic:same_alias_billing",
+          "family_id": "same_alias",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "ACCESS",
+            "core_span": [
+              0,
+              3
+            ],
+            "full_identity": "SAME",
+            "score": -8.086396217346191,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.33403491973876953,
+          "deterministic": true
+        },
+        {
+          "case_id": "same_alias_access",
+          "document_id": "synthetic:same_alias_access",
+          "family_id": "same_alias",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "BILLING",
+            "core_span": [
+              0,
+              3
+            ],
+            "full_identity": "SAME",
+            "score": -7.932427406311035,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.5295438766479492,
+          "deterministic": true
+        },
+        {
+          "case_id": "same_alias_ambiguous",
+          "document_id": "synthetic:same_alias_ambiguous",
+          "family_id": "same_alias",
+          "ambiguity": "ambiguous",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "BILLING",
+            "core_span": [
+              0,
+              3
+            ],
+            "full_identity": "SAME",
+            "score": -7.895304203033447,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.12011098861694336,
+          "deterministic": true
+        },
+        {
+          "case_id": "two_targets_billing",
+          "document_id": "synthetic:two_targets_document",
+          "family_id": "multiple_targets",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "BILLING",
+            "core_span": [
+              0,
+              3
+            ],
+            "full_identity": "SAME",
+            "score": -7.998022556304932,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.25561094284057617,
+          "deterministic": true
+        },
+        {
+          "case_id": "two_targets_access",
+          "document_id": "synthetic:two_targets_document",
+          "family_id": "multiple_targets",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "BILLING",
+            "core_span": [
+              18,
+              21
+            ],
+            "full_identity": "SAME",
+            "score": -7.926494598388672,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.2147359848022461,
+          "deterministic": true
+        },
+        {
+          "case_id": "near_vowel",
+          "document_id": "synthetic:near_vowel",
+          "family_id": "near_vowel",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "STRATEGY",
+            "core_span": [
+              0,
+              4
+            ],
+            "full_identity": "SAME",
+            "score": -8.319096565246582,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.19529056549072266,
+          "deterministic": true
+        },
+        {
+          "case_id": "parent_child",
+          "document_id": "synthetic:parent_child",
+          "family_id": "parent_child",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "KDN",
+            "core_span": [
+              0,
+              5
+            ],
+            "full_identity": "SAME",
+            "score": -8.456766128540039,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.034079551696777344,
+          "deterministic": true
+        },
+        {
+          "case_id": "org_vs_person",
+          "document_id": "synthetic:org_vs_person",
+          "family_id": "org_person",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "FSS_CHIEF",
+            "core_span": [
+              0,
+              4
+            ],
+            "full_identity": "SAME",
+            "score": -7.938923358917236,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.2244858741760254,
+          "deterministic": true
+        },
+        {
+          "case_id": "ordinary_overlap",
+          "document_id": "synthetic:ordinary_overlap",
+          "family_id": "ordinary_word",
+          "ambiguity": "nil",
+          "gold_in_shortlist": false,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "FSC",
+            "core_span": [
+              0,
+              4
+            ],
+            "full_identity": "SAME",
+            "score": -8.282837867736816,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.05351066589355469,
+          "deterministic": true
+        },
+        {
+          "case_id": "particle_paths",
+          "document_id": "synthetic:particle_paths",
+          "family_id": "segmentation",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "LABOR",
+            "core_span": [
+              0,
+              2
+            ],
+            "full_identity": "DISTINCT",
+            "score": -7.8567795753479,
+            "guard_allowed": false,
+            "guard_reasons": [
+              "typed_derivative",
+              "inferred_tail"
+            ]
+          },
+          "score_margin": 0.2909417152404785,
+          "deterministic": true
+        },
+        {
+          "case_id": "role_path_guard",
+          "document_id": "synthetic:role_path_guard",
+          "family_id": "org_person",
+          "ambiguity": "resolvable",
+          "gold_in_shortlist": true,
+          "top1_exact_link": false,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "FSS",
+            "core_span": [
+              0,
+              3
+            ],
+            "full_identity": "DISTINCT",
+            "score": -7.814354419708252,
+            "guard_allowed": false,
+            "guard_reasons": [
+              "typed_derivative",
+              "inferred_tail"
+            ]
+          },
+          "score_margin": 0.26540136337280273,
+          "deterministic": true
+        },
+        {
+          "case_id": "true_ambiguity_two_orgs",
+          "document_id": "synthetic:true_ambiguity_two_orgs",
+          "family_id": "near_vowel",
+          "ambiguity": "ambiguous",
+          "gold_in_shortlist": true,
+          "top1_exact_link": true,
+          "candidate_count": 2,
+          "total_candidate_count": 2,
+          "truncated": false,
+          "top1": {
+            "entity_id": "KEPCO",
+            "core_span": [
+              21,
+              23
+            ],
+            "full_identity": "SAME",
+            "score": -7.810655117034912,
+            "guard_allowed": true,
+            "guard_reasons": []
+          },
+          "score_margin": 0.22971773147583008,
+          "deterministic": true
+        }
+      ]
+    }
+  }
+}
