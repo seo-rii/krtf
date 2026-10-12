@@ -1,11 +1,12 @@
 # KTRF — Korean Terminology Resolver Framework
 
-KTRF detects mentions of organization and domain terminology in Korean text
-and links them to glossary entities — deterministically where the surface
-form is known, statistically where it is not, and conservatively everywhere:
-candidates are generated broadly, but a resolver **commit** happens only when
-the evidence clears explicit thresholds. Anything less is returned as a
-calibrated prediction set, never a guess.
+KTRF interprets Korean morphological variants and derived meanings against a
+user glossary, then safely links or defers terminology mentions. It separates
+the entity named by a core span from what the full expression denotes.
+Candidates are generated broadly; a resolver **commit** requires explicit
+evidence and semantic guards. Uncertain links remain candidate sets with an
+explicit heuristic or fitted calibration status, rather than an implied
+coverage guarantee.
 
 ```python
 from ktrf import load_glossary, compile_snapshot, resolve
@@ -127,6 +128,14 @@ conformance record.
 
 ## Adaptation without retraining
 
+Fitting partitions complete source events, and refuses insufficient independent
+data. Approved corrections provide selected training signals, not a random
+coverage audit. Heuristic responses have `set_confidence=null`; use
+`calibration_status`, `coverage_scope`, `coverage_valid`, and
+`target_set_confidence` to interpret prediction sets. Output budgets never
+change commit decisions. See [calibration safety](docs/CALIBRATION_SAFETY.md).
+
+
 Approved corrections fit a per-tenant calibrator (Platt-scaled marginals +
 group-conditional split conformal sets, with fit and quantile data kept
 disjoint) and optionally a learned fusion model:
@@ -165,7 +174,7 @@ prepared = prepare_llm_context(
 
 prompt = prepared.policy_fragment + "\n" + prepared.prompt_fragment
 # ... call your LLM, then gate structured output before automation:
-check = validate_llm_grounding(llm_output, prepared.context_pack)
+check = validate_llm_grounding(llm_output, prepared.context_pack, purpose="execution")
 ```
 
 The builder keeps RESOLVED facts, AMBIGUOUS candidate sets,
@@ -230,6 +239,14 @@ response so a host that loses terminology never loses the user's request.
 threshold it failed to clear.
 
 ## Evaluation
+
+The October review adds [blind document gold](docs/BLIND_DOCUMENT_GOLD.md),
+[controlled reranker inputs](docs/RERANK_EXPERIMENTS.md), and
+[context policy/format and glossary-swap trials](docs/PRODUCT_UTILITY.md).
+Blind gold requires two independent human annotations; executable tooling and
+synthetic contract tests are not a substitute for that evidence. Earlier silver
+and output-selected human reports retain their original sampling limitations.
+
 
 KTRF is evaluated in layers, each targeting a failure mode the previous
 layer cannot see. All reports are regenerated from code — the files under
@@ -337,8 +354,9 @@ implemented here. Known limitations are tracked honestly in
 [docs/ROADMAP.md](docs/ROADMAP.md) — including current statistical limits of
 the evaluation (silver labels are rule-derived approximations, not human
 gold; sample sizes gate how tight the CI floors can be) and deferred
-operational hardening (latency SLO gates, deep snapshot immutability,
-concurrency load tests).
+operational hardening (latency SLO gates and concurrency load tests).
+Compiled policy, glossary, guard, calibrator and manifest are deeply sealed;
+native backend sessions and caches live in a separate runtime holder.
 
 Reports carry the commit they were measured at. Where a report has not been
 regenerated since a resolver change, it says so at the top rather than

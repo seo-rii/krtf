@@ -1,0 +1,64 @@
+{
+  "status": "IMPLEMENTED_WITH_EXTERNAL_VALIDATION_PENDING",
+  "review_baseline": "cb953cd",
+  "implemented": [
+    "output_budget_invariant_decisions",
+    "source_group_split_calibration",
+    "explicit_coverage_status",
+    "deep_snapshot_config_immutability",
+    "blind_document_provenance_annotation_and_sealed_eval",
+    "fixed_risk_threshold_bounds",
+    "controlled_target_path_reranking",
+    "context_intervention_and_glossary_swap"
+  ],
+  "validation": {
+    "suite_log": "/home/seorii/logs/ktrf-review-final-rIEp9d.log",
+    "suite_status": "/home/seorii/logs/ktrf-review-final-rIEp9d.status",
+    "suite_exit_code": 0,
+    "wheel_log": "/home/seorii/logs/ktrf-review-wheel-AyQIOH.log",
+    "wheel_status": "/home/seorii/logs/ktrf-review-wheel-AyQIOH.status",
+    "wheel_exit_code": 0,
+    "wheel_modules_imported": 38,
+    "contract_scope_checks": 8,
+    "product_requests_prepared": 126,
+    "suite_passed": 490,
+    "suite_seconds": 21.23
+  },
+  "independent_document_gold": {
+    "status": "AWAITING_TWO_BLIND_ANNOTATORS",
+    "packet_root": "eval/data/blind_review_20261013",
+    "documents_per_source": 20,
+    "sources": [
+      "konec",
+      "koneobench"
+    ],
+    "quality_claim": false
+  },
+  "model_comparison": {
+    "status": "RUNNING_AT_IMPLEMENTATION_HANDOFF",
+    "pid": 1078483,
+    "log": "/home/seorii/logs/ktrf-kure-comparison-20261013-002836.log",
+    "exit_status": "/home/seorii/logs/ktrf-kure-comparison-20261013-002836.status",
+    "scope": "constructed_fixed_candidate_CPU_smoke",
+    "deployment_quality_claim": false
+  },
+  "remaining_evidence": [
+    "independently_annotated_real_documents",
+    "representative_random_audit_calibration_and_risk",
+    "ONNX_export_inference_parity",
+    "real_LLM_factorial_and_human_task_cost_trial"
+  ],
+  "source_sha256": {
+    "ktrf/resolver.py": "f9771ad4670cca29524a9f5977375c48886d95d32ee8376bb0cd59cb4f4ac6fa",
+    "ktrf/calibration.py": "05fcdaee6d3a8a9099e8312e0dd6da1ae39df8af2bea7c4efadfdd27d65ec45c",
+    "ktrf/artifacts.py": "4a7ff7ef7113ccedd7dec93d1c4656d838fa6fc0eff64f3707303a7cec88ce42",
+    "ktrf/snapshot.py": "2d082582d30939d537a9b4ce750752db8cb27de219b3e0ae1505a81b0a7df572",
+    "ktrf/context.py": "cd01406cbf02354c22c4a5625706f39aa7266f0b3c8358d6830a095924fb9166",
+    "ktrf/rerank.py": "7f325fea5e0af462eafc813c17f4b68ce54ced773a33df68465e31b99b643dc4",
+    "eval/blind_gold.py": "c7642008b5fd20ff580712f1a50bb047225822647787f1c95f13e8add49595d6",
+    "eval/external_gold.py": "fd5b6f7c9060886d09b5ae8b4d0d225598ba43806bcbdee0face50a2358953d5",
+    "eval/fixed_risk.py": "53a38993e7449027836e8eaccd29e91c022da1440de245741fd8cdc8b748432e",
+    "eval/product_utility.py": "510c98958140d31df4ad658c24071a4156d14ac1a278051e7f4c165c31d9cebb",
+    "eval/run_rerank_ablation.py": "a47968942a0c6357f81215aa900dd18f376df68aa2fa45bb4bc9ee0bfd85cd25"
+  }
+}

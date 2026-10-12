@@ -1,6 +1,6 @@
 # KTRF Roadmap & Status
 
-**기준일:** 2026-08-30 · **스펙:** PLAN.md v0.3 · 본 문서는 계획/현황 문서이며 규범이 아니다.
+**기준일:** 2026-10-13 · **스펙:** PLAN.md v0.3 · 본 문서는 계획/현황 문서이며 규범이 아니다.
 수치의 단일 출처는 `reports/`의 생성 리포트다 — 본 문서와 리포트가 어긋나면 리포트가 맞다.
 
 ## 문서 지도
@@ -137,13 +137,13 @@ M1 작업 중 드러난 세 가지는 resolver가 아니라 **평가 쪽 결함*
 0. `WILD_CORPUS.md` 전체 재생성 (114,605문장 ×6 pass ≈ 6시간). 현재는
    20,000문장 표본 쌍 비교(`eval.run_wild_regression`)로 대체했고
    리포트 상단에 경고를 붙였다
-1. snapshot 중첩 구조의 깊은 불변화 (frozen dataclass / read-only mapping)
+1. snapshot 중첩 구조의 깊은 불변화 — 2026-10-13 구현, backend/cache는 별도 runtime
 2. human-gold 평가셋: 문서 단위 exhaustive annotation, 2인 주석 + adjudication,
    slice당 n≥200 — silver 근사와 분리 보고
 3. latency/memory hard gate (p95/p99, 문서 크기·entity 규모별 SLO), 동시성·
    hot-swap·rollback 부하 테스트
-4. 평가 데이터/모델 버전 고정 (dataset revision·corpus SHA-256·모델 digest를
-   리포트 manifest에 기록), cluster-aware CI (문서/entity 단위 bootstrap)
+4. 평가 데이터/모델 버전 고정 — 신규 blind/rerank manifest 도구 구현;
+   실제 주석 확보 후 문서/entity 단위 bootstrap 및 독립 위험 검증 실행 필요
 5. 원격 배포 시 manifest 서명, 1-byte tamper sweep의 hard-gate 편입
 
 ## LLM Grounding — Terminology Context Pack (`ktrf/context.py`)
@@ -308,11 +308,30 @@ KTRF를 Pi Coding Agent의 terminology grounding 레이어로 배포하는 계�
 - 테스트 36종(`tests/test_registry_and_sidecar.py`), 실제 서브프로세스
   왕복 테스트 포함 (총 254)
 
-## 다음 단계 (우선순위)
+## 리뷰 후 작업과 다음 검증 순서 (2026-10-13)
 
-1. **Level B 격차 해소**: 949질의 UE 평가에서 dense 91.8% < 목표 95% —
-   bi-encoder fine-tune(G2 Stage C) 또는 후보 확장 정책이 필요. 라벨 축적
-   (Correction API → ≥5k sense 라벨)이 선행 조건
-2. G2 본 학습: cross-encoder(KLUE-RoBERTa) → NEURAL_EVAL 재실행으로 LexicalCrossEncoder 대비 개선 검증
-3. M6: neural mention proposer (Level C, flag 유지)
-4. 프로덕션화: Rust core (REQ-MEM-001 mmap artifact), HTTP 계층, §53 기준 하드웨어 SLO 문서
+1. **확정 안전성**: 출력 축소 이전 전체 유효 후보의 경쟁·margin으로 판단한다.
+   원천 사건 단위 Platt/fusion–conformal 분리, 데이터 재사용 없는 부족 처리,
+   동일한 내부 sigmoid, 보정 상태·coverage 범위 표시를 구현했다.
+   [계약과 회귀 검사](CALIBRATION_SAFETY.md)를 기준으로 유지한다.
+2. **평가 기반**: 문서/row/revision/해시 보존, blind 2인 주석·이견 조정,
+   document/family 연결 split, 봉인된 test와 보고서 해시,
+   독립 감사 사건의 고정 위험 threshold 검증 도구를 추가했다.
+   [실행 절차](BLIND_DOCUMENT_GOLD.md)에 따라 실제 문서를 두 사람이 주석해야 한다.
+   기존 160건의 출력 기반 gold와 silver precision을 독립 E2E 정확도로 취급하지 않는다.
+3. **제한된 모델 비교**: surface/context/target/path 입력을 같은 shortlist로 비교한다.
+   여러 bounded 약칭 분해를 보존하고, 경로×entity 순위에서도 guard를 유지한다.
+   KURE-Reranker-nano와 token-MaxSim KURE-v2를 별도 후보로 추가했다.
+   [실험 프로토콜](RERANK_EXPERIMENTS.md)의 batch 1 지연·동일 후보 수·
+   독립 위험 검증을 충족하기 전 encoder 교체나 후보 확대를 우선하지 않는다.
+4. **제품 효용**: 같은 후보의 평문/구조화 × 지식 허용/근거 전용 개입을 비교하고,
+   사전 의미 교체·scope 격리·문서 QA·업무 ID 작성을 별도 측정한다.
+   [제품 평가 절차](PRODUCT_UTILITY.md)의 로컬 계약 검사와 실제 LLM/사람의
+   업무 성과를 분리한다. 지식 설명과 자동 실행의 검증 권한은 별도 계약이다.
+
+공통 운영 작업으로 compiled snapshot의 glossary/policy/guard/calibrator/manifest를
+깊게 불변화하고 변경 가능한 cache·backend를 runtime 객체로 분리했다.
+과거 보고서는 해당 측정 commit의 결과이며 이번 변경으로 재측정된 수치가 아니다.
+아직 필요한 증거는 독립 실제 문서 gold, 같은 오류 상한에서의 확정률 개선,
+그리고 LLM/사람 업무 비용의 감소다. 대형 모델 도입·전면 Rust 재작성은
+이 증거와 병목 측정 이후의 과제로 유지한다.
