@@ -59,6 +59,17 @@ ambiguous_mentions는 가능한 후보이며 확정된 사실이 아니다.
 complete=false이면 이 context가 문서의 모든 용어를 포함한다고 가정하지 않는다.
 </terminology_policy>"""
 
+# Knowledge may support an answer without authorizing an entity selection.
+KNOWLEDGE_ASSISTANCE_POLICY = TERMINOLOGY_POLICY + """
+일반 지식으로 설명할 수 있지만 glossary가 확정하지 않은 연결은 검증된
+연결로 표시하지 않는다. 후보와 일반 지식은 실행 권한을 부여하지 않는다.
+"""
+EXECUTION_POLICY = TERMINOLOGY_POLICY + """
+자동 실행·치환·구조화 필드에는 해당 surface에 대해 resolved_terms에서
+검증된 entity_id만 사용한다. 후보 또는 일반 지식으로 ID를 선택하지 않는다.
+검증된 연결이 없으면 null을 반환하고 질문하거나 검토를 요청한다.
+"""
+
 _MAX_FIELD_CHARS = 2000  # ingestion hard cap for any single string field
 _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
@@ -98,8 +109,11 @@ class ContextPolicy:
     allow_degraded_resolved: bool = False
     classification_clearance: str = "internal"
     version: str = "ctxpol-1"
+    answer_policy: str = "evidence_only"
 
     def __post_init__(self):
+        if self.answer_policy not in ("knowledge", "evidence_only"):
+            raise KtrfApiError("INVALID_REQUEST", "unknown answer policy")
         if self.profile not in PROFILES:
             raise KtrfApiError("INVALID_REQUEST",
                                f"unknown context profile {self.profile!r}",
@@ -312,10 +326,13 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
                 **_mention_ref(m),
                 "candidates": cands,
                 "set_confidence": pset.get("set_confidence"),
+                "calibration_status": pset.get("calibration_status", "HEURISTIC"),
+                "coverage_scope": pset.get("coverage_scope", "candidate_conditional"),
+                "coverage_valid": pset.get("coverage_valid", False),
                 # a truncated conformal set no longer carries its coverage
                 # guarantee — surface that instead of hiding it
                 "set_valid": not pset.get("truncated", False)
-                and pset.get("coverage_valid", True) is not False,
+                and pset.get("coverage_valid", False) is True,
                 "calibration_fallback":
                     bool(pset.get("calibration_fallback")),
                 "was_degraded_resolved": bool(link == "RESOLVED"),
@@ -324,7 +341,9 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
             })
 
         elif link == "KB_MISSING":
-            unknown.append({**_mention_ref(m), "reason": "KB_MISSING"})
+            unknown.append({**_mention_ref(m),
+                            "reason": "NO_COMPATIBLE_RETRIEVED_CANDIDATE",
+                            "kb_absence_verified": False})
         elif link == "UNCERTAIN":
             unknown.append({**_mention_ref(m), "reason": "UNCERTAIN"})
         # anything else (fast-mode shapes etc.) is ignored conservatively
@@ -382,6 +401,8 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
     pack = {
         "schema_version": SCHEMA_VERSION,
         "profile": policy.profile,
+        "answer_policy": ("evidence_only" if policy.profile == "automation"
+                          else policy.answer_policy),
         "policy_version": policy.version,
         "expose_entity_ids": policy.expose_entity_ids,
         "snapshot": dict(resolve_response.get("snapshot", {})),
@@ -687,18 +708,31 @@ def prepare_llm_context(snapshot: Snapshot, text: str,
     pack = build_context_pack(snapshot, resp, query=query,
                               policy=context_policy,
                               token_counter=token_counter, metrics=metrics)
-    return PreparedContext(resolve_response=resp, context_pack=pack,
-                           prompt_fragment=render_context_pack(pack, "xml"))
+    return PreparedContext(
+        resolve_response=resp, context_pack=pack,
+        prompt_fragment=render_context_pack(pack, "xml"),
+        policy_fragment=(EXECUTION_POLICY if pack["profile"] == "automation"
+                         else KNOWLEDGE_ASSISTANCE_POLICY
+                         if pack["answer_policy"] == "knowledge"
+                         else TERMINOLOGY_POLICY))
 
 
-def validate_llm_grounding(llm_output: dict, context_pack: dict) -> dict:
+def validate_llm_grounding(llm_output: dict, context_pack: dict, *,
+                           purpose: str = "grounding") -> dict:
     """Check a structured LLM grounding answer against its context pack.
 
     ``llm_output`` shape: ``{"selections": [{"surface": ..,
     "entity_id": ..}, ...]}``. Violations catch fabricated entity ids,
     out-of-candidate-set picks for ambiguous mentions, and silent overrides
     of RESOLVED facts. Not a full guarantee — a gate before downstream
-    automation consumes LLM output."""
+    automation consumes LLM output. ``purpose="execution"`` additionally
+    requires a resolved binding for the exact surface, and rejects degraded
+    facts. Candidate membership alone never grants execution authority.
+    An automation pack always applies that stricter contract.
+    Callers must authenticate the pack's tenant/snapshot separately."""
+    if purpose not in ("grounding", "execution"):
+        raise KtrfApiError("INVALID_REQUEST", "unknown grounding purpose")
+    execution = purpose == "execution" or context_pack.get("profile") == "automation"
     resolved_ids = {c["entity_id"] for c in context_pack["resolved_terms"]}
     amb_by_surface: dict[str, set] = {}
     for a in context_pack["ambiguous_mentions"]:
@@ -711,8 +745,21 @@ def validate_llm_grounding(llm_output: dict, context_pack: dict) -> dict:
 
     violations = []
     for sel in llm_output.get("selections", []):
+        if execution and (not isinstance(sel, dict) or "entity_id" not in sel):
+            violations.append({"kind": "malformed_selection"})
+            continue
         eid = sel.get("entity_id")
         surface = sel.get("surface", "")
+        # null is a deliberate abstention, never an executable selection.
+        if eid is None:
+            continue
+        if execution:
+            facts = [c for c in context_pack["resolved_terms"]
+                     if any(m["surface"] == surface for m in c["mentions"])
+                     and not c["resolution"].get("degraded")]
+            if {c["entity_id"] for c in facts} != {eid}:
+                violations.append({"kind": "unverified_execution",
+                                   "entity_id": eid, "surface": surface})
         if eid not in known:
             violations.append({"kind": "unknown_entity_id",
                                "entity_id": eid, "surface": surface})

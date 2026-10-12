@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "local_checks": {
+    "kind": "deterministic_contract_checks",
+    "checks": [
+      {
+        "world": "tenant-a",
+        "expected": "global:billing",
+        "resolved": [
+          "global:billing"
+        ],
+        "passed": true,
+        "snapshot_id": "snap-18838c3b92c34162eeffd13ce53fc6e1"
+      },
+      {
+        "world": "tenant-b",
+        "expected": "global:access",
+        "resolved": [
+          "global:access"
+        ],
+        "passed": true,
+        "snapshot_id": "snap-3fc76414456ca8f7648c313dc307825f"
+      },
+      {
+        "world": "project-a",
+        "expected": "project:project",
+        "resolved": [
+          "project:project"
+        ],
+        "passed": true,
+        "snapshot_id": "snap-595ead6f42f1dbb5fd3ed6a7e9c6e793"
+      },
+      {
+        "world": "session-a",
+        "expected": "session:session",
+        "resolved": [
+          "session:session"
+        ],
+        "passed": true,
+        "snapshot_id": "snap-e7e845b613d3914ec6be841a8f909a53"
+      },
+      {
+        "world": "untrusted-session",
+        "expected": "global:billing",
+        "resolved": [
+          "global:billing"
+        ],
+        "passed": true,
+        "snapshot_id": "snap-3700dd378c3cadf3200d6cb6826e25c1"
+      },
+      {
+        "world": "ambiguous",
+        "expected": null,
+        "resolved": [],
+        "passed": true,
+        "snapshot_id": "snap-16b55de35ed36214387b7c6d7d85ff6e"
+      },
+      {
+        "world": "missing",
+        "expected": null,
+        "resolved": [],
+        "passed": true,
+        "snapshot_id": "snap-50e2ba1202290ebc4f745af6482ccd64"
+      },
+      {
+        "world": "tenant-a",
+        "expected": "global:billing",
+        "resolved": [
+          "global:billing"
+        ],
+        "passed": true,
+        "snapshot_id": "snap-18838c3b92c34162eeffd13ce53fc6e1"
+      }
+    ],
+    "undeclared_override_rejected": true,
+    "passed": true,
+    "limitations": [
+      "Synthetic glossary; no LLM/human trial.",
+      "Separate snapshot isolation, not server authentication."
+    ]
+  },
+  "request_count": 126,
+  "cases": 14,
+  "conditions_per_case": 9,
+  "model_results": null,
+  "model_runtime": {
+    "endpoint": "http://localhost:11434",
+    "read_only_check": "/api/tags",
+    "status": "connection_refused"
+  },
+  "source_sha256": {
+    "ktrf/context.py": "cd01406cbf02354c22c4a5625706f39aa7266f0b3c8358d6830a095924fb9166",
+    "eval/product_utility.py": "510c98958140d31df4ad658c24071a4156d14ac1a278051e7f4c165c31d9cebb",
+    "tests/test_product_utility.py": "2037d4bd2d45ead3d439682fa36e3ce3d764fc8a4211ad4ecc53bb7f2cab301b",
+    "ktrf/resolver.py": "f9771ad4670cca29524a9f5977375c48886d95d32ee8376bb0cd59cb4f4ac6fa",
+    "ktrf/snapshot.py": "2d082582d30939d537a9b4ce750752db8cb27de219b3e0ae1505a81b0a7df572"
+  },
+  "measured_at": "2026-10-12T15:29:45.970760+00:00",
+  "requests_sha256": "8ca01386ce63ef72531de9101b420179d5ae465256c33d15b44b8877a95d6254"
+}
