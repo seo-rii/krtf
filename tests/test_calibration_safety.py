@@ -126,3 +126,14 @@ def test_insufficient_finetune_reports_status_and_keeps_snapshot(snap):
 
 def test_only_accepted_corrections_extract_training():
     assert derive_training_examples({'status': 'SUBMITTED'}) == []
+
+
+def test_audit_metadata_cannot_certify_correlated_mentions():
+    rows = [TrainingExample(.9 if y else .4, 'exact|multi', y,
+                            event_id=f'doc{i}-mention{j}', document_id=f'doc{i}',
+                            sample_source='random_audit')
+            for i in range(40) for j in range(2) for y in [1, 0]]
+    cal = fit_calibrator(rows)
+    assert cal.sample_source == 'random_audit'
+    assert not cal.partition_manifest['independent_calibration_units']
+    assert not cal.coverage_valid

@@ -162,7 +162,7 @@ class TunedCalibrator:
         # declares eligibility for candidate-conditional coverage; callers
         # must additionally validate group support and output truncation.
         return (self.sample_source == "random_audit"
-                and bool(self.partition_manifest)
+                and self.partition_manifest.get("independent_calibration_units") is True
                 and sum(self.group_counts.values()) >= math.ceil(1 / self.alpha) - 1)
 
     @property
@@ -263,6 +263,13 @@ def fit_calibrator(examples: list[TrainingExample], alpha: float = 0.05,
             "fit_event_ids": sorted({e.event_id or e.correction_id or e.request_id or e.document_id for e in fit_half}),
             "calibration_event_ids": sorted({e.event_id or e.correction_id or e.request_id or e.document_id for e in conf_half}),
             "fit_rows": len(fit_half), "calibration_positives": len(positives),
+            # Multiple labeled mentions in a document/request cannot be
+            # counted as independent conformal observations. Preserve their
+            # useful fit, but refuse a coverage claim until cluster-aware
+            # calibration or one random audited mention per unit is supplied.
+            "independent_calibration_units": len({
+                e.document_id or e.request_id or e.event_id or e.correction_id
+                for e in positives}) == len(positives),
         },
     )
 
