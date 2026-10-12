@@ -75,8 +75,11 @@ def _blocking_reason(mention: dict, policy) -> dict | None:
         return {"reason": "below_resolve_threshold",
                 "top_probability": top_p,
                 "threshold": policy.resolve_threshold}
-    margin = (top_p or 0) - (second_p or 0)
-    if len(members) > 1 and margin < policy.margin_threshold:
+    # Explain the original decision even when output serialization hides a
+    # competitor or conformal membership excludes it.
+    decision_margin = mention.get("prediction_set", {}).get("decision_margin")
+    margin = decision_margin if decision_margin is not None else (top_p or 0) - (second_p or 0)
+    if (decision_margin is not None or len(members) > 1) and margin < policy.margin_threshold:
         return {"reason": "insufficient_margin", "margin": round(margin, 4),
                 "threshold": policy.margin_threshold,
                 "detail": "two senses were too close to separate"}

@@ -137,3 +137,15 @@ def test_audit_metadata_cannot_certify_correlated_mentions():
     assert cal.sample_source == 'random_audit'
     assert not cal.partition_manifest['independent_calibration_units']
     assert not cal.coverage_valid
+
+
+def test_explanation_uses_full_decision_margin_with_one_displayed_candidate(snap):
+    from ktrf.explain import _blocking_reason
+    mention = {'link_decision': 'AMBIGUOUS', 'mention_decision': 'TERM',
+               'prediction_set': {'decision_margin': .01, 'total_member_count': 2,
+                                  'truncated': True, 'members': [
+                                      {'kind': 'ENTITY', 'entity_id': 'A',
+                                       'calibrated_probability': .8}]}}
+    reason = _blocking_reason(mention, snap.policy)
+    assert reason['reason'] == 'insufficient_margin'
+    assert reason['margin'] == .01
