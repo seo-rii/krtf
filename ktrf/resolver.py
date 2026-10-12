@@ -632,8 +632,7 @@ def _fuse(node: MentionNode, snapshot: Snapshot, text: str,
                 snapshot.calibrator.calibrate_marginal(cand.ranking_score)
         elif snapshot.fusion is not None:
             # fusion output is a logistic probability; conservative cap
-            cand.calibrated_probability = round(
-                min(0.95, max(0.02, cand.ranking_score)), 3)
+            cand.calibrated_probability = min(0.95, max(0.02, cand.ranking_score))
         else:
             # global conservative calibrator (heuristic placeholder, §48.1):
             # a sense-count prior scaled by surface-path quality, shifted by
@@ -658,8 +657,7 @@ def _fuse(node: MentionNode, snapshot: Snapshot, text: str,
                 prior = max(0.20, 0.50 - 0.3 * cand.surface_transform_cost)
             else:  # abbrev / future dense: prior scales with alignment quality
                 prior = 0.30 + max(0.0, base - _CHANNEL_BASE["abbrev"])
-            cand.calibrated_probability = round(
-                min(0.98, max(0.02, prior + 0.6 * (score - base))), 3)
+            cand.calibrated_probability = min(0.98, max(0.02, prior + 0.6 * (score - base)))
 
 
 _SCOPE_DIMS = {"departments": "department", "projects": "project"}
@@ -935,8 +933,6 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
     # truncation drops tail members from a conformal set — the coverage
     # guarantee no longer holds for a cut set, and we must say so instead
     # of exposing set_confidence as if it were still valid (§25.2)
-    set_truncated = len(members) > max_set
-    members = members[:max_set]
 
     kb_member = None
     # §24.3: KB_MISSING joins the set only when no candidate clears the
@@ -944,7 +940,9 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
     # (an exact match proves the concept exists in this glossary).
     if (top_p or 0) < 0.6 and not any(c.is_exact for c in cands):
         kb_p = round(min(0.9, max(0.05, 0.8 - (top_p or 0))), 3)
-        kb_member = {"kind": "KB_MISSING", "calibrated_probability": kb_p}
+        kb_member = {"kind": "KB_MISSING", "calibrated_probability": kb_p,
+                     "reason": "NO_COMPATIBLE_RETRIEVED_CANDIDATE",
+                     "kb_absence_verified": False}
 
     node_degraded = node.pool.truncated or node.pool.exact_overflow
 
@@ -964,8 +962,11 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
         set_members.append(kb_member)
 
     policy = snapshot.policy
-    second_p = (members[1].calibrated_probability
-                if len(members) > 1 else 0.0) or 0.0
+    # Commit competition is over ALL policy-valid retrieval candidates,
+    # including those outside the prediction set. Output budgets never
+    # change the evidence used for this decision.
+    second_p = (ranked[1].calibrated_probability
+                if len(ranked) > 1 else 0.0) or 0.0
 
     if node.pool.exact_overflow:
         # §21.5: safety-limit overflow -> AMBIGUOUS + degraded, never a 500
@@ -980,7 +981,7 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
         and top is not None
         and top.commit_blocked is None  # VARIANTS_PLAN §2 ①②
         and (top_p or 0) >= policy.resolve_threshold
-        and (len(set_members) == 1 or (top_p or 0) - second_p >= policy.margin_threshold)
+        and (len(ranked) == 1 or (top_p or 0) - second_p >= policy.margin_threshold)
         and not kb_member
     ):
         link = "RESOLVED"
@@ -998,22 +999,35 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
             "canonical": ent.canonical if ent else None,
             "calibrated_probability": top_p,
         }
+    # Serialize only after the decision. The budget includes non-entity
+    # alternatives too; count/truncation explicitly describe what was lost.
+    total_member_count = len(set_members)
+    set_truncated = total_member_count > max_set
+    coverage_valid = bool(calibrator is not None
+                          and getattr(calibrator, "coverage_valid", False)
+                          and not set_truncated and not node_degraded
+                          and all(calibrator.group_counts.get(
+                              calibration_group(c.generation_channels, len(cands)), 0) > 0
+                                  for c in cands))
     m["prediction_set"] = {
-        "set_confidence": (calibrator.set_confidence if calibrator is not None
-                           else policy.set_confidence),
-        "members": set_members,
+        "set_confidence": (calibrator.set_confidence if calibrator is not None else None),
+        "target_set_confidence": (calibrator.set_confidence if calibrator is not None
+                                  else policy.set_confidence),
+        "calibration_status": "FITTED" if calibrator is not None else "HEURISTIC",
+        "coverage_scope": "candidate_conditional",
+        "coverage_valid": coverage_valid,
+        "total_member_count": total_member_count,
+        "truncated": set_truncated,
+        "decision_margin": (top_p or 0) - second_p,
+        "members": set_members[:max_set],
     }
-    if set_truncated:
-        m["prediction_set"]["truncated"] = True
-        if calibrator is not None:
-            m["prediction_set"]["coverage_valid"] = False
     if calibration_fallback:
         # REQ-CAL-002: group sample below n_min → pooled-quantile fallback
         m["prediction_set"]["calibration_fallback"] = True
     if node_degraded:
         m["degraded"] = True
     if return_eval_trace:
-        m["eval_trace"] = _eval_trace(node, ranked, members, set_truncated)
+        m["eval_trace"] = _eval_trace(node, ranked, members[:max_set], set_truncated)
     return m
 
 

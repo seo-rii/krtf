@@ -31,6 +31,8 @@ from .calibration import (
     TrainingExample,
     derive_training_examples,
     fit_calibrator,
+    partition_examples,
+    InsufficientCalibrationData,
 )
 from .candidates import CandidateBudget
 from .corrections import CorrectionStore
@@ -195,24 +197,13 @@ def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False,
 # ---------------------------------------------------------------------------
 
 
-def _fusion_rows(correction: dict) -> list[tuple[dict, int, str]]:
-    """(features, label, calibration_group) rows from one ACCEPTED
-    correction whose mention_state members carry feature vectors."""
-    from .calibration import calibration_group
-
-    state = correction.get("mention_state") or {}
-    members = [m for m in state.get("prediction_set", {}).get("members", [])
-               if m.get("kind", "ENTITY") == "ENTITY" and m.get("features")]
-    ctype = correction.get("correction_type")
-    if ctype not in ("WRONG_ENTITY", "SHOULD_BE_RESOLVED") or not members:
-        return []
-    gold = (correction.get("corrected") or {}).get("entity_id")
-    n = len(members)
-    return [
-        (m["features"], int(m.get("entity_id") == gold),
-         calibration_group(set(m.get("generation_channels", [])), n))
-        for m in members
-    ]
+def _fusion_rows(correction: dict) -> list[tuple[dict, TrainingExample]]:
+    """Feature-bearing candidate rows retaining their correction provenance."""
+    members = [m for m in (correction.get("mention_state") or {}).get(
+        "prediction_set", {}).get("members", [])
+        if m.get("kind", "ENTITY") == "ENTITY" and m.get("ranking_score") is not None]
+    pairs = derive_training_examples(correction)
+    return [(m["features"], e) for m, e in zip(members, pairs) if m.get("features")]
 
 
 def finetune(
@@ -238,7 +229,7 @@ def finetune(
     """
     accepted = store.export_accepted(snapshot.tenant_id)
     examples: list[TrainingExample] = list(extra_examples or [])
-    fusion_rows: list[tuple[dict, int]] = []
+    fusion_rows: list[tuple[dict, TrainingExample]] = []
     for c in accepted:
         pairs = derive_training_examples(c)
         examples.extend(pairs * c.get("weight", 1))
@@ -252,15 +243,23 @@ def finetune(
         # (responses produced with options.return_features)
         from .fusion import fit_fusion
 
-        fusion = fit_fusion([(f, y) for f, y, _ in fusion_rows])
+        if extra_examples:
+            raise ValueError("fusion refit needs source features; extra_examples contain scores only")
+        fit_rows, _ = partition_examples([e for _, e in fusion_rows])
+        fitting_ids = {id(e) for e in fit_rows}
+        fusion = fit_fusion([(f, e.label) for f, e in fusion_rows if id(e) in fitting_ids])
         manifest["fusion_hash"] = _hash(fusion.to_dict())
         # the ranking_score scale changed: refit calibration on the fusion
         # model's own outputs so Platt + conformal stay consistent
         examples = [
-            TrainingExample(fusion.predict(f), group, y)
-            for f, y, group in fusion_rows
+            dataclasses.replace(e, ranking_score=fusion.predict(f))
+            for f, e in fusion_rows
         ]
-    calibrator = fit_calibrator(examples, alpha=alpha, n_min=n_min)
+    try:
+        calibrator = fit_calibrator(examples, alpha=alpha, n_min=n_min)
+    except InsufficientCalibrationData as exc:
+        raise KtrfApiError("INVALID_REQUEST", str(exc),
+                          details={"calibration_status": exc.calibration_status}) from exc
 
     manifest["calibrator_hash"] = _hash(calibrator.to_dict())
     candidate = dataclasses.replace(

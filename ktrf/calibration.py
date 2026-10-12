@@ -20,6 +20,8 @@ count bucket.
 from __future__ import annotations
 
 import math
+import hashlib
+import json
 from dataclasses import dataclass, field
 
 
@@ -43,6 +45,70 @@ class TrainingExample:
     ranking_score: float
     group: str
     label: int  # 1 = this candidate was the corrected/true entity
+    # Preserve source events; candidate rows and verifier-weight duplicates
+    # from one event must never cross a partition boundary.
+    event_id: str | None = None
+    document_id: str | None = None
+    request_id: str | None = None
+    mention_id: str | None = None
+    correction_id: str | None = None
+    sample_source: str = "approved_corrections"
+
+
+class InsufficientCalibrationData(ValueError):
+    calibration_status = "INSUFFICIENT_DATA"
+
+
+def _sigmoid(value: float) -> float:
+    # Stable at extreme scores; exactly the same function at fit and runtime.
+    if value >= 0:
+        return 1.0 / (1.0 + math.exp(-value))
+    e = math.exp(value)
+    return e / (1.0 + e)
+
+
+def partition_examples(examples: list[TrainingExample]) -> tuple[list, list]:
+    """Deterministic, label-independent split of connected source events.
+
+    Shared document/request/correction/event IDs join rows transitively.
+    Missing provenance is refused, rather than pretending candidate rows are
+    independent observations. IDs must be namespaced by corpus/tenant.
+    """
+    parents = list(range(len(examples)))
+
+    def root(i):
+        while parents[i] != i:
+            parents[i] = parents[parents[i]]
+            i = parents[i]
+        return i
+
+    seen = {}
+    for i, e in enumerate(examples):
+        tokens = [(k, getattr(e, k)) for k in
+                  ("event_id", "document_id", "request_id", "correction_id")
+                  if getattr(e, k)]
+        if not tokens:
+            raise InsufficientCalibrationData("insufficient calibration data: source event IDs required")
+        if e.mention_id and e.request_id:
+            tokens.append(("mention", (e.request_id, e.mention_id)))
+        for token in tokens:
+            if token in seen:
+                parents[root(i)] = root(seen[token])
+            else:
+                seen[token] = i
+    clusters = {}
+    for i, e in enumerate(examples):
+        clusters.setdefault(root(i), []).append(e)
+    def cluster_key(rows):
+        ids = sorted({f"{k}:{getattr(e, k)}" for e in rows for k in
+                      ("event_id", "document_id", "request_id", "correction_id")
+                      if getattr(e, k)})
+        return hashlib.sha256(json.dumps(ids).encode()).hexdigest()
+    groups = sorted(clusters.values(), key=cluster_key)
+    if len(groups) < 2:
+        raise InsufficientCalibrationData("insufficient calibration data: at least two independent source groups required")
+    return ([e for g in groups[::2] for e in g],
+            [e for g in groups[1::2] for e in g])
 
 
 def _fit_platt(scores: list[float], labels: list[int],
@@ -53,7 +119,7 @@ def _fit_platt(scores: list[float], labels: list[int],
     for _ in range(iters):
         ga = gb = 0.0
         for s, y in zip(scores, labels):
-            p = 1.0 / (1.0 + math.exp(-(a * s + b)))
+            p = _sigmoid(a * s + b)
             ga += (p - y) * s
             gb += p - y
         a -= lr * ga / n
@@ -86,15 +152,25 @@ class TunedCalibrator:
     fallback_quantile: float
     group_counts: dict[str, int]
     n_min: int
-    version: str = "cal-1"
+    version: str = "cal-2"
+    sample_source: str = "approved_corrections"
+    partition_manifest: dict = field(default_factory=dict)
+
+    @property
+    def coverage_valid(self) -> bool:
+        # Fitting on user-reported errors is selection biased. This only
+        # declares eligibility for candidate-conditional coverage; callers
+        # must additionally validate group support and output truncation.
+        return (self.sample_source == "random_audit"
+                and bool(self.partition_manifest)
+                and sum(self.group_counts.values()) >= math.ceil(1 / self.alpha) - 1)
 
     @property
     def set_confidence(self) -> float:
         return round(1.0 - self.alpha, 4)
 
     def calibrate_marginal(self, ranking_score: float) -> float:
-        p = 1.0 / (1.0 + math.exp(-(self.platt_a * ranking_score + self.platt_b)))
-        return round(min(0.99, max(0.01, p)), 3)
+        return _sigmoid(self.platt_a * ranking_score + self.platt_b)
 
     def quantile_for(self, group: str) -> tuple[float, bool]:
         """(q̂, used_fallback). Below n_min, fall back conservatively
@@ -120,6 +196,8 @@ class TunedCalibrator:
             "global_quantile": self.global_quantile,
             "fallback_quantile": self.fallback_quantile,
             "group_counts": self.group_counts, "n_min": self.n_min,
+            "sample_source": self.sample_source,
+            "partition_manifest": self.partition_manifest,
         }
 
     @classmethod
@@ -131,43 +209,42 @@ class TunedCalibrator:
             fallback_quantile=d.get("fallback_quantile", d["global_quantile"]),
             group_counts=dict(d["group_counts"]), n_min=d["n_min"],
             version=d.get("version", "cal-1"),
+            sample_source=d.get("sample_source", "legacy_unknown"),
+            partition_manifest=dict(d.get("partition_manifest", {})),
         )
 
 
 def fit_calibrator(examples: list[TrainingExample], alpha: float = 0.05,
                    n_min: int = 500) -> TunedCalibrator:
-    """Fit marginal calibration + group-conditional conformal quantiles.
+    """Fit using disjoint source-event partitions, without data reuse.
 
-    ``examples`` must come only from ACCEPTED corrections (INV-018 — the
-    correction store enforces this on export).
-
-    Split-conformal validity requires that the data fitting the probability
-    map (Platt) and the data supplying the conformal quantiles are
-    DISJOINT — reusing one set for both voids the finite-sample coverage
-    guarantee. Examples are therefore split deterministically in half:
-    even-indexed examples fit Platt scaling, odd-indexed positives form the
-    conformal calibration set. (Callers who can group by document/entity
-    should pre-order examples so correlated rows land on one side.)
+    Approved corrections are useful training signals, but are not a random
+    deployment audit. Their fitted coverage is explicitly unvalidated.
     """
+    if not 0 < alpha < 1 or n_min < 1:
+        raise ValueError("alpha must be in (0,1) and n_min must be positive")
     if len(examples) < 10 or not any(e.label for e in examples):
-        raise ValueError(
-            "insufficient calibration data: need >=10 examples with >=1 positive"
-        )
-    fit_half = examples[0::2]
-    conf_half = examples[1::2]
-    if not any(e.label for e in fit_half) or not any(
-            e.label for e in conf_half):
-        # tiny/degenerate label distribution: fall back to the full set for
-        # Platt but KEEP the halves disjoint for the quantiles
-        fit_half = examples
+        raise InsufficientCalibrationData("insufficient calibration data: need >=10 examples with positives")
+    if any(e.label not in (0, 1) or not math.isfinite(e.ranking_score) for e in examples):
+        raise ValueError("calibration scores must be finite and labels binary")
+    fit_half, conf_half = partition_examples(examples)
+    if {e.label for e in fit_half} != {0, 1} or not any(e.label for e in conf_half):
+        raise InsufficientCalibrationData("insufficient calibration data: fitting needs both labels and independent calibration needs positives")
     a, b = _fit_platt([e.ranking_score for e in fit_half],
                       [e.label for e in fit_half])
-
-    def marginal(score: float) -> float:
-        return 1.0 / (1.0 + math.exp(-(a * score + b)))
-
-    positives = [e for e in conf_half if e.label == 1] or \
-        [e for e in examples if e.label == 1]
+    # Verifier weights train Platt, but must not manufacture calibration
+    # sample size. Deduplicate repeated positives from the same mention.
+    unique = {}
+    for e in conf_half:
+        if e.label == 1:
+            event = (e.request_id, e.mention_id) if e.request_id and e.mention_id else (e.event_id or e.correction_id or e.document_id,)
+            key = (event, e.group)
+            if key in unique and unique[key].ranking_score != e.ranking_score:
+                raise InsufficientCalibrationData("conflicting positives for the same source mention")
+            unique[key] = e
+    positives = list(unique.values())
+    def marginal(score):
+        return _sigmoid(a * score + b)
     by_group: dict[str, list[float]] = {}
     for e in positives:
         by_group.setdefault(e.group, []).append(1.0 - marginal(e.ranking_score))
@@ -180,6 +257,13 @@ def fit_calibrator(examples: list[TrainingExample], alpha: float = 0.05,
         fallback_quantile=_conformal_quantile(all_scores, alpha / 2),
         group_counts={g: len(lst) for g, lst in by_group.items()},
         n_min=n_min,
+        sample_source=("random_audit" if all(e.sample_source == "random_audit" for e in conf_half)
+                       else "approved_corrections"),
+        partition_manifest={
+            "fit_event_ids": sorted({e.event_id or e.correction_id or e.request_id or e.document_id for e in fit_half}),
+            "calibration_event_ids": sorted({e.event_id or e.correction_id or e.request_id or e.document_id for e in conf_half}),
+            "fit_rows": len(fit_half), "calibration_positives": len(positives),
+        },
     )
 
 
@@ -197,6 +281,8 @@ def derive_training_examples(correction: dict) -> list[TrainingExample]:
     (§30.1 — span/state data, no raw text). Each ENTITY member of its
     prediction set becomes one example labeled against the corrected entity.
     """
+    if correction.get("status") != "ACCEPTED":
+        return []
     state = correction.get("mention_state") or {}
     members = [m for m in state.get("prediction_set", {}).get("members", [])
                if m.get("kind", "ENTITY") == "ENTITY"
@@ -211,11 +297,24 @@ def derive_training_examples(correction: dict) -> list[TrainingExample]:
     else:
         return []  # span/mention-level corrections carry no sense label
     n_senses = len(members)
+    ref = correction.get("request_ref") or {}
+    namespace = str(correction.get("tenant_id", "default")) + ":"
+    def scoped(value):
+        return namespace + str(value) if value else None
+    # Legacy exports lacking IDs remain usable for extraction; hashing the
+    # correction groups identical repeated submissions conservatively.
+    correction_id = correction.get("correction_id") or hashlib.sha256(
+        json.dumps(correction, sort_keys=True, default=str).encode()).hexdigest()
     out = []
     for m in members:
         group = calibration_group(set(m.get("generation_channels", [])), n_senses)
         out.append(TrainingExample(m["ranking_score"], group,
-                                   int(m.get("entity_id") == gold)))
+                                   int(m.get("entity_id") == gold),
+                                   event_id=scoped(correction_id),
+                                   document_id=scoped(ref.get("document_id")),
+                                   request_id=scoped(ref.get("request_id")),
+                                   mention_id=ref.get("mention_id"),
+                                   correction_id=scoped(correction_id)))
     return out
 
 

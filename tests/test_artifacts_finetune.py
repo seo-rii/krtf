@@ -169,8 +169,8 @@ def _synthetic_examples(n=400, group="exact|multi"):
     for i in range(n):
         pos_score = 0.9 + 0.2 * ((i % 10) / 10)
         neg_score = 0.4 + 0.2 * ((i % 7) / 7)
-        out.append(TrainingExample(pos_score, group, 1))
-        out.append(TrainingExample(neg_score, group, 0))
+        out.append(TrainingExample(pos_score, group, 1, event_id=f"{group}-{i}"))
+        out.append(TrainingExample(neg_score, group, 0, event_id=f"{group}-{i}"))
     return out
 
 
@@ -214,6 +214,7 @@ def test_fit_requires_data():
 
 def test_derive_training_examples_from_correction():
     correction = {
+        "status": "ACCEPTED",
         "correction_type": "WRONG_ENTITY",
         "corrected": {"entity_id": "E_B"},
         "mention_state": {

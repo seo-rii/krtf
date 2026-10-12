@@ -73,12 +73,12 @@ def test_calibration_fallback_is_conservative():
     # distribution must widen its sets, not inherit the majority quantile
     rng = random.Random(3)
     pool = []
-    for _ in range(300):
-        pool.append(TrainingExample(1.0 + 0.3 * rng.random(), "exact|multi", 1))
-        pool.append(TrainingExample(0.5 + 0.3 * rng.random(), "exact|multi", 0))
-    for _ in range(15):
-        pool.append(TrainingExample(0.45 + 0.2 * rng.random(), "dense|multi", 1))
-        pool.append(TrainingExample(0.25 + 0.2 * rng.random(), "dense|multi", 0))
+    for i in range(300):
+        pool.append(TrainingExample(1.0 + 0.3 * rng.random(), "exact|multi", 1, event_id=f"exact-{i}"))
+        pool.append(TrainingExample(0.5 + 0.3 * rng.random(), "exact|multi", 0, event_id=f"exact-{i}"))
+    for i in range(15):
+        pool.append(TrainingExample(0.45 + 0.2 * rng.random(), "dense|multi", 1, event_id=f"dense-{i}"))
+        pool.append(TrainingExample(0.25 + 0.2 * rng.random(), "dense|multi", 0, event_id=f"dense-{i}"))
     cal = fit_calibrator(pool, alpha=0.1, n_min=100)
     q_small, fb = cal.quantile_for("dense|multi")
     assert fb
