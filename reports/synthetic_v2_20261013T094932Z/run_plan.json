@@ -1,0 +1,15 @@
+{
+  "run_id": "krtf-synthetic-v2-20261013T094932Z",
+  "code_revision": "566a90c61f8ecc7789283ee47c74ecec3e578739",
+  "expected_request_sha256": "b30cb382e46df3400da839e3584e7e624ad2ea336a012934880e2436e6adcca0",
+  "expected_request_count": 4370,
+  "archive_sha256": "aa42aeb1e0ba07072d9b707a11b2fa821d10d173e9b56e939fa06281a778eab7",
+  "track": "synthetic_expansion_v2",
+  "protocol": "synthetic_grounding_expansion_v2",
+  "validation_revision": "95b8e98488b915a2739d96bea9c282f085c4b96c",
+  "remote_root": "/home/one/experiments/krtf-synthetic-v2-20261013T094932Z",
+  "remote_archive": "/home/one/experiments/krtf-synthetic-v2-20261013T094932Z/source.tar",
+  "remote_log": "/home/one/logs/krtf-synthetic-v2-20261013T094932Z.log",
+  "remote_server_log": "/home/one/logs/krtf-synthetic-v2-20261013T094932Z-vllm.log",
+  "remote_status": "/home/one/logs/krtf-synthetic-v2-20261013T094932Z.status.json"
+}
