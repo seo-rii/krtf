@@ -1,0 +1,2 @@
+{"out_dir": "/home/one/experiments/krtf-qa-policy-20261013T123450Z/artifacts", "status": "COMPLETE", "received": 1748, "missing": 0, "errors": 0, "malformed": 0}
+{"run_dir": "/home/one/experiments/krtf-qa-policy-20261013T123450Z/artifacts", "status": "COMPLETE", "request_count": 1748, "received_count": 1748, "missing_count": 0, "error_count": 0, "malformed_count": 0, "attempted_count": 1748, "documents": 437, "families": 100, "task_cases": 874}

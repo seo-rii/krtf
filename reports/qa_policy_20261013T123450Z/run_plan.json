@@ -1,0 +1,17 @@
+{
+  "run_id": "krtf-qa-policy-20261013T123450Z",
+  "code_revision": "0f35b7e7bbdd28d247990602706ecb6f4b7190f3",
+  "expected_request_sha256": "6a7d4fea66a3f79ce737099e4519fbc30506b5e6a7c490361f71b8f6ee405bfa",
+  "expected_request_count": 1748,
+  "archive_sha256": "a98b591f38e60a7de6af0a607f3103a853b8b5fed03c67f01a89701447a2d06c",
+  "track": "qa_policy_probe",
+  "protocol": "qa_policy_separation_v1",
+  "validation_revision": "0f35b7e7bbdd28d247990602706ecb6f4b7190f3",
+  "remote_root": "/home/one/experiments/krtf-qa-policy-20261013T123450Z",
+  "remote_archive": "/home/one/experiments/krtf-qa-policy-20261013T123450Z/source.tar",
+  "model": "ktrf-synthetic-gemma4-12b-bf16",
+  "port": 18103,
+  "remote_log": "/home/one/logs/krtf-qa-policy-20261013T123450Z.log",
+  "remote_server_log": "/home/one/logs/krtf-qa-policy-20261013T123450Z-vllm.log",
+  "remote_status": "/home/one/logs/krtf-qa-policy-20261013T123450Z.status.json"
+}
