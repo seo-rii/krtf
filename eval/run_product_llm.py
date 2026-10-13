@@ -78,6 +78,10 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
         from eval.synthetic_grounding_v2 import BALANCED_PROTOCOL, build_balanced_requests
         request_builder, grader = build_balanced_requests, grade_expanded_outputs
         protocol_id, declared_protocol = "synthetic_grounding_expansion_v2", BALANCED_PROTOCOL
+    elif track == "qa_policy_probe":
+        from eval.qa_policy_probe import PROTOCOL, build_policy_requests, grade_policy_outputs
+        request_builder, grader = build_policy_requests, grade_policy_outputs
+        protocol_id, declared_protocol = "qa_policy_separation_v1", PROTOCOL
     else:
         raise ValueError("unknown experiment track")
     endpoint = endpoint.rstrip("/")
@@ -193,7 +197,7 @@ def main():
     parser.add_argument("--omit-seed", action="store_true", help="Only when endpoint lacks seed support")
     parser.add_argument("--enable-thinking", action="store_true")
     parser.add_argument("--track", choices=("factorial", "contract_probe", "synthetic_expansion",
-                                           "synthetic_expansion_v2"), default="factorial")
+                                           "synthetic_expansion_v2", "qa_policy_probe"), default="factorial")
     args = parser.parse_args()
     manifest = run_benchmark(endpoint=args.endpoint, model=args.model, out_dir=args.out_dir,
         code_revision=args.code_revision, max_tokens=args.max_tokens, timeout=args.timeout,

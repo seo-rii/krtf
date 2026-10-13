@@ -147,6 +147,40 @@ def test_unknown_track_is_rejected_before_creating_artifacts(tmp_path):
     assert not out.exists()
 
 
+def test_qa_policy_track_sends_only_frozen_prompts_and_seals_diagnostics(tmp_path, monkeypatch):
+    from eval import qa_policy_probe as probe
+    from eval.synthetic_grounding_v2 import load_balanced_families
+
+    rows = probe.build_policy_requests(load_balanced_families()[:1])
+    monkeypatch.setattr(probe, "build_policy_requests", lambda: rows)
+    sent = []
+
+    def fake_urlopen(request, timeout):
+        if request.full_url.endswith("/models"):
+            return FakeResponse({"data": [{"id": "served"}]})
+        sent.append(json.loads(request.data))
+        return FakeResponse(_completion('{"answer":null,"entity_id":null}'))
+
+    monkeypatch.setattr(runner, "urlopen", fake_urlopen)
+    out = tmp_path / "policy"
+    manifest = runner.run_benchmark(endpoint="http://localhost/v1", model="served",
+        out_dir=out, code_revision="frozen-policy-code", track="qa_policy_probe")
+    assert manifest["status"] == "COMPLETE"
+    assert manifest["protocol"] == "qa_policy_separation_v1"
+    assert manifest["declared_protocol"] == probe.PROTOCOL
+    assert len(sent) == manifest["received_count"] == len(rows)
+    for payload, row in zip(sent, rows):
+        assert payload["messages"] == [{"role": "system", "content": row["system"]},
+                                       {"role": "user", "content": row["user"]}]
+        assert set(payload) == {"model", "messages", "temperature", "max_tokens",
+                                "seed", "chat_template_kwargs"}
+    grade = json.loads((out / "graded.json").read_text())["model_results"]
+    assert set(grade["policy_diagnostics"]["by_condition"]) == {"strict", "qa_context"}
+    assert grade["missing_outputs"] == 0
+    for name, digest in manifest["artifact_sha256"].items():
+        assert hashlib.sha256((out / name).read_bytes()).hexdigest() == digest
+
+
 def test_json_object_with_invalid_id_type_is_retained_and_marked_malformed(tmp_path, monkeypatch):
     row = next(r for r in build_requests() if r["case_id"] == "missing:structured_routing"
                and r["condition"] == "no_context")

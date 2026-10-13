@@ -202,3 +202,56 @@ python -m eval.run_product_llm --track synthetic_expansion_v2 \
   --endpoint EXISTING_ENDPOINT --model MODEL_ID \
   --out-dir /path/to/new-v2-run --code-revision V2_COMMIT_SHA
 ```
+
+## Contextual QA policy separation
+
+The [completed v2 run](../reports/synthetic_v2_20261013T094932Z/RESULTS.md)
+found that the surface-binding condition answered only 2/74 contextual-collision
+QA cases. Its strict instructions also required abstention when the target link
+could not be confirmed. The next experiment measures whether explicitly
+allowing a document-supported QA explanation changes that behavior.
+
+The `qa_policy_probe` track retains all **437 v2 documents**, both tasks and the
+surface-binding cards. It makes **1,748 calls** across two conditions:
+
+| Condition | QA policy | Execution ID policy |
+|---|---|---|
+| `strict` | The exact v2 `surface_only` system and user prompts | The existing approval policy |
+| `qa_context` | A uniquely supported candidate definition may answer the document question even when its resolver status is ambiguous | The existing approval policy; a contextual answer grants no execution authority |
+
+Both conditions use the same document, target span, candidates, candidate order,
+glossary, gold and execution guard. The intervention adds a system instruction
+and replaces the QA prompt's link-confirmation abstention clause. The routing
+user prompt stays identical. This is one bundled QA-policy intervention, not an
+experiment isolating individual instruction wording. Both conditions rely on
+the supplied document and candidate facts; neither introduces outside knowledge.
+Condition order rotates per task and calls remain serial and stateless.
+
+The primary endpoint is exact-definition QA on the **74 contextual documents**,
+with success on **both members of each of the 37 contrast pairs** reported
+separately. The same-candidate pairs expose persistent first/last-candidate
+selection. Other v2 strata provide controls: true ambiguity, NIL, nonmentions,
+derived roles and ordinary links. Every document is retained rather than
+selecting cases from observed model successes or failures.
+
+An `answer` is scored independently of an incidental `entity_id` in a QA
+response. The report separately counts unauthorized QA IDs and semantically
+wrong IDs accepted by the guard, so an improved answer cannot hide an execution
+authorization error. Routing continues to require both semantic correctness
+and the unchanged guard. Policy-required abstention and avoidable abstention,
+negative-control non-null answers, helpful/harmful paired changes, missing and
+malformed responses, latency and actual tokens are reported separately.
+
+The [probe manifest](../reports/QA_POLICY_PROBE_CORPUS.json) records the source
+corpus and generated request hash before live inference. The two fresh conditions
+share a model runtime and decoding settings: temperature 0, seed 0, 128 output
+tokens and thinking disabled. Previous v2 outputs remain historical context,
+not the control arm of the new live comparison. Gold is still AI synthetic;
+these results cannot establish a deployment error bound or human-gold quality.
+
+```sh
+python -m eval.run_product_llm --track qa_policy_probe \
+  --endpoint EXISTING_ENDPOINT --model MODEL_ID \
+  --out-dir /path/to/new-policy-run --code-revision POLICY_COMMIT_SHA
+python -m eval.report_qa_policy_probe --run-dir /path/to/new-policy-run
+```
