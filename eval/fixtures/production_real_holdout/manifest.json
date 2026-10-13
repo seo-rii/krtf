@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "kind": "production_grounding_real_holdout_v1",
+  "created_at": "2026-10-13T15:53:20.320145+00:00",
+  "selection_frozen_at": "2026-10-13T15:46:24.277051+00:00",
+  "source": {
+    "name": "KONEC",
+    "revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+    "url": "https://raw.githubusercontent.com/korean-named-entity/konec/b6c98a457f9b13379a815bb153ae94dee2872cd4/konec/konec-dev.tsv",
+    "sha256": "5345b4a62802307c71070c0666a04b454525dd1d13035b3853d883c62d4a7195",
+    "license": "CC-BY-SA-4.0",
+    "upstream_corpus": "KLUE-NER",
+    "unit": "complete source sentence",
+    "original_article_ids_available": false
+  },
+  "gold_origin": "AI_AUTHORED_NOT_HUMAN",
+  "human_verified": false,
+  "annotation_status": "AI_INDEPENDENT_REVIEW_ADJUDICATED_SEALED",
+  "selection_seed": "ktrf-production-real-holdout-v1-20261014",
+  "document_count": 60,
+  "primary_targets": 60,
+  "tasks_per_model": 120,
+  "task_types": [
+    "document_qa",
+    "structured_routing"
+  ],
+  "primary_label_counts": {
+    "NIL": 18,
+    "LINK": 36,
+    "COMPOSITIONAL": 5,
+    "NON_MENTION": 1
+  },
+  "all_annotation_count": 138,
+  "primary_annotator_id": "codex-ai-primary",
+  "glossary_source_path": "examples/realorg_glossary.yaml",
+  "glossary_modified": false,
+  "selection_uses_resolver": false,
+  "annotation_uses_resolver": false,
+  "selection_uses_model_outputs": false,
+  "annotation_uses_model_outputs": false,
+  "selection_algorithm": "Within each declared lexical/NER stratum, sort SHA256(seed + NUL + normalized source document ID); take 48 glossary-substring-screen sentences and 12 NER-organization/no-glossary-substring controls; sort union by same key. No resolver or LLM result is used.",
+  "target_selection": "Longest literal glossary surface, lexicographic tie, first occurrence; extend manually to actual continuous whole expression when it denotes a different role/unit/artifact/nonmention. NER controls: first source OGG span. Freeze target-only packet before independent AI review.",
+  "limitations": [
+    "Lexical/NER-stratified sample, not a random deployment audit.",
+    "Disjointness is checked against available local prior annotation/data/request/report files, not LLM pretraining or unavailable historical corpora.",
+    "KONEC source sentences overlap KLUE; this is not an independent second corpus.",
+    "Upstream article/document IDs are unavailable; sentence-level IDs are preserved and article-level independence cannot be claimed.",
+    "Linking/semantics labels are AI-authored, independently AI reviewed and adjudicated; original NER spans/types are upstream labels.",
+    "Only 60 primary targets are task-scored; 138 primary+secondary annotations do not constitute exhaustive entity-linking gold.",
+    "The historical organization glossary is reused byte-for-byte; its organization/place/channel boundaries require stated adjudication.",
+    "Source sentences may be familiar to pretrained LLMs; this is not a pretraining contamination test.",
+    "Domestic administrative-unit geographic uses follow an explicitly adjudicated glossary convention; this does not establish a universal organization/territory identity policy."
+  ],
+  "files": {
+    "README.md": {
+      "sha256": "924dd40372857b288e04c9a3ca321c14f694d4fc8e9ae3d039179f41892daa5d",
+      "bytes": 5811
+    },
+    "adjudication.json": {
+      "sha256": "c519052e2fb735bdea5419bf118a274245380601661d238170321265904494d3",
+      "bytes": 4323
+    },
+    "annotations.adjudicated.jsonl": {
+      "sha256": "f5a63f5278ed169d45781f6c711bf432a66a17be8f37dea902f05dc7f8d9afd5",
+      "bytes": 125172
+    },
+    "annotations.ai.jsonl": {
+      "sha256": "b2c0701895830e10b823559c9f7753695efce0e130685ac0e6eeae4a926ed322",
+      "bytes": 103120
+    },
+    "annotations.review.jsonl": {
+      "sha256": "2b0f79666d9149f3b77cf259d51041fe857942210452ca6e0457d5ecf21d002e",
+      "bytes": 70400
+    },
+    "documents.jsonl": {
+      "sha256": "10a79f4498a43b5f02ae8f7f9fd1c388be596b8fb610dfb67944f65bb0b29fa5",
+      "bytes": 113518
+    },
+    "glossary.yaml": {
+      "sha256": "d4750b467dc968ea753f08bc13e94c720406241cdb6abdd16155b680b3376cd7",
+      "bytes": 81914
+    },
+    "selection_manifest.json": {
+      "sha256": "250bec67f19d2ccca01fc0db0ae1169f7d5ac768651dda049fd2ad04b9fe3038",
+      "bytes": 20847
+    },
+    "target_packets.jsonl": {
+      "sha256": "fbcb7e91d43e0b6df301eaee9799197d2386017ef9b44c174027490f8a70f2b9",
+      "bytes": 21673
+    }
+  },
+  "adjudicated": true,
+  "adjudication_uses_model_outputs": false,
+  "independent_ai_review": true,
+  "annotation_frozen_at": "2026-10-13T15:55:35.552910+00:00",
+  "primary_gold_file": "annotations.adjudicated.jsonl",
+  "independent_annotator_files": [
+    "annotations.ai.jsonl",
+    "annotations.review.jsonl"
+  ],
+  "adjudication_file": "adjudication.json",
+  "substantive_primary_agreement": {
+    "agree": 57,
+    "total": 60,
+    "disagreements": 3
+  },
+  "administrative_unit_scope": "For this frozen glossary only, domestic LOCAL descriptions denote named administrative units including territorial uses; ORG_ prefixes alone do not impose organization/seat-only semantics. Domestic weather/address references LINK; DPRK Gangwon is a different unit and remains NIL."
+}

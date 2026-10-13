@@ -1,0 +1,79 @@
+{
+  "adjudication_origin": "AI_AUTHORED_NOT_HUMAN",
+  "human_verified": false,
+  "adjudicator": "codex-root-ai",
+  "before_model_inference": true,
+  "adjudicated_at": "2026-10-13T15:54:34.142379+00:00",
+  "source_sha256": {
+    "annotations.ai.jsonl": "b2c0701895830e10b823559c9f7753695efce0e130685ac0e6eeae4a926ed322",
+    "annotations.review.jsonl": "2b0f79666d9149f3b77cf259d51041fe857942210452ca6e0457d5ecf21d002e",
+    "target_packets.jsonl": "fbcb7e91d43e0b6df301eaee9799197d2386017ef9b44c174027490f8a70f2b9",
+    "documents.jsonl": "10a79f4498a43b5f02ae8f7f9fd1c388be596b8fb610dfb67944f65bb0b29fa5",
+    "glossary.yaml": "d4750b467dc968ea753f08bc13e94c720406241cdb6abdd16155b680b3376cd7"
+  },
+  "primary_targets": 60,
+  "semantic_agreement_before_adjudication": 57,
+  "semantic_disagreements": [
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_03022-wikitree",
+      "first_gold": {
+        "core_entity_ref": null,
+        "entity_ref": null,
+        "full_identity": "DIFFERENT",
+        "label": "NON_MENTION"
+      },
+      "review_gold": {
+        "entity_ref": "ORG_GANGWON",
+        "full_identity": "SAME",
+        "label": "LINK"
+      },
+      "chosen": "review",
+      "rationale": "고정 사전의 LOCAL 설명은 광역자치단체를 식별하며 기관 업무 주체나 청사로만 제한하는 타입 계약은 없다. 이 평가에서는 대한민국 행정구역의 지리적 명칭도 포함한다. ORG_ ID 접두어만으로 조직 전용 제약을 추가하지 않는다. 서울·경기도와 나란히 예보하는 대한민국 지역 강원도이며 사전의 강원도 광역자치단체에 대응한다."
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_03790-wikitree",
+      "first_gold": {
+        "core_entity_ref": null,
+        "entity_ref": null,
+        "full_identity": "DIFFERENT",
+        "label": "NON_MENTION"
+      },
+      "review_gold": {
+        "entity_ref": "ORG_GWANGJU_C",
+        "full_identity": "SAME",
+        "label": "LINK"
+      },
+      "chosen": "review",
+      "rationale": "고정 사전의 LOCAL 설명은 광역자치단체를 식별하며 기관 업무 주체나 청사로만 제한하는 타입 계약은 없다. 이 평가에서는 대한민국 행정구역의 지리적 명칭도 포함한다. ORG_ ID 접두어만으로 조직 전용 제약을 추가하지 않는다. 주거지의 소재지인 광주광역시라는 행정구역·광역자치단체 고유명을 지칭하며 동명의 다른 도시를 의미할 단서가 없다."
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_00791-wikitree",
+      "first_gold": {
+        "core_entity_ref": null,
+        "entity_ref": null,
+        "full_identity": "DIFFERENT",
+        "label": "NON_MENTION"
+      },
+      "review_gold": {
+        "entity_ref": "ORG_JEJU",
+        "full_identity": "SAME",
+        "label": "LINK"
+      },
+      "chosen": "review",
+      "rationale": "고정 사전의 LOCAL 설명은 광역자치단체를 식별하며 기관 업무 주체나 청사로만 제한하는 타입 계약은 없다. 이 평가에서는 대한민국 행정구역의 지리적 명칭도 포함한다. ORG_ ID 접두어만으로 조직 전용 제약을 추가하지 않는다. 제주도 남쪽 해상이라는 국내 기상 문맥으로 제주 지역을 지칭한다. 사전에 제주도 표면형으로 등록한 제주 광역자치단체의 지역 이름으로 본다."
+    }
+  ],
+  "final_labels": {
+    "NIL": 18,
+    "LINK": 36,
+    "COMPOSITIONAL": 5,
+    "NON_MENTION": 1
+  },
+  "full_identity_normalization": "LINK: SAME and entity as core; unlinked targets without a registered core: UNKNOWN; compositional registered-core expressions: DIFFERENT. Independent files retain original conventions.",
+  "limitations": [
+    "Two AI contexts and root AI adjudication are not human annotation.",
+    "Domestic administrative-unit geographical naming is included by an explicit pilot glossary convention; alternative narrower organization-only typing may change three labels.",
+    "Secondary annotations are not independently double-reviewed or exhaustive."
+  ],
+  "adjudicated_sha256": "f5a63f5278ed169d45781f6c711bf432a66a17be8f37dea902f05dc7f8d9afd5"
+}
