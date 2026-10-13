@@ -51,11 +51,17 @@ def _verify_requests(requests, protocol):
 
 
 def _operational(rows, records):
+    """Use math.fsum for latency totals, independent of Python's sum algorithm."""
     keys = {(row["case_id"], row["condition"]) for row in rows}
     attempts = [record for record in records if (record["case_id"], record["condition"]) in keys]
     latency = [record["latency_ms"] for record in attempts
                if type(record.get("latency_ms")) in (int, float)
                and math.isfinite(record["latency_ms"]) and record["latency_ms"] >= 0]
+    latency_distribution = _distribution(latency)
+    # Python 3.12 changed float sum; use explicit accurate summation so a report
+    # sealed on one runtime compares exactly when regraded on another runtime.
+    # Preserve the individual observations, percentiles, counts and token sums.
+    latency_distribution["total"] = math.fsum(latency)
     usage = {key: _distribution([record["usage"][key] for record in attempts
              if isinstance(record.get("usage"), dict) and type(record["usage"].get(key)) is int
              and record["usage"][key] >= 0])
@@ -67,7 +73,7 @@ def _operational(rows, records):
         "malformed": sum(record["status"] == "MALFORMED" for record in attempts),
         "status_counts": dict(Counter(record["status"] for record in attempts)),
         "finish_reason_counts": dict(Counter(str(record.get("finish_reason")) for record in attempts)),
-        "latency_ms": _distribution(latency), "actual_usage": usage,
+        "latency_ms": latency_distribution, "actual_usage": usage,
         "estimated_input_tokens": _distribution([row["estimated_input_tokens"] for row in rows]),
         "injected": sum(row["injected"] for row in rows)}
 

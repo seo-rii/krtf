@@ -228,3 +228,19 @@ def test_report_cli_preserves_sealed_inputs(tmp_path, frozen_requests, monkeypat
     assert {name: (run_dir / name).read_bytes() for name in before} == before
     assert json.loads((run_dir / "summary.json").read_text())["counts"]["documents"] == 6
     assert (run_dir / "RESULTS.md").read_text().startswith("# Production QA and execution")
+
+
+def test_latency_total_is_stable_across_python_sum_algorithms():
+    # Three-decimal millisecond observations reproduce Python 3.11's sequential
+    # sum drift (1000.0099999999999); accurate summation returns 1000.01.
+    rows = [{"case_id": str(index), "condition": "production", "estimated_input_tokens": 10,
+             "injected": True} for index in range(10)]
+    records = [{"case_id": row["case_id"], "condition": row["condition"], "status": "RECEIVED",
+                "response": {"answer": None}, "latency_ms": 100.001,
+                "usage": {"prompt_tokens": 10, "completion_tokens": 2, "total_tokens": 12}}
+               for row in rows]
+    result = report._operational(rows, records)
+    assert result["latency_ms"] == {"observations": 10, "total": 1000.01,
+        "min": 100.001, "max": 100.001, "p50": 100.001, "p95": 100.001, "p99": 100.001}
+    assert result["actual_usage"]["total_tokens"]["total"] == 120
+    assert type(result["actual_usage"]["total_tokens"]["total"]) is int
