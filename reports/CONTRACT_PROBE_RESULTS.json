@@ -1,0 +1,344 @@
+{
+  "status": "COMPLETED",
+  "tested_commit": "e929e3af046f78e10d74ec9bf1c8582b11794ab0",
+  "measured_at": "2026-10-13T02:22:15.739954+00:00",
+  "protocol_path": "reports/CONTRACT_PROBE_PROTOCOL.json",
+  "protocol_sha256": "aba4ba5d3c687fc00f06b61b65da10d86106f38d83ca5773d84af22002f67ecf",
+  "requests": 56,
+  "cases": 14,
+  "conditions": {
+    "original": {
+      "accepted_unauthorized_ids": 0,
+      "answerable_qa": {
+        "expected": 5,
+        "observed": 5,
+        "success": 0
+      },
+      "execution_guard_rejections": 0,
+      "malformed": 0,
+      "missing": 0,
+      "over_abstention": {
+        "count": 9,
+        "expected_answerable": 10
+      },
+      "raw_id_outputs": 1,
+      "routing_valid_ids": {
+        "expected": 5,
+        "observed": 5,
+        "success": 1
+      },
+      "safe_abstention": {
+        "count": 4,
+        "expected_unanswerable": 4
+      },
+      "wrong_raw_ids": 0,
+      "task_success": 5,
+      "observed": 14,
+      "meaning_switch_success": 0,
+      "meaning_switch_pairs": 3,
+      "paired_vs_original": {
+        "beneficial_case_ids": [],
+        "beneficial_changes": 0,
+        "expected_cases": 14,
+        "harmful_case_ids": [],
+        "harmful_changes": 0,
+        "paired_cases": 14,
+        "unchanged_correct": 5,
+        "unchanged_incorrect": 9
+      },
+      "prompt_tokens": 4532,
+      "completion_tokens": 237,
+      "latency_ms_p50": 2242.175
+    },
+    "surface_only": {
+      "accepted_unauthorized_ids": 0,
+      "answerable_qa": {
+        "expected": 5,
+        "observed": 5,
+        "success": 5
+      },
+      "execution_guard_rejections": 0,
+      "malformed": 0,
+      "missing": 0,
+      "over_abstention": {
+        "count": 0,
+        "expected_answerable": 10
+      },
+      "raw_id_outputs": 5,
+      "routing_valid_ids": {
+        "expected": 5,
+        "observed": 5,
+        "success": 5
+      },
+      "safe_abstention": {
+        "count": 4,
+        "expected_unanswerable": 4
+      },
+      "wrong_raw_ids": 0,
+      "task_success": 14,
+      "observed": 14,
+      "meaning_switch_success": 3,
+      "meaning_switch_pairs": 3,
+      "paired_vs_original": {
+        "beneficial_case_ids": [
+          "tenant-a:document_qa",
+          "tenant-a:structured_routing",
+          "tenant-b:document_qa",
+          "tenant-b:structured_routing",
+          "project-a:document_qa",
+          "session-a:document_qa",
+          "session-a:structured_routing",
+          "untrusted-session:document_qa",
+          "untrusted-session:structured_routing"
+        ],
+        "beneficial_changes": 9,
+        "expected_cases": 14,
+        "harmful_case_ids": [],
+        "harmful_changes": 0,
+        "paired_cases": 14,
+        "unchanged_correct": 5,
+        "unchanged_incorrect": 0
+      },
+      "prompt_tokens": 4616,
+      "completion_tokens": 351,
+      "latency_ms_p50": 2076.734
+    },
+    "schema_only": {
+      "accepted_unauthorized_ids": 0,
+      "answerable_qa": {
+        "expected": 5,
+        "observed": 5,
+        "success": 0
+      },
+      "execution_guard_rejections": 0,
+      "malformed": 0,
+      "missing": 0,
+      "over_abstention": {
+        "count": 9,
+        "expected_answerable": 10
+      },
+      "raw_id_outputs": 1,
+      "routing_valid_ids": {
+        "expected": 5,
+        "observed": 5,
+        "success": 1
+      },
+      "safe_abstention": {
+        "count": 4,
+        "expected_unanswerable": 4
+      },
+      "wrong_raw_ids": 0,
+      "task_success": 5,
+      "observed": 14,
+      "meaning_switch_success": 0,
+      "meaning_switch_pairs": 3,
+      "paired_vs_original": {
+        "beneficial_case_ids": [],
+        "beneficial_changes": 0,
+        "expected_cases": 14,
+        "harmful_case_ids": [],
+        "harmful_changes": 0,
+        "paired_cases": 14,
+        "unchanged_correct": 5,
+        "unchanged_incorrect": 9
+      },
+      "prompt_tokens": 4662,
+      "completion_tokens": 238,
+      "latency_ms_p50": 2333.8154999999997
+    },
+    "both": {
+      "accepted_unauthorized_ids": 0,
+      "answerable_qa": {
+        "expected": 5,
+        "observed": 5,
+        "success": 5
+      },
+      "execution_guard_rejections": 0,
+      "malformed": 0,
+      "missing": 0,
+      "over_abstention": {
+        "count": 0,
+        "expected_answerable": 10
+      },
+      "raw_id_outputs": 5,
+      "routing_valid_ids": {
+        "expected": 5,
+        "observed": 5,
+        "success": 5
+      },
+      "safe_abstention": {
+        "count": 4,
+        "expected_unanswerable": 4
+      },
+      "wrong_raw_ids": 0,
+      "task_success": 14,
+      "observed": 14,
+      "meaning_switch_success": 3,
+      "meaning_switch_pairs": 3,
+      "paired_vs_original": {
+        "beneficial_case_ids": [
+          "tenant-a:document_qa",
+          "tenant-a:structured_routing",
+          "tenant-b:document_qa",
+          "tenant-b:structured_routing",
+          "project-a:document_qa",
+          "session-a:document_qa",
+          "session-a:structured_routing",
+          "untrusted-session:document_qa",
+          "untrusted-session:structured_routing"
+        ],
+        "beneficial_changes": 9,
+        "expected_cases": 14,
+        "harmful_case_ids": [],
+        "harmful_changes": 0,
+        "paired_cases": 14,
+        "unchanged_correct": 5,
+        "unchanged_incorrect": 0
+      },
+      "prompt_tokens": 4746,
+      "completion_tokens": 358,
+      "latency_ms_p50": 1924.4015
+    }
+  },
+  "model": {
+    "served_id": "mil-gemma4-12b-bf16",
+    "checkpoint_revision": "NOT_VERIFIED",
+    "config_sha256": {
+      "config.json": "478c46e8d2c52d5c2d85bf67e3b3e8c90e7c9d91086cee27e3c267907e936bd9",
+      "tokenizer_config.json": "a62f4e85a47c0c136edaaa3a4f591fd6783717299a9def47e5ad03a49f6a5eb9",
+      "generation_config.json": "a8349d9bd64cc5841297fcb5002f0fdc4749c473c8f1b10ea337f9ce4ee7014e"
+    },
+    "same_config_hashes_checked_before_run": true
+  },
+  "decoding": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "max_tokens": 128,
+    "seed": 0,
+    "temperature": 0
+  },
+  "execution": {
+    "state": "completed",
+    "phase": "finished",
+    "pid": 114341,
+    "tested_commit": "e929e3af046f78e10d74ec9bf1c8582b11794ab0",
+    "source_root": "/home/one/experiments/krtf-contract-probe-20261013T021940Z/source",
+    "unit_log": "/home/one/logs/krtf-contract-probe-20261013T021940Z-pytest.log",
+    "python": "3.12.3",
+    "started_at_epoch": 1791857985.3601,
+    "pytest_exit_code": 0,
+    "pytest_summary": "551 passed in 13.58s",
+    "probe_exit_code": 0,
+    "probe_summary": {
+      "status": "COMPLETE",
+      "request_count": 56,
+      "received_count": 56,
+      "missing_count": 0,
+      "error_count": 0,
+      "malformed_count": 0,
+      "actual_usage": {
+        "completion_tokens": {
+          "observed_responses": 56,
+          "total": 1184
+        },
+        "prompt_tokens": {
+          "observed_responses": 56,
+          "total": 18556
+        },
+        "total_tokens": {
+          "observed_responses": 56,
+          "total": 19740
+        }
+      }
+    },
+    "exit_code": 0,
+    "elapsed_seconds": 150.39750814437866,
+    "remote_log": "/home/one/logs/krtf-contract-probe-20261013T021940Z.log",
+    "remote_status": "/home/one/logs/krtf-contract-probe-20261013T021940Z.status.json",
+    "local_log": "/home/seorii/logs/krtf-contract-probe-20261013T021940Z.log",
+    "local_status": "/home/seorii/logs/krtf-contract-probe-20261013T021940Z.status.json",
+    "local_pytest_log": "/home/seorii/logs/krtf-contract-probe-20261013T021940Z-pytest.log",
+    "process_exit_verified": true
+  },
+  "regression": {
+    "passed": 551,
+    "seconds": 13.58,
+    "exit_code": 0
+  },
+  "completion": {
+    "received": 56,
+    "missing": 0,
+    "transport_errors": 0,
+    "malformed": 0,
+    "finish_reason_counts": {
+      "stop": 56
+    },
+    "max_completion_tokens": 36,
+    "actual_usage": {
+      "completion_tokens": {
+        "observed_responses": 56,
+        "total": 1184
+      },
+      "prompt_tokens": {
+        "observed_responses": 56,
+        "total": 18556
+      },
+      "total_tokens": {
+        "observed_responses": 56,
+        "total": 19740
+      }
+    }
+  },
+  "paired_effects": {
+    "surface_without_policy_fields": {
+      "beneficial": 9,
+      "harmful": 0,
+      "success_count_delta": 9
+    },
+    "policy_fields_without_surface": {
+      "beneficial": 0,
+      "harmful": 0,
+      "success_count_delta": 0
+    },
+    "policy_fields_with_surface": {
+      "success_count_delta": 0
+    }
+  },
+  "interpretation": [
+    "Adding the exact ABC-to-candidate surface binding repairs the same 9 failures in both schema settings, with no harmful changes in this 14-case one-model probe.",
+    "Policy-named fields alone provide no observed success gain. Surface-only success shows the literal resolved_terms key is not necessary for this model to use the bound cards in this fixture.",
+    "All 10 answerable tasks succeed and all 4 uncertain tasks safely abstain in both surface-present conditions. Original execution guards are unchanged; no actual downstream actions were performed."
+  ],
+  "validation": {
+    "manifest_seal_verified": true,
+    "all_artifact_hashes_verified": true,
+    "frozen_input_hash_matches_actual": true,
+    "frozen_source_hashes_verified_remotely": true,
+    "original14_prompts_byte_match_previous_run": true,
+    "candidate_pack_and_policy_invariants_verified": true,
+    "independent_raw_response_review": true,
+    "offline_regrade_exact_match": true,
+    "all_received_ids_match_original_binding": true,
+    "hidden_correct_QA_paraphrases": 0,
+    "original_condition_parsed_outputs_equal_prior_run": true
+  },
+  "limitations": [
+    "14 synthetic cases with correlated/duplicate meanings; descriptive paired diagnostics, not a population risk guarantee.",
+    "One served model; checkpoint weights/revision were not independently verified.",
+    "Policy-named minimal card representation retains definition/status fields; no complete production-pack reference or second-model experiment was included.",
+    "Shared GPU/endpoint latency includes other traffic and is not a dedicated GPU benchmark."
+  ],
+  "artifact_sha256": {
+    "reports/contract_probe_20261013/graded.json": "b042f73616f22b713801a6ec635f2a64603ea5270f4d3461ed116000904609a4",
+    "reports/contract_probe_20261013/requests.jsonl": "ee17af7bf140d1e39765886e3d7dc01dac5b11e310e2694a690f5453671c04e0",
+    "reports/contract_probe_20261013/responses.jsonl": "ddd7d1dbc9611bc8658a44d3409533c7ca1de723b3e9d375c45ada5c09c7d71a",
+    "reports/contract_probe_20261013/run_manifest.json": "97f5d91c90b043173e13d279bf63ef185c0faeb302482486eb1cb4162527e3be"
+  },
+  "source_sha256": {
+    "eval/product_contract_probe.py": "19b13aee57c727b774881f1f41ba0f02e3e7f00b6144f96abb6439f369a62e23",
+    "eval/run_product_llm.py": "f82b975d66182ee7486b8bc976e75e922ec0d2f50c0e43b955f8889f5177235b",
+    "eval/product_utility.py": "510c98958140d31df4ad658c24071a4156d14ac1a278051e7f4c165c31d9cebb",
+    "ktrf/context.py": "cd01406cbf02354c22c4a5625706f39aa7266f0b3c8358d6830a095924fb9166"
+  }
+}

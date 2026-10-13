@@ -117,3 +117,59 @@ these scores do not measure a complete production context pack. No corrected
 stimulus or policy was substituted during the run. Detailed outcomes and
 provenance are in [the remote report](../reports/ONE_SERVER_VALIDATION.md) and
 [the recorded run](../reports/one_server_20261013/run_manifest.json).
+
+## Controlled input-contract diagnostic
+
+`--track contract_probe` uses the same 14 cases, KTRF candidates, structured
+format and evidence-only policy. It creates four conditions per case:
+`original`, `surface_only`, `schema_only`, and `both`. Surface bindings come
+from the original resolver pack. The schema factor places the unchanged cards
+under the policy-named `resolved_terms` and `ambiguous_mentions` fields. It keeps
+definitions, entity IDs, resolution status, candidate order, questions, system
+policy and execution guards fixed. Ambiguous candidates remain ambiguous.
+
+This minimal policy-field representation retains the `definition` card key and
+does not reproduce all production pack fields. It isolates two input-contract
+factors. Missing cases contain no cards, so their surface factor is inert.
+Condition order rotates independently within QA and routing; each model call
+is a fresh system/user conversation. The protocol and source/input hashes are
+frozen in [the declared protocol](../reports/CONTRACT_PROBE_PROTOCOL.json).
+
+```sh
+python -m eval.run_product_llm --track contract_probe \
+  --endpoint http://127.0.0.1:18090/v1 --model mil-gemma4-12b-bf16 \
+  --out-dir /path/to/new-exclusive-contract-run --code-revision COMMIT_SHA \
+  --max-tokens 128 --timeout 180
+```
+
+Diagnostics separate answerable QA, valid-ID routing, over-abstention, safe
+abstention, raw ID mistakes and gate rejection. `accepted_unauthorized_ids`
+counts wrong IDs the unchanged validator would permit; no actual downstream
+actions are performed. Each condition is also paired with the same case's
+`original` result. These descriptive counts do not certify population risk.
+
+### Recorded diagnostic result
+
+On 2026-10-13 the same served model completed all 56 requests. The full core
+suite passed 551 tests in 13.58 seconds. Original prompts reproduced the prior
+5/14 task score. The outcome was:
+
+| Condition | Task success /14 | Answerable QA /5 | Valid routing /5 | Over-abstention /10 |
+|---|---:|---:|---:|---:|
+| original | 5 | 0 | 1 | 9 |
+| surface_only | 14 | 5 | 5 | 0 |
+| schema_only | 5 | 0 | 1 | 9 |
+| both | 14 | 5 | 5 | 0 |
+
+Both surface-present conditions repaired the same nine cases with no harmful
+changes. All four uncertain cases safely abstained in every condition; all
+three scope-switch pairs succeeded when surface bindings were present. No
+incorrect or guard-accepted unauthorized IDs were observed. Policy field
+renaming alone had no measured benefit. This supports missing surface binding
+as the source of these fixture failures. It does not establish that a literal
+`resolved_terms` key is necessary for the tested model.
+
+The [result report](../reports/CONTRACT_PROBE_RESULTS.md) links the original
+requests, raw responses, paired diagnostics and sealed manifest. A complete
+production-pack trial, another model and independent documents remain separate
+validation steps.

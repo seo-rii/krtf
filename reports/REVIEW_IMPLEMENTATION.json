@@ -33,6 +33,14 @@
       "report": "reports/ONE_SERVER_VALIDATION.json",
       "log": "/home/one/logs/krtf-one-server-20261013T003732Z-validation.log",
       "status": "/home/one/logs/krtf-one-server-20261013T003732Z-validation.status.json"
+    },
+    "contract_probe": {
+      "report": "reports/CONTRACT_PROBE_RESULTS.json",
+      "tested_commit": "e929e3af046f78e10d74ec9bf1c8582b11794ab0",
+      "suite_passed": 551,
+      "suite_seconds": 13.58,
+      "requests": 56,
+      "exit_code": 0
     }
   },
   "independent_document_gold": {
@@ -75,7 +83,7 @@
     "representative_random_audit_calibration_and_risk",
     "ONNX_export_inference_parity",
     "representative_LLM_task_trial_and_human_correction_cost",
-    "resolved_binding_prompt_alignment_controlled_followup"
+    "full_pack_multi_model_independent_document_validation"
   ],
   "source_sha256": {
     "ktrf/resolver.py": "f9771ad4670cca29524a9f5977375c48886d95d32ee8376bb0cd59cb4f4ac6fa",
@@ -91,8 +99,9 @@
     "eval/run_rerank_ablation.py": "a47968942a0c6357f81215aa900dd18f376df68aa2fa45bb4bc9ee0bfd85cd25"
   },
   "product_model_validation": {
-    "status": "SYNTHETIC_RUN_COMPLETED_WITH_OVER_ABSTENTION",
-    "report": "reports/ONE_SERVER_VALIDATION.json",
+    "status": "SURFACE_BINDING_LOSS_DIAGNOSED_ON_SYNTHETIC_CASES",
+    "initial_report": "reports/ONE_SERVER_VALIDATION.json",
+    "contract_probe_report": "reports/CONTRACT_PROBE_RESULTS.json",
     "production_quality_claim": false
   }
 }
