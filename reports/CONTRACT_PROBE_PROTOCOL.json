@@ -1,0 +1,82 @@
+{
+  "status": "FROZEN_BEFORE_RUN",
+  "declared_at": "2026-10-13T02:18:35.924325+00:00",
+  "protocol": {
+    "kind": "controlled_input_contract_diagnostic",
+    "design": "surface_binding_x_policy_named_fields",
+    "case_count": 14,
+    "request_count": 56,
+    "conditions": [
+      "original",
+      "surface_only",
+      "schema_only",
+      "both"
+    ],
+    "selector": "ktrf",
+    "format": "structured",
+    "policy": "evidence_only",
+    "original_condition": "ktrf:structured:evidence_only",
+    "inference": {
+      "max_tokens": 128,
+      "seed": 0,
+      "think": false
+    },
+    "fixed": [
+      "candidate_cards",
+      "definitions",
+      "entity_ids",
+      "resolution_status",
+      "candidate_order",
+      "system_policy",
+      "question",
+      "execution_guard"
+    ],
+    "ordering": "case-major; condition order rotates by per-task case index; stateless requests",
+    "surface_factor": "surface added to each card from its original pack binding",
+    "policy_fields_factor": "same cards partitioned into resolved_terms and ambiguous_mentions.candidates",
+    "production_pack_reference": false,
+    "limitations": [
+      "14 synthetic cases; no model or deployment-quality claim.",
+      "Missing cases have no cards, so their surface factor is inert.",
+      "The policy-field representation retains definition and status card keys.",
+      "Exact QA matching; paraphrases need a separate blind review."
+    ]
+  },
+  "previous_run": "reports/one_server_20261013/run_manifest.json",
+  "model": "mil-gemma4-12b-bf16",
+  "endpoint": "http://127.0.0.1:18090/v1",
+  "decoding": {
+    "temperature": 0,
+    "seed": 0,
+    "max_tokens": 128,
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    }
+  },
+  "requests_sha256": "ee17af7bf140d1e39765886e3d7dc01dac5b11e310e2694a690f5453671c04e0",
+  "source_sha256": {
+    "eval/product_contract_probe.py": "19b13aee57c727b774881f1f41ba0f02e3e7f00b6144f96abb6439f369a62e23",
+    "eval/run_product_llm.py": "f82b975d66182ee7486b8bc976e75e922ec0d2f50c0e43b955f8889f5177235b",
+    "eval/product_utility.py": "510c98958140d31df4ad658c24071a4156d14ac1a278051e7f4c165c31d9cebb",
+    "ktrf/context.py": "cd01406cbf02354c22c4a5625706f39aa7266f0b3c8358d6830a095924fb9166"
+  },
+  "original_archived_prompt_pack_card_checks": true,
+  "hypotheses": [
+    "Adding an exact surface binding changes answerable-case success or over-abstention.",
+    "Using policy-named fields changes answerable-case success or over-abstention.",
+    "The joint condition can differ from either single factor."
+  ],
+  "metrics": [
+    "answerable_QA_exact_success",
+    "answerable_valid_ID_routing_success",
+    "over_abstention",
+    "safe_abstention",
+    "wrong_raw_IDs",
+    "execution_guard_rejections",
+    "accepted_unauthorized_IDs",
+    "paired_beneficial_and_harmful_changes",
+    "scope_meaning_switches"
+  ],
+  "analysis_scope": "Descriptive paired2x2 on14syntheticcases; no significance, population error bound or full-production-pack score.",
+  "model_identity_limit": "Same served ID and three unchanged config hashes observed before run; checkpoint revision/weight content not verified."
+}

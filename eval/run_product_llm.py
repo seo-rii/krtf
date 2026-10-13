@@ -50,7 +50,7 @@ def parse_model_json(content):
 
 
 def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
-                  timeout=180, seed=0, enable_thinking=False):
+                  timeout=180, seed=0, enable_thinking=False, track="factorial"):
     """Serial requests to an existing server, returning a sealed run manifest."""
     parsed = urlsplit(endpoint)
     if (parsed.scheme not in {"http", "https"} or not parsed.netloc
@@ -58,21 +58,32 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
         raise ValueError("endpoint must be an HTTP(S) base URL without credentials or query")
     if max_tokens <= 0 or timeout <= 0 or not code_revision:
         raise ValueError("positive token/timeout budgets and code revision are required")
+    if track == "factorial":
+        request_builder, grader = build_requests, grade_outputs
+        protocol_id, declared_protocol = "product_utility_live_v1", None
+    elif track == "contract_probe":
+        from eval.product_contract_probe import (
+            CONTRACT_PROTOCOL, build_contract_requests, grade_contract_outputs)
+        request_builder, grader = build_contract_requests, grade_contract_outputs
+        protocol_id, declared_protocol = "product_contract_probe_v1", CONTRACT_PROTOCOL
+    else:
+        raise ValueError("unknown experiment track")
     endpoint = endpoint.rstrip("/")
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=False)
     started = datetime.now(timezone.utc).isoformat()
-    requests = build_requests()
+    requests = request_builder()
     requests_path = out_dir / "requests.jsonl"
     requests_path.write_bytes(b"".join(_json_bytes(row) for row in requests))
     decoding = {"temperature": 0, "max_tokens": max_tokens,
                 "chat_template_kwargs": {"enable_thinking": enable_thinking}}
     if seed is not None:
         decoding["seed"] = seed
-    manifest = {"protocol": "product_utility_live_v1", "code_revision": code_revision,
+    manifest = {"protocol": protocol_id, "track": track,
+                "declared_protocol": declared_protocol, "code_revision": code_revision,
                 "started_at": started, "endpoint": endpoint, "requested_model": model,
                 "request_count": len(requests), "decoding": decoding, "timeout_seconds": timeout,
-                "prompt_fields": ["system", "user"], "request_order": "build_requests order; serial",
+                "prompt_fields": ["system", "user"], "request_order": "builder order; serial; stateless",
                 "response_parser": "JSON object, bare or one enclosing JSON code fence; no extra prose",
                 "retries": 0, "request_corpus_sha256": hashlib.sha256(requests_path.read_bytes()).hexdigest(),
                 "served_models": None, "setup_error": None}
@@ -132,7 +143,7 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
                 if "response" in record:
                     outputs.append(record)
 
-    graded = {"local_checks": local_swap_checks(), "model_results": grade_outputs(requests, outputs)}
+    graded = {"local_checks": local_swap_checks(), "model_results": grader(requests, outputs)}
     missing = graded["model_results"]["missing_outputs"]
     errors = sum(record["error"] is not None for record in records)
     manifest.update({"finished_at": datetime.now(timezone.utc).isoformat(),
@@ -166,10 +177,12 @@ def main():
     parser.add_argument("--timeout", type=float, default=180)
     parser.add_argument("--omit-seed", action="store_true", help="Only when endpoint lacks seed support")
     parser.add_argument("--enable-thinking", action="store_true")
+    parser.add_argument("--track", choices=("factorial", "contract_probe"), default="factorial")
     args = parser.parse_args()
     manifest = run_benchmark(endpoint=args.endpoint, model=args.model, out_dir=args.out_dir,
         code_revision=args.code_revision, max_tokens=args.max_tokens, timeout=args.timeout,
-        seed=None if args.omit_seed else 0, enable_thinking=args.enable_thinking)
+        seed=None if args.omit_seed else 0, enable_thinking=args.enable_thinking,
+        track=args.track)
     print(json.dumps({"out_dir": str(args.out_dir), "status": manifest["status"],
                       "received": manifest["received_count"], "missing": manifest["missing_count"],
                       "errors": manifest["error_count"], "malformed": manifest["malformed_count"]}))

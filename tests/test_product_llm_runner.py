@@ -104,3 +104,44 @@ def test_runner_unknown_model_is_missing_not_fake_abstention(tmp_path, monkeypat
     assert manifest["received_count"] == 0
     assert manifest["missing_count"] == 1
     assert (tmp_path / "run" / "responses.jsonl").read_bytes() == b""
+
+
+def test_contract_track_uses_frozen_prompts_and_diagnostic_grader(tmp_path, monkeypatch):
+    from eval.product_contract_probe import CONTRACT_PROTOCOL, build_contract_requests
+
+    rows = build_contract_requests()
+    sent = []
+
+    def fake_urlopen(request, timeout):
+        if request.full_url.endswith("/models"):
+            return FakeResponse({"data": [{"id": "served"}]})
+        payload = json.loads(request.data)
+        sent.append(payload)
+        return FakeResponse(_completion('{"answer":null,"entity_id":null}'))
+
+    monkeypatch.setattr(runner, "urlopen", fake_urlopen)
+    out = tmp_path / "contract"
+    manifest = runner.run_benchmark(endpoint="http://localhost/v1", model="served",
+        out_dir=out, code_revision="frozen-sha", track="contract_probe")
+    assert manifest["status"] == "COMPLETE"
+    assert manifest["request_count"] == manifest["received_count"] == len(sent) == 56
+    assert manifest["protocol"] == "product_contract_probe_v1"
+    assert manifest["declared_protocol"] == CONTRACT_PROTOCOL
+    for payload, row in zip(sent, rows):
+        assert payload["messages"] == [{"role": "system", "content": row["system"]},
+                                       {"role": "user", "content": row["user"]}]
+        assert set(payload) == {"model", "messages", "temperature", "max_tokens",
+                                "seed", "chat_template_kwargs"}
+    graded = json.loads((out / "graded.json").read_text())["model_results"]
+    assert set(graded["metrics"]) == {"original", "surface_only", "schema_only", "both"}
+    assert "contract_diagnostics" in graded and "paired_vs_original" in graded
+    assert all(m["safe_abstention"] == 4 and m["over_abstention"] == 10
+               for m in graded["metrics"].values())
+
+
+def test_unknown_track_is_rejected_before_creating_artifacts(tmp_path):
+    out = tmp_path / "unknown"
+    with pytest.raises(ValueError, match="unknown experiment track"):
+        runner.run_benchmark(endpoint="http://localhost/v1", model="served",
+                             out_dir=out, code_revision="sha", track="unknown")
+    assert not out.exists()
