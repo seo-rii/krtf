@@ -1,0 +1,46 @@
+{
+  "run_id": "krtf-synthetic-expansion-20261013T060423Z",
+  "code_revision": "370b780e0830acccf9ea670a15c156bd78630997",
+  "archive_sha256": "1bf28febca11cc23f6e9d11ec02202a955f1dea7ebebd339532d6be30dbe96a9",
+  "server_command": [
+    "/home/one/.venvs/vllm/bin/python",
+    "-m",
+    "vllm.entrypoints.openai.api_server",
+    "--model",
+    "/data/one/mil_llm_refusal/models/gemma-4-12B-it",
+    "--served-model-name",
+    "ktrf-synthetic-gemma4-12b-bf16",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "18103",
+    "--dtype",
+    "bfloat16",
+    "--max-model-len",
+    "8192",
+    "--max-num-seqs",
+    "1",
+    "--gpu-memory-utilization",
+    "0.45",
+    "--enforce-eager",
+    "--generation-config",
+    "vllm",
+    "--language-model-only",
+    "--no-enable-log-requests"
+  ],
+  "model_path": "/data/one/mil_llm_refusal/models/gemma-4-12B-it",
+  "checkpoint_weight_revision": "NOT_VERIFIED",
+  "config_sha256": {
+    "config.json": "478c46e8d2c52d5c2d85bf67e3b3e8c90e7c9d91086cee27e3c267907e936bd9",
+    "tokenizer_config.json": "a62f4e85a47c0c136edaaa3a4f591fd6783717299a9def47e5ad03a49f6a5eb9",
+    "generation_config.json": "a8349d9bd64cc5841297fcb5002f0fdc4749c473c8f1b10ea337f9ce4ee7014e"
+  },
+  "gpu_free_mib_before_start": 63740,
+  "runtime": "experiment-owned loopback vLLM",
+  "request_corpus_sha256": "37b8ed8537fb955ed40ac1dc64c9d52958441d662d7b671ac3d8ebe7008d57bf",
+  "backend_versions": {
+    "vllm": "0.31.0",
+    "torch": "2.13.0",
+    "transformers": "5.17.0"
+  }
+}

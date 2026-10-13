@@ -1,0 +1,2 @@
+{"out_dir": "/home/one/experiments/krtf-synthetic-expansion-20261013T060423Z/artifacts", "status": "COMPLETE", "received": 4000, "missing": 0, "errors": 0, "malformed": 1}
+{"run_dir": "/home/one/experiments/krtf-synthetic-expansion-20261013T060423Z/artifacts", "status": "COMPLETE", "request_count": 4000, "received_count": 4000, "missing_count": 0, "error_count": 0, "malformed_count": 1, "attempted_count": 4000, "families": 100, "documents": 400, "task_cases": 800}

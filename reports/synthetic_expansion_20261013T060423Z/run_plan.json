@@ -1,0 +1,10 @@
+{
+  "run_id": "krtf-synthetic-expansion-20261013T060423Z",
+  "code_revision": "370b780e0830acccf9ea670a15c156bd78630997",
+  "expected_request_sha256": "37b8ed8537fb955ed40ac1dc64c9d52958441d662d7b671ac3d8ebe7008d57bf",
+  "archive_sha256": "1bf28febca11cc23f6e9d11ec02202a955f1dea7ebebd339532d6be30dbe96a9",
+  "remote_root": "/home/one/experiments/krtf-synthetic-expansion-20261013T060423Z",
+  "remote_log": "/home/one/logs/krtf-synthetic-expansion-20261013T060423Z.log",
+  "remote_server_log": "/home/one/logs/krtf-synthetic-expansion-20261013T060423Z-vllm.log",
+  "remote_status": "/home/one/logs/krtf-synthetic-expansion-20261013T060423Z.status.json"
+}
