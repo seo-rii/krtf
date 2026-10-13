@@ -62,8 +62,10 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
     if max_tokens <= 0 or timeout <= 0 or not code_revision:
         raise ValueError("positive token/timeout budgets and code revision are required")
     production = track in {"production_synthetic", "production_real"}
-    if requests_file is not None and not production:
-        raise ValueError("frozen request files are supported only for production tracks")
+    baseline = track in {"baseline_synthetic", "baseline_real"}
+    strict_tasks = production or baseline
+    if requests_file is not None and not strict_tasks:
+        raise ValueError("frozen request files are supported only for production and baseline tracks")
     request_provenance = None
     if track == "factorial":
         request_builder, grader = build_requests, grade_outputs
@@ -87,6 +89,15 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
         from eval.qa_policy_probe import PROTOCOL, build_policy_requests, grade_policy_outputs
         request_builder, grader = build_policy_requests, grade_policy_outputs
         protocol_id, declared_protocol = "qa_policy_separation_v1", PROTOCOL
+    elif baseline:
+        from eval.production_baseline import load_baseline_request_file, grade_baseline_outputs
+        from eval.production_grounding import production_response_error
+        if requests_file is None:
+            raise ValueError("baseline tracks require a frozen --requests-file")
+        frozen_requests, declared_protocol, request_provenance = load_baseline_request_file(
+            requests_file, track=track)
+        request_builder, grader = lambda: frozen_requests, grade_baseline_outputs
+        protocol_id = declared_protocol["kind"]
     elif production:
         from eval.production_grounding import (
             PROTOCOL, build_production_requests, grade_production_outputs,
@@ -123,7 +134,7 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
                 "response_parser": "JSON object, bare or one enclosing JSON code fence; no extra prose",
                 "retries": 0, "request_corpus_sha256": hashlib.sha256(requests_path.read_bytes()).hexdigest(),
                 "served_models": None, "setup_error": None}
-    if production:
+    if strict_tasks:
         manifest["request_provenance"] = request_provenance
         manifest["frozen_request_file_sha256"] = (hashlib.sha256(Path(requests_file).read_bytes()).hexdigest()
                                                   if requests_file is not None else None)
@@ -164,7 +175,7 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
                     content = message.get("content") if isinstance(message, dict) else None
                     record["raw_text"] = content
                     record["response"] = parse_model_json(content)
-                    if production:
+                    if strict_tasks:
                         error = production_response_error(record["response"], row)
                         if error:
                             raise ValueError(error)
@@ -191,10 +202,14 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
                 if "response" in record:
                     outputs.append(record)
 
-    graded = {"local_checks": ({"request_contract_validated": True,
-                               "execution_uses_raw_complete_response": True} if production else local_swap_checks()),
+    local_checks = ({"request_contract_validated": True,
+                     "execution_uses_raw_complete_response": True} if strict_tasks else local_swap_checks())
+    if baseline:
+        local_checks.update(ktrf_resolver_used=False, ktrf_guard_used=False,
+                            execution_validation="schema and provided glossary ID membership only")
+    graded = {"local_checks": local_checks,
               "model_results": grader(requests, outputs)}
-    if production:
+    if strict_tasks:
         graded["model_results"]["limitations"] = list(declared_protocol["limitations"])
     missing = graded["model_results"]["missing_outputs"]
     errors = sum(record["error"] is not None for record in records)
@@ -231,9 +246,10 @@ def main():
     parser.add_argument("--enable-thinking", action="store_true")
     parser.add_argument("--track", choices=("factorial", "contract_probe", "synthetic_expansion",
                                            "synthetic_expansion_v2", "qa_policy_probe",
-                                           "production_synthetic", "production_real"), default="factorial")
+                                           "production_synthetic", "production_real",
+                                           "baseline_synthetic", "baseline_real"), default="factorial")
     parser.add_argument("--requests-file", type=Path,
-                        help="Frozen production envelope with protocol, provenance and requests")
+                        help="Frozen production or baseline envelope with protocol, provenance and requests")
     args = parser.parse_args()
     manifest = run_benchmark(endpoint=args.endpoint, model=args.model, out_dir=args.out_dir,
         code_revision=args.code_revision, max_tokens=args.max_tokens, timeout=args.timeout,
