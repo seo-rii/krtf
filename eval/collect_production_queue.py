@@ -1,9 +1,10 @@
-"""Collect a terminal remote production queue, verify it, and push owned reports."""
+"""Collect a terminal production or baseline queue, verify it, and push owned reports."""
 from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
 import hashlib
+from importlib import import_module
 import json
 import os
 from pathlib import Path
@@ -11,13 +12,16 @@ import shlex
 import subprocess
 import time
 
-from eval.run_production_queue import canonical, file_hash, save_json
-from eval.report_production_grounding import prepare_report, render_markdown
+from eval.run_production_queue import canonical, report_module_for_plan, save_json, validate_plan
 
 
 def collect(config):
     repo = Path(config["repository"])
-    plan = json.loads(Path(config["plan_path"]).read_text())
+    plan = validate_plan(json.loads(Path(config["plan_path"]).read_text()))
+    baseline = plan.get("schema_version") == 2
+    report_module = import_module(report_module_for_plan(plan))
+    prepare_report, render_markdown = report_module.prepare_report, report_module.render_markdown
+    prefix = "baseline" if baseline else "production"
     state = {"pid": os.getpid(), "status": "RUNNING", "phase": "WAITING_FOR_QUEUE",
              "exit_code": None, "run_id": plan["run_id"], "started_at": datetime.now(timezone.utc).isoformat(),
              "pushed_commits": [], "remote_status": plan["status_path"]}
@@ -116,10 +120,10 @@ def collect(config):
                 summaries[stage["id"]] = summary
             else:
                 (target / "RESULTS.md").write_text("# Stage did not complete\n\nNo completed model score is claimed. See job_status.json.\n")
-            commit_paths([str(target.relative_to(repo))], "test: report production grounding " + stage["id"])
+            commit_paths([str(target.relative_to(repo))], "test: report " + prefix + " grounding " + stage["id"])
         comparisons = []
         for corpus in ("synthetic", "real"):
-            pair = [stage for stage in plan["stages"] if stage["track"] == "production_" + corpus]
+            pair = [stage for stage in plan["stages"] if stage["track"] == prefix + "_" + corpus]
             if all(stage["id"] in summaries for stage in pair):
                 comparison = prepare_report(root / pair[1]["id"], compare=root / pair[0]["id"])
                 save_json(root / (corpus + "_comparison.json"), comparison)
@@ -133,9 +137,20 @@ def collect(config):
                         "Synthetic and stratified real-sentence scores are separate; no deployment risk bound.",
                         "Gemma12B versus Qwen27B changes model family as well as size.",
                         "Failures and missing runs remain failures, never inferred successes."]}
+        if baseline:
+            overview.update(schema_version=2, condition="B", comparison_condition="C",
+                            production_inference_rerun=False, ktrf_guard_applied_to_baseline=False)
+            overview["limitations"].extend([
+                "Baseline B uses its own retrieval and execution contract; the KTRF execution guard is not applied.",
+                "Each baseline stage compares with referenced sealed production C outputs; C GPU inference is not rerun."])
         save_json(root / "summary.json", overview)
-        lines = ["# Production grounding queue", "", f"Status: **{terminal['status']}**. Exit code: `{terminal['exit_code']}`.", "",
-                 "All stages use separate stateless QA and automation requests with the actual production profiles.", "",
+        description = ("All stages run frozen baseline B with separate stateless QA and execution requests. "
+                       "The KTRF execution guard is not applied to baseline B. Each stage compares against "
+                       "referenced sealed production C outputs; C GPU inference is not rerun."
+                       if baseline else
+                       "All stages use separate stateless QA and automation requests with the actual production profiles.")
+        lines = ["# " + prefix.capitalize() + " grounding queue", "", f"Status: **{terminal['status']}**. Exit code: `{terminal['exit_code']}`.", "",
+                 description, "",
                  "| Stage | Status | Received / planned | Malformed |", "|---|---|---:|---:|"]
         for stage, result in zip(plan["stages"], terminal["stages"], strict=True):
             lines.append(f"| [{stage['id']}]({stage['id']}/RESULTS.md) | {result['status']} | {result.get('received_count', 0)}/{stage['request_count']} | {result.get('malformed_count', 'unknown')} |")
@@ -145,7 +160,7 @@ def collect(config):
         files = [str((root / name).relative_to(repo)) for name in
                  ("queue_plan.json", "queue_status.json", "unit_test_status.json", "queue_log_tail.txt", "summary.json", "RESULTS.md")]
         files.extend(str((root / name).relative_to(repo)) for name in comparisons)
-        commit_paths(files, "test: summarize sequential production grounding experiments")
+        commit_paths(files, "test: summarize sequential " + prefix + " grounding experiments")
         subprocess.run(["python3", "scripts/staging_md.py", "done", "--id", config["staging_id"]],
                        cwd=config["workspace"], check=True)
         exit_code = terminal["exit_code"]

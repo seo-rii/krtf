@@ -1,4 +1,4 @@
-"""Run a frozen production evaluation queue with one owned model runtime at a time."""
+"""Run a frozen production or baseline queue with one owned model runtime at a time."""
 from __future__ import annotations
 
 import argparse
@@ -39,12 +39,23 @@ def now():
     return datetime.now(timezone.utc).isoformat()
 
 
+def report_module_for_plan(plan):
+    """Select a fixed report implementation; baseline never uses the production grader."""
+    if plan.get("schema_version") == 1:
+        return "eval.report_production_grounding"
+    if plan.get("schema_version") == 2:
+        return "eval.report_production_baseline"
+    raise ValueError("unknown queue schema version")
+
+
 def validate_plan(plan):
-    expected = [("production_synthetic", "gemma12b"),
-                ("production_synthetic", "qwen27b"),
-                ("production_real", "gemma12b"),
-                ("production_real", "qwen27b")]
-    if plan.get("schema_version") != 1 or [
+    version = plan.get("schema_version")
+    prefix = "baseline" if version == 2 else "production"
+    expected = [(prefix + "_synthetic", "gemma12b"),
+                (prefix + "_synthetic", "qwen27b"),
+                (prefix + "_real", "gemma12b"),
+                (prefix + "_real", "qwen27b")]
+    if version not in (1, 2) or [
             (s["track"], s["model_key"]) for s in plan["stages"]] != expected:
         raise ValueError("expected the four predeclared synthetic/real, 12B/27B stages")
     if len({s["id"] for s in plan["stages"]}) != 4:
@@ -54,7 +65,9 @@ def validate_plan(plan):
             raise ValueError("invalid stage identity or request count")
         if len(stage["requests_sha256"]) != 64 or len(stage["envelope_sha256"]) != 64:
             raise ValueError("frozen request and envelope hashes required")
-    for track in ("production_synthetic", "production_real"):
+        if version == 2 and stage["request_count"] != (874 if stage["track"] == "baseline_synthetic" else 120):
+            raise ValueError("baseline queue requires 874 synthetic and 120 real requests per model")
+    for track in (prefix + "_synthetic", prefix + "_real"):
         stages = [s for s in plan["stages"] if s["track"] == track]
         for field in ("requests_sha256", "envelope_sha256", "request_count"):
             if stages[0][field] != stages[1][field]:
@@ -235,7 +248,7 @@ def run_queue(plan):
                     if manifest.get(field) != expected:
                         raise ValueError("run manifest differs from plan: " + field)
                 update(phase="REPORTING", responses_completed=manifest["received_count"])
-                report = subprocess.run([plan["python"], "-m", "eval.report_production_grounding",
+                report = subprocess.run([plan["python"], "-m", report_module_for_plan(plan),
                     "--run-dir", str(out)], cwd=plan["source"])
                 current.update(exit_code=benchmark.returncode or report.returncode,
                     received_count=manifest["received_count"], malformed_count=manifest["malformed_count"],
