@@ -384,6 +384,35 @@ def test_sidecar_round_trip():
     assert _rpc(rt, "health")["result"]["snapshot_id"]
 
 
+def test_sidecar_keeps_qa_policy_out_of_alternating_execution_requests():
+    from ktrf.context import (EXECUTION_POLICY, KNOWLEDGE_ASSISTANCE_POLICY,
+                             QA_CONTEXT_POLICY, validate_llm_grounding)
+
+    rt = PiRuntime()
+    _rpc(rt, "initialize")
+    loaded = _rpc(rt, "load_layers", {"sources": {"project": BILLING}})["result"]
+    cases = [
+        ({}, QA_CONTEXT_POLICY),
+        ({"profile": "automation"}, EXECUTION_POLICY),
+        ({"answer_policy": "knowledge"}, KNOWLEDGE_ASSISTANCE_POLICY),
+        ({"profile": "automation", "answer_policy": "knowledge"}, EXECUTION_POLICY),
+        ({}, QA_CONTEXT_POLICY),
+    ]
+    for policy, expected in cases:
+        ctx = _rpc(rt, "resolve_context", {
+            "text": "ABC 장애를 확인해", "query": "ABC?",
+            "context_policy": policy})["result"]
+        assert ctx["policy_fragment"] == expected
+        assert ctx["pack"]["snapshot"]["snapshot_id"] == loaded["snapshot_id"]
+        assert ctx["pack"]["resolved_terms"][0]["entity_id"] == \
+            "project:advanced-billing-console"
+        if policy.get("profile") == "automation":
+            assert ctx["pack"]["answer_policy"] == "evidence_only"
+            output = {"answer": "과금 콘솔",
+                      "entity_id": "project:advanced-billing-console"}
+            assert not validate_llm_grounding(output, ctx["pack"])["valid"]
+
+
 def test_sidecar_errors_are_responses_not_crashes():
     rt = PiRuntime()
     unknown = _rpc(rt, "no_such_method")

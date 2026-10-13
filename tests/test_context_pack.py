@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from ktrf.context import (CharTokenCounter, ContextPolicy, TERMINOLOGY_POLICY,
+from ktrf.context import (CharTokenCounter, ContextPolicy, QA_CONTEXT_POLICY,
                           build_context_pack, prepare_llm_context,
                           render_context_pack, validate_llm_grounding)
 from ktrf.errors import KtrfApiError
@@ -83,7 +83,7 @@ def test_ambiguous_candidates_never_leak_into_resolved(snap):
 
 def test_policy_fragment_is_fixed_and_separate(snap):
     p = _prepare(snap, "금감원 발표")
-    assert p.policy_fragment == TERMINOLOGY_POLICY
+    assert p.policy_fragment == QA_CONTEXT_POLICY
     assert "terminology_policy" not in p.prompt_fragment
 
 

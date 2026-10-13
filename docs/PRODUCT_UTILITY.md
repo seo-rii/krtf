@@ -1,20 +1,57 @@
 # Context policy and product utility evaluation
 
-KTRF separates knowledge assistance from authority to execute a linked entity.
-`ContextPolicy(answer_policy="knowledge")` permits an explanation using general
-knowledge while requiring the host to distinguish it from a verified glossary
-link. The default policy preserves existing grounding behavior. The
-`automation` profile always uses the execution policy, even if knowledge
-assistance was requested.
+KTRF separates explanatory QA from authority to execute a linked entity. The
+default `ContextPolicy(profile="qa_grounding", answer_policy="evidence_only")`
+uses `QA_CONTEXT_POLICY`: an ambiguous candidate's supplied definition may
+explain the entire target expression when the document context uniquely
+supports that meaning. It does not permit outside knowledge or guesses, and
+requires a null answer if the context cannot distinguish the candidates. A
+core term's meaning does not automatically describe a derived role or the
+entire compound. This explanation changes neither resolver status nor
+execution authority.
+
+`answer_policy="knowledge"` remains an explicit opt-in to explanations using
+general knowledge, distinguished from verified glossary links. The
+`summarization` and `rag_query_expansion` profiles retain their existing policy
+selection. `automation` always uses the unchanged `EXECUTION_POLICY`, even if
+knowledge assistance was requested; it receives no contextual QA exception.
+
+QA consumers read only the `answer` field and ignore incidental IDs and
+selections. Execution requires a separate automation request and conversation,
+without QA output or QA conversation history. Its output schema is
+`{"selections": [{"surface": "ABC", "entity_id": "approved-id"}]}`.
 
 Before executing a replacement, routing a ticket, or writing a linked field,
 call `validate_llm_grounding(output, pack, purpose="execution")`. A non-null ID
 must match a non-degraded resolved binding for the exact surface. Candidate
 membership, an ID resolved for another surface, and general knowledge grant no
-execution authority. A null ID is an abstention and must not trigger an action.
-The validator automatically applies this rule to automation packs. Integrations
-must independently authenticate the pack's tenant and snapshot and treat these
-packs as trusted server-produced data.
+execution authority. The execution validator rejects raw QA envelopes
+(including `answer` alongside selections), top-level `entity_id`, and missing
+or non-list selections. An explicit empty selections list or a null selection
+ID is an abstention and must not trigger an action. Validate the complete
+execution response before extracting any non-null selections; do not repair a
+QA response into this schema. The guard cannot identify a QA ID that the host
+has manually repackaged as a valid execution selection.
+
+The validator automatically applies the execution contract to automation
+packs. Integrations must independently authenticate the pack's tenant and
+snapshot and treat these packs as trusted server-produced data.
+
+## Evidence for QA-only adoption
+
+The [recorded QA policy experiment](../reports/qa_policy_20261013T123450Z/RESULTS.md)
+used 437 AI-authored synthetic documents and one Gemma4 12B model. Adding a
+contextual QA exception improved overall QA from **337/437 to 397/437** and
+contextual-collision QA from **2/74 to 54/74**. Routing fell from **334/437 to
+331/437** when its shared system prompt also received the exception. Correct
+but execution-unapproved IDs emitted incidentally by QA increased from **11 to
+47**. These results motivate applying the exception only to QA, retaining the
+execution prompt and binding guard, and consuming QA answers without IDs.
+
+The frozen experiment measured its synthetic prompts, not the newly selected
+production profile. It did not test unrestricted general knowledge, independent
+human gold, or a deployment error bound. The production policy adoption adds
+contract tests; these historical scores are not a new production measurement.
 
 ## Paired format and policy experiment
 

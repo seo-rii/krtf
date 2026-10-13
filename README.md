@@ -168,14 +168,50 @@ with strict status separation:
 ```python
 from ktrf import prepare_llm_context, ContextPolicy, validate_llm_grounding
 
-prepared = prepare_llm_context(
-    snapshot, document, query="금감원의 PF 점검 결과는?",
+qa = prepare_llm_context(
+    snapshot, document, query="이 문서에서 금감원은 무엇을 뜻하나?",
     context_policy=ContextPolicy(profile="qa_grounding", max_tokens=800))
 
-prompt = prepared.policy_fragment + "\n" + prepared.prompt_fragment
-# ... call your LLM, then gate structured output before automation:
-check = validate_llm_grounding(llm_output, prepared.context_pack, purpose="execution")
+# call_llm_json is your host's LLM adapter. Display only the answer.
+qa_output = call_llm_json(
+    system=qa.policy_fragment,
+    user=qa.prompt_fragment + "\n" + document
+         + '\n이 문서에서 금감원은 무엇을 뜻하나? JSON {"answer": string or null}만 반환.')
+answer = qa_output["answer"]  # Ignore any incidental IDs or selections.
 ```
+
+Default QA may explain an ambiguous candidate's meaning when the supplied
+document context uniquely supports it for the **entire target expression**.
+It abstains if the context cannot distinguish the candidates; it does not add
+outside knowledge or promote that answer to a resolver-confirmed link.
+`answer_policy="knowledge"` remains an explicit opt-in to broader assistance.
+
+For automation, make a **separate model call and conversation**, using the
+execution profile and a selections-only output schema. Never reuse QA output
+or its conversation history as execution input:
+
+```python
+automation = prepare_llm_context(
+    snapshot, document, query="금감원",
+    context_policy=ContextPolicy(profile="automation", max_tokens=800))
+execution_output = call_llm_json(
+    system=automation.policy_fragment,
+    user=automation.prompt_fragment + "\n" + document
+         + '\n금감원을 연결하라. JSON {"selections": '
+           '[{"surface": "금감원", "entity_id": string or null}]}만 반환.')
+check = validate_llm_grounding(
+    execution_output, automation.context_pack, purpose="execution")
+if check["valid"]:
+    approved = [s for s in execution_output["selections"]
+                if s["entity_id"] is not None]
+    # Only approved selections may enter the host's authorized action.
+```
+
+The execution guard rejects raw QA envelopes, malformed selections and IDs
+without a non-degraded resolved binding for the exact surface. Empty selections
+and null IDs are abstentions. The host must keep the calls separate: the guard
+cannot detect an ID copied out of QA and repackaged as an execution selection.
+See [policy contracts and measured evidence](docs/PRODUCT_UTILITY.md).
 
 The builder keeps RESOLVED facts, AMBIGUOUS candidate sets,
 document-asserted definitions, and unknown mentions structurally separate
@@ -184,8 +220,8 @@ mentions (`observed_as` + occurrence count), selects query-relevant entities
 with a deterministic heuristic (no LLM calls inside the layer), enforces a
 hard token budget with a fixed reduction order and honest
 `coverage`/`omissions` metadata, strips control characters and escapes
-everything at render time, and ships a fixed `terminology_policy` fragment
-from code so glossary content can never rewrite the rules. Glossary entities
+everything at render time, and selects a fixed policy fragment from code for
+the task so glossary content can never rewrite the rules. Glossary entities
 can carry an optional `grounding:` block (`short_definition`,
 `disambiguation_hints`, `injection_policy`, `classification`) for
 prompt-ready definitions and clearance filtering.

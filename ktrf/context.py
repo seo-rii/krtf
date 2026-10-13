@@ -70,6 +70,18 @@ EXECUTION_POLICY = TERMINOLOGY_POLICY + """
 검증된 연결이 없으면 null을 반환하고 질문하거나 검토를 요청한다.
 """
 
+# Context may support a QA explanation without resolving an executable link.
+# Keep this task-specific exception out of the execution and shared policies.
+QA_CONTEXT_POLICY = EXECUTION_POLICY + """
+QA 참고 설명에 한정한 예외: answer는 사용자가 읽는 설명이며 실행용 ID 필드가 아니다.
+대상 전체 표현의 문서 문맥이 제공된 후보 중 하나의 의미를 유일하게 뒷받침하면
+AMBIGUOUS 후보의 제공된 정의(definition 또는 short_definition)를 설명에 사용할 수 있다.
+다른 표현이나 부분 표현의 정의를 빌리지 않는다. 외부 지식이나 추측으로 보충하지 않으며,
+제공된 정의가 없거나 문맥으로 하나를 구별할 수 없으면 answer는 null이다.
+이 설명은 resolver가 검증한 연결이나 확정 사실로 승격되지 않으며 실행 권한을 부여하지 않는다.
+QA 응답에는 answer만 작성하고 entity_id나 selections는 출력하지 않는다.
+"""
+
 _MAX_FIELD_CHARS = 2000  # ingestion hard cap for any single string field
 _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
@@ -689,10 +701,9 @@ class PreparedContext:
     @property
     def resolves_query(self) -> bool | None:
         """Whether the query's surface has a RESOLVED fact (not merely
-        candidates). Hosts running a task that needs one answer should
-        prefer this stricter test: offering an unresolved candidate list
-        under a "do not guess" policy makes obedient models abstain, which
-        on knowledge-heavy questions costs more than the pack adds."""
+        candidates). Use this signal when a verified link is required;
+        contextual QA may explain an unresolved candidate without it.
+        It does not replace per-selection execution validation."""
         return self.context_pack["coverage"].get("query_resolved")
 
 
@@ -714,6 +725,8 @@ def prepare_llm_context(snapshot: Snapshot, text: str,
         policy_fragment=(EXECUTION_POLICY if pack["profile"] == "automation"
                          else KNOWLEDGE_ASSISTANCE_POLICY
                          if pack["answer_policy"] == "knowledge"
+                         else QA_CONTEXT_POLICY
+                         if pack["profile"] == "qa_grounding"
                          else TERMINOLOGY_POLICY))
 
 
@@ -729,10 +742,23 @@ def validate_llm_grounding(llm_output: dict, context_pack: dict, *,
     requires a resolved binding for the exact surface, and rejects degraded
     facts. Candidate membership alone never grants execution authority.
     An automation pack always applies that stricter contract.
+    Execution requires an explicit selections list from a separate execution
+    request; raw or mixed QA answers are rejected. Hosts must never project
+    incidental QA IDs into that list (their provenance cannot be recovered).
+    An empty list or a null ID is valid abstention, not permission to act.
     Callers must authenticate the pack's tenant/snapshot separately."""
     if purpose not in ("grounding", "execution"):
         raise KtrfApiError("INVALID_REQUEST", "unknown grounding purpose")
     execution = purpose == "execution" or context_pack.get("profile") == "automation"
+    if execution:
+        if not isinstance(llm_output, dict):
+            return {"valid": False, "violations": [{"kind": "malformed_output"}]}
+        if "answer" in llm_output:
+            return {"valid": False,
+                    "violations": [{"kind": "qa_output_not_executable"}]}
+        if (not isinstance(llm_output.get("selections"), list)
+                or "entity_id" in llm_output):
+            return {"valid": False, "violations": [{"kind": "malformed_output"}]}
     resolved_ids = {c["entity_id"] for c in context_pack["resolved_terms"]}
     amb_by_surface: dict[str, set] = {}
     for a in context_pack["ambiguous_mentions"]:
@@ -754,6 +780,10 @@ def validate_llm_grounding(llm_output: dict, context_pack: dict, *,
         if eid is None:
             continue
         if execution:
+            if (not isinstance(eid, str) or not eid.strip()
+                    or not isinstance(surface, str) or not surface.strip()):
+                violations.append({"kind": "malformed_selection"})
+                continue
             facts = [c for c in context_pack["resolved_terms"]
                      if any(m["surface"] == surface for m in c["mentions"])
                      and not c["resolution"].get("degraded")]

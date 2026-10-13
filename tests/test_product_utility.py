@@ -1,7 +1,9 @@
 """Product safety and paired intervention evaluation regressions."""
 import pytest
 from eval.product_utility import build_requests, grade_outputs, local_swap_checks, swap_worlds
-from ktrf.context import (ContextPolicy, EXECUTION_POLICY, prepare_llm_context,
+from ktrf.context import (ContextPolicy, EXECUTION_POLICY,
+                          KNOWLEDGE_ASSISTANCE_POLICY, QA_CONTEXT_POLICY,
+                          TERMINOLOGY_POLICY, prepare_llm_context,
                           validate_llm_grounding)
 
 
@@ -42,6 +44,126 @@ def test_automation_enforces_execution_even_default_validator():
     assert prepared.policy_fragment == EXECUTION_POLICY
     result = validate_llm_grounding({"selections": [{"surface": "unbound", "entity_id": "global:billing"}]}, prepared.context_pack)
     assert not result["valid"]
+
+
+@pytest.mark.parametrize("profile,answer_policy,expected_policy", [
+    ("qa_grounding", "evidence_only", QA_CONTEXT_POLICY),
+    ("qa_grounding", "knowledge", KNOWLEDGE_ASSISTANCE_POLICY),
+    ("summarization", "evidence_only", TERMINOLOGY_POLICY),
+    ("rag_query_expansion", "evidence_only", TERMINOLOGY_POLICY),
+    ("automation", "evidence_only", EXECUTION_POLICY),
+    ("automation", "knowledge", EXECUTION_POLICY),
+])
+def test_contextual_explanation_policy_is_limited_to_qa(
+        profile, answer_policy, expected_policy):
+    _, snap, _ = swap_worlds()[0]
+    prepared = prepare_llm_context(
+        snap, "ABC", context_policy=ContextPolicy(
+            profile=profile, answer_policy=answer_policy))
+    assert prepared.policy_fragment == expected_policy
+    assert prepared.context_pack["answer_policy"] == (
+        "evidence_only" if profile == "automation" else answer_policy)
+
+
+def test_contextual_qa_keeps_candidate_links_unverified():
+    worlds = {name: snap for name, snap, _ in swap_worlds()}
+    prepared = prepare_llm_context(
+        worlds["ambiguous"], "ABC의 과금 정책과 청구 상태를 확인해.",
+        query="ABC는 무엇인가?")
+    assert prepared.policy_fragment == QA_CONTEXT_POLICY
+    assert prepared.should_inject
+    assert not prepared.resolves_query
+    pack = prepared.context_pack
+    assert not pack["resolved_terms"]
+    candidates = pack["ambiguous_mentions"][0]["candidates"]
+    assert len(candidates) >= 2
+    for candidate in candidates:
+        output = {"selections": [{"surface": "ABC",
+                                  "entity_id": candidate["entity_id"]}]}
+        assert validate_llm_grounding(output, pack)["valid"]
+        result = validate_llm_grounding(output, pack, purpose="execution")
+        assert not result["valid"]
+        assert "unverified_execution" in {
+            violation["kind"] for violation in result["violations"]}
+    assert not pack["resolved_terms"]
+
+
+@pytest.fixture(scope="module")
+def resolved_qa_pack():
+    _, snap, _ = swap_worlds()[0]
+    return prepare_llm_context(snap, "ABC", query="ABC?").context_pack
+
+
+@pytest.mark.parametrize("automation_default", [False, True])
+@pytest.mark.parametrize("output", [
+    {"answer": "사내 과금 콘솔"},
+    {"answer": None, "entity_id": None},
+    {"answer": "사내 과금 콘솔", "entity_id": "global:billing"},
+    {"answer": "사내 과금 콘솔", "selections": [
+        {"surface": "ABC", "entity_id": "global:billing"}]},
+])
+def test_qa_answers_cannot_be_executed_even_with_a_verified_id(
+        resolved_qa_pack, automation_default, output):
+    pack = {**resolved_qa_pack,
+            "profile": "automation" if automation_default else "qa_grounding"}
+    kwargs = {} if automation_default else {"purpose": "execution"}
+    result = validate_llm_grounding(output, pack, **kwargs)
+    assert result == {"valid": False, "violations": [
+        {"kind": "qa_output_not_executable"}]}
+
+
+@pytest.mark.parametrize("output", [
+    None, [], "ABC", 1, {},
+    {"selections": None},
+    {"selections": {"surface": "ABC", "entity_id": "global:billing"}},
+    {"selections": (), "entity_id": None},
+    {"selections": [], "entity_id": "global:billing"},
+])
+def test_execution_requires_an_explicit_selection_list(resolved_qa_pack, output):
+    result = validate_llm_grounding(output, resolved_qa_pack, purpose="execution")
+    assert result == {"valid": False,
+                      "violations": [{"kind": "malformed_output"}]}
+
+
+@pytest.mark.parametrize("selection", [
+    None, [], {},
+    {"surface": "ABC", "entity_id": []},
+    {"surface": "ABC", "entity_id": {}},
+    {"surface": "ABC", "entity_id": True},
+    {"surface": "ABC", "entity_id": ""},
+    {"surface": "ABC", "entity_id": " "},
+    {"surface": [], "entity_id": "global:billing"},
+    {"surface": {}, "entity_id": "global:billing"},
+    {"surface": None, "entity_id": "global:billing"},
+    {"surface": True, "entity_id": "global:billing"},
+    {"surface": "", "entity_id": "global:billing"},
+    {"surface": " ", "entity_id": "global:billing"},
+    {"entity_id": "global:billing"},
+])
+def test_execution_rejects_malformed_selections_without_crashing(
+        resolved_qa_pack, selection):
+    result = validate_llm_grounding(
+        {"selections": [selection]}, resolved_qa_pack, purpose="execution")
+    assert result == {"valid": False,
+                      "violations": [{"kind": "malformed_selection"}]}
+
+
+@pytest.mark.parametrize("selections", [
+    [], [{"entity_id": None}], [{"surface": "ABC", "entity_id": None}],
+    [{"surface": "ABC", "entity_id": "global:billing"}],
+])
+def test_execution_retains_explicit_abstention_and_verified_selection(
+        resolved_qa_pack, selections):
+    result = validate_llm_grounding(
+        {"selections": selections}, resolved_qa_pack, purpose="execution")
+    assert result == {"valid": True, "violations": []}
+
+
+def test_grounding_validation_does_not_require_an_execution_envelope(resolved_qa_pack):
+    assert validate_llm_grounding({}, resolved_qa_pack)["valid"]
+    assert validate_llm_grounding(
+        {"answer": "참고 설명", "entity_id": "global:billing"},
+        resolved_qa_pack)["valid"]
 
 
 def test_factorial_holds_candidates_fixed_and_no_fake_model_results():
@@ -86,7 +208,6 @@ def test_glossary_swap_measures_retained_old_meaning():
 
 
 def test_knowledge_answer_policy_does_not_grant_execution():
-    from ktrf.context import KNOWLEDGE_ASSISTANCE_POLICY
     _, snap, _ = swap_worlds()[0]
     p = prepare_llm_context(snap, "ABC", context_policy=ContextPolicy(answer_policy="knowledge"))
     assert p.policy_fragment == KNOWLEDGE_ASSISTANCE_POLICY
