@@ -25,14 +25,20 @@
     "suite_seconds": 21.23
   },
   "independent_document_gold": {
-    "status": "AWAITING_TWO_BLIND_ANNOTATORS",
+    "status": "AI_ANNOTATED_AND_ADJUDICATED",
     "packet_root": "eval/data/blind_review_20261013",
     "documents_per_source": 20,
     "sources": [
       "konec",
       "koneobench"
     ],
-    "quality_claim": false
+    "quality_claim": false,
+    "annotation_origin": "AI",
+    "human_verified": false,
+    "annotation_report": "reports/BLIND_AI_ANNOTATION.json",
+    "archive_root": "eval/annotations/blind_review_20261013",
+    "annotated_documents": 40,
+    "annotated_mentions": 75
   },
   "model_comparison": {
     "status": "COMPLETED",
@@ -54,7 +60,7 @@
     }
   },
   "remaining_evidence": [
-    "independently_annotated_real_documents",
+    "human_verified_representative_deployment_documents",
     "representative_random_audit_calibration_and_risk",
     "ONNX_export_inference_parity",
     "real_LLM_factorial_and_human_task_cost_trial"

@@ -1,0 +1,42 @@
+{
+  "protocol_id": "blind-review-20261013-ai-v1",
+  "annotation_date": "2026-10-13",
+  "annotation_origin": "AI",
+  "human_verified": false,
+  "model_family": "GPT-6",
+  "annotators": ["codex-ai-a", "codex-ai-b"],
+  "adjudicator": "codex-ai-adjudicator",
+  "procedure": "Two separate AI contexts each read all 40 unlabelled packets and the frozen glossary, without resolver output, external source labels or each other's annotations. A third AI reader adjudicates and checks all documents.",
+  "independence_limit": "Separate contexts share a model family. This is AI annotation, not two independent human judgements or an independently validated human gold set.",
+  "scope": {
+    "included": "All occurrences of proper names for organizations, people, locations, named products, works and events, plus lexicalized neologisms, blends and abbreviations visible in context.",
+    "excluded": "Ordinary compositional common nouns, dates, numbers and anonymous role titles. Do not create an exhaustive negative label for every ordinary token.",
+    "mention_type": ["ORG", "PERSON", "LOCATION", "PRODUCT", "WORK", "EVENT", "TERM"],
+    "link": "Use a frozen entity ID only when the contextual referent is that exact entity. A geographic city is distinct from its government, a subsidiary from its parent, and an institution from its official.",
+    "nil": "The contextual referent is absent from the frozen glossary, irrespective of resolver retrieval. Non-organization names and neologisms are usually NIL in this organization glossary.",
+    "ambiguous": "The contextual referent cannot be determined sufficiently to choose an entity. Do not invent IDs or expand the glossary.",
+    "non_mention": "A tempting registered-alias substring that context clearly uses as an ordinary nonentity expression.",
+    "spans": "Python codepoint half-open offsets in the unmodified packet text. Core excludes attached particles and nominal derivational suffixes. Full span includes a semantically derived nominal expression and excludes particles.",
+    "full_identity": "SAME for the same referent, DISTINCT for a role or derived entity, JUXTAPOSED for a genuine coordinated composite.",
+    "should_commit": "True only for an unambiguous LINK of the core; DISTINCT full-surface semantics do not authorize substituting the whole expression.",
+    "families": "Do not infer new family labels from resolver output or alter the sealed partitions. Omit mention family_ids unless supported by the frozen glossary."
+  },
+  "glossary": {
+    "path": "examples/realorg_glossary.yaml",
+    "sha256": "d4750b467dc968ea753f08bc13e94c720406241cdb6abdd16155b680b3376cd7"
+  },
+  "sources": {
+    "konec": {
+      "documents": 20,
+      "manifest_seal_sha256": "e63e62e598c709ea8af569cae04c73382c885020664f4d04db80662fe31cf141"
+    },
+    "koneobench": {
+      "documents": 20,
+      "manifest_seal_sha256": "f34fec8a8157c3fc6b92853aef6be120d0f3c39bc407ea0234619041bb0d3b5e"
+    }
+  },
+  "split_policy": "Retain the original sealed preparation-smoke train/validation/test assignments. AI readers see all packets only to annotate them; no resolver tuning or performance evaluation is performed in this annotation task.",
+  "publication": "Archive IDs, hashes, offsets, labels and provenance; exclude document text, mention surfaces and free-text notes. Original document IDs can contain source-header words. Full packets remain in the ignored local corpus directory.",
+  "quality_claim": false,
+  "deployment_risk_status": "UNVALIDATED"
+}

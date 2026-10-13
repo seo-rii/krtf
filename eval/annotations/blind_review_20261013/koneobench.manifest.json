@@ -1,0 +1,292 @@
+{
+  "schema_version": 1,
+  "seed": "blind-v1",
+  "code_revision": "preparation-smoke-working-tree",
+  "glossary_sha256": "d4750b467dc968ea753f08bc13e94c720406241cdb6abdd16155b680b3376cd7",
+  "protocol": {
+    "purpose": "preparation_smoke_only",
+    "risk_limit": 0.05,
+    "thresholds": [
+      0.7,
+      0.8
+    ],
+    "human_gold": "pending"
+  },
+  "documents": [
+    {
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2020-0376",
+      "parent_document_id": "koneobench:KN2020-0376",
+      "source_row_id": "KN2020-0376",
+      "dataset_revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "document_sha256": "85ea64f93718d074297e9908dec5b1235a4599df764baa0b279f5a0239c15126",
+      "collected_at": "2026-10-12T15:23:27.613348+00:00",
+      "family_ids": [
+        "koneobench-component:이코노미",
+        "koneobench-component:쿼런틴"
+      ],
+      "partition": "train"
+    },
+    {
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2021-0070",
+      "parent_document_id": "koneobench:KN2021-0070",
+      "source_row_id": "KN2021-0070",
+      "dataset_revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "document_sha256": "b44223baca0feb12ce2a797c1045ff6180c1dcf9c975baa0200f2812deec2f8f",
+      "collected_at": "2026-10-12T15:23:27.613348+00:00",
+      "family_ids": [
+        "koneobench-component:대충",
+        "koneobench-component:대충",
+        "koneobench-component:사다",
+        "koneobench-component:팔다"
+      ],
+      "partition": "test"
+    },
+    {
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2021-0287",
+      "parent_document_id": "koneobench:KN2021-0287",
+      "source_row_id": "KN2021-0287",
+      "dataset_revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "document_sha256": "7352f7dd6127edc9c4c1ca4356a85ccaca75b02523333434f336fb2e4b9234bb",
+      "collected_at": "2026-10-12T15:23:27.613348+00:00",
+      "family_ids": [
+        "koneobench-component:질",
+        "koneobench-component:피해자코스프레"
+      ],
+      "partition": "test"
+    },
+    {
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2022-0083",
+      "parent_document_id": "koneobench:KN2022-0083",
+      "source_row_id": "KN2022-0083",
+      "dataset_revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "document_sha256": "fbdb1ac618581a57399cf012ff2fcb80ea15f53518767407bc293ff720c07d29",
+      "collected_at": "2026-10-12T15:23:27.613348+00:00",
+      "family_ids": [
+        "koneobench-component:꼼수",
+        "koneobench-component:박자",
+        "koneobench-component:완전하다"
+      ],
+      "partition": "train"
+    },
+    {
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2022-0087",
+      "parent_document_id": "koneobench:KN2022-0087",
+      "source_row_id": "KN2022-0087",
+      "dataset_revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "document_sha256": "3338e6e4bfb2a56f97a262885f6cc36e389800b1705c5fbe6a62a299e0dfe99d",
+      "collected_at": "2026-10-12T15:23:27.613348+00:00",
+      "family_ids": [
+        "koneobench-component:검증",
+        "koneobench-component:남",
+        "koneobench-component:내",
+        "koneobench-component:네거티브"
+      ],
+      "partition": "train"
+    },
+    {
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2022-0211",
+      "parent_document_id": "koneobench:KN2022-0211",
+      "source_row_id": "KN2022-0211",
+      "dataset_revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "document_sha256": "943168c3842efbb05a544a5c07f2aaab517ca4d7a8da3ebae2e6dbac5d733854",
+      "collected_at": "2026-10-12T15:23:27.613348+00:00",
+      "family_ids": [
+        "koneobench-component:박탈",
+        "koneobench-component:언론",
+        "koneobench-component:완전",
+        "koneobench-component:자유"
+      ],
+      "partition": "test"
+    },
+    {
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2022-0214",
+      "parent_document_id": "koneobench:KN2022-0214",
+      "source_row_id": "KN2022-0214",
+      "dataset_revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "document_sha256": "e98b76530a589ec895ceb25e8494f33c077163186a434ca4708a9804fb420735",
+      "collected_at": "2026-10-12T15:23:27.613348+00:00",
+      "family_ids": [
+        "koneobench-component:에듀케이션",
+        "koneobench-component:핀테크"
+      ],
+      "partition": "validation"
+    },
+    {
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2022-0253",
+      "parent_document_id": "koneobench:KN2022-0253",
+      "source_row_id": "KN2022-0253",
+      "dataset_revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "document_sha256": "7e4d4c496c5d7419f377bf1efda1823f0d094bedde82141c4a81824395ec3120",
+      "collected_at": "2026-10-12T15:23:27.613348+00:00",
+      "family_ids": [
+        "koneobench-component:민주당",
+        "koneobench-component:박살",
+        "koneobench-component:완전",
+        "koneobench-component:지방선거"
+      ],
+      "partition": "test"
+    },
+    {
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2022-0305",
+      "parent_document_id": "koneobench:KN2022-0305",
+      "source_row_id": "KN2022-0305",
+      "dataset_revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "document_sha256": "39fe7deb957a51cf47f3138fecaf5c67583935f9f90ca3343209cb5bd4189079",
+      "collected_at": "2026-10-12T15:23:27.613348+00:00",
+      "family_ids": [
+        "koneobench-component:플레저",
+        "koneobench-component:헬시"
+      ],
+      "partition": "validation"
+    },
+    {
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2023-0005",
+      "parent_document_id": "koneobench:KN2023-0005",
+      "source_row_id": "KN2023-0005",
+      "dataset_revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "document_sha256": "d33d2a3c492f75ac7c00900d2ec136f814edfdd06011aacb6bb645868d7eefa0",
+      "collected_at": "2026-10-12T15:23:27.613348+00:00",
+      "family_ids": [
+        "koneobench-component:갓",
+        "koneobench-component:생산직"
+      ],
+      "partition": "validation"
+    },
+    {
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2023-0090",
+      "parent_document_id": "koneobench:KN2023-0090",
+      "source_row_id": "KN2023-0090",
+      "dataset_revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "document_sha256": "74f3fec0679c062e6a3be06fd9f52d548bf2d8de3647c68b9130d64fffc983e2",
+      "collected_at": "2026-10-12T15:23:27.613348+00:00",
+      "family_ids": [
+        "koneobench-component:광인",
+        "koneobench-component:눈",
+        "koneobench-component:맑다"
+      ],
+      "partition": "validation"
+    },
+    {
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2023-0132",
+      "parent_document_id": "koneobench:KN2023-0132",
+      "source_row_id": "KN2023-0132",
+      "dataset_revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "document_sha256": "5406afb693b420f44a240f84dbd99cdf732d4a5eb57b6f5babb4785c3c566456",
+      "collected_at": "2026-10-12T15:23:27.613348+00:00",
+      "family_ids": [
+        "koneobench-component:가입",
+        "koneobench-component:고민",
+        "koneobench-component:선",
+        "koneobench-component:후"
+      ],
+      "partition": "validation"
+    },
+    {
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2023-0265",
+      "parent_document_id": "koneobench:KN2023-0265",
+      "source_row_id": "KN2023-0265",
+      "dataset_revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "document_sha256": "f0d469e092831e7e5cda53e4eb47194f7a19ab98268fe84d32e00bc218239332",
+      "collected_at": "2026-10-12T15:23:27.613348+00:00",
+      "family_ids": [
+        "koneobench-component:락",
+        "koneobench-component:직장"
+      ],
+      "partition": "validation"
+    },
+    {
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2023-0298",
+      "parent_document_id": "koneobench:KN2023-0298",
+      "source_row_id": "KN2023-0298",
+      "dataset_revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "document_sha256": "66d61c0a0511ab622608f05c17b5689f0c8be94b24f15c1b33adcd3b9e664b7d",
+      "collected_at": "2026-10-12T15:23:27.613348+00:00",
+      "family_ids": [
+        "koneobench-component:이슬람",
+        "koneobench-component:퀴어"
+      ],
+      "partition": "train"
+    },
+    {
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2024-0068",
+      "parent_document_id": "koneobench:KN2024-0068",
+      "source_row_id": "KN2024-0068",
+      "dataset_revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "document_sha256": "4adb9f68038f11d16ef395677f20b1c46887f7fd8c10544b7448d5a4e9a7f9ab",
+      "collected_at": "2026-10-12T15:23:27.613348+00:00",
+      "family_ids": [
+        "koneobench-component:맥주",
+        "koneobench-component:오마카세"
+      ],
+      "partition": "train"
+    },
+    {
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2024-0281",
+      "parent_document_id": "koneobench:KN2024-0281",
+      "source_row_id": "KN2024-0281",
+      "dataset_revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "document_sha256": "e1d098a35092e72d46b3a3a41fd45c136fc4645a9a188bb50eb47a1457d21af7",
+      "collected_at": "2026-10-12T15:23:27.613348+00:00",
+      "family_ids": [
+        "koneobench-component:국민의미래",
+        "koneobench-component:국민의힘",
+        "koneobench-component:비례대표의원",
+        "koneobench-component:지역구의원"
+      ],
+      "partition": "test"
+    },
+    {
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2024-0292",
+      "parent_document_id": "koneobench:KN2024-0292",
+      "source_row_id": "KN2024-0292",
+      "dataset_revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "document_sha256": "532796585cfb248a4bfe4f54a17d27eadb9170b89795cfa98b101d53428d4d69",
+      "collected_at": "2026-10-12T15:23:27.613348+00:00",
+      "family_ids": [
+        "koneobench-component:젓가락",
+        "koneobench-component:집게"
+      ],
+      "partition": "train"
+    },
+    {
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2024-0307",
+      "parent_document_id": "koneobench:KN2024-0307",
+      "source_row_id": "KN2024-0307",
+      "dataset_revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "document_sha256": "fc62180d580bcc450dfa979ac521183b555d292a5601954bf95d8b587c6f005d",
+      "collected_at": "2026-10-12T15:23:27.613348+00:00",
+      "family_ids": [
+        "koneobench-component:체이스",
+        "koneobench-component:퍼센트"
+      ],
+      "partition": "validation"
+    },
+    {
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2024-0340",
+      "parent_document_id": "koneobench:KN2024-0340",
+      "source_row_id": "KN2024-0340",
+      "dataset_revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "document_sha256": "eea6826a30e9eeec96bf9557e0d77a76003ec9ec9d0af46908ab0507debcf2f0",
+      "collected_at": "2026-10-12T15:23:27.613348+00:00",
+      "family_ids": [
+        "koneobench-component:꾸미다",
+        "koneobench-component:통장"
+      ],
+      "partition": "test"
+    },
+    {
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2024-0374",
+      "parent_document_id": "koneobench:KN2024-0374",
+      "source_row_id": "KN2024-0374",
+      "dataset_revision": "d251cd9ab3ba2ca90cba434979deead637af4161",
+      "document_sha256": "ccd665e3db392e671eef7a8b39623d97cb76df3926f4291683d5251c4edcdab5",
+      "collected_at": "2026-10-12T15:23:27.613348+00:00",
+      "family_ids": [
+        "koneobench-component:핫",
+        "koneobench-component:화끈하다"
+      ],
+      "partition": "test"
+    }
+  ],
+  "seal_sha256": "f34fec8a8157c3fc6b92853aef6be120d0f3c39bc407ea0234619041bb0d3b5e"
+}

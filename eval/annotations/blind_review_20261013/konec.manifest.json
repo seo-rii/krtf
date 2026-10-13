@@ -1,0 +1,218 @@
+{
+  "schema_version": 1,
+  "seed": "blind-v1",
+  "code_revision": "preparation-smoke-working-tree",
+  "glossary_sha256": "d4750b467dc968ea753f08bc13e94c720406241cdb6abdd16155b680b3376cd7",
+  "protocol": {
+    "purpose": "preparation_smoke_only",
+    "risk_limit": 0.05,
+    "thresholds": [
+      0.7,
+      0.8
+    ],
+    "human_gold": "pending"
+  },
+  "documents": [
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_00316-wikitree\t이어",
+      "parent_document_id": "klue-ner:klue-ner-v1_dev_00316-wikitree\t이어",
+      "source_row_id": "klue-ner-v1_dev_00316-wikitree\t이어",
+      "dataset_revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "document_sha256": "42b8e9b1fada51e105383fa67f26a22b17759451b3888bab70c3b2e21acd57fd",
+      "collected_at": "2026-10-12T15:24:51.960907+00:00",
+      "family_ids": [],
+      "partition": "train"
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_00321-nsmc\t장혁이",
+      "parent_document_id": "klue-ner:klue-ner-v1_dev_00321-nsmc\t장혁이",
+      "source_row_id": "klue-ner-v1_dev_00321-nsmc\t장혁이",
+      "dataset_revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "document_sha256": "0b006fb6b79a167739aca15d5b19b5ac5c1e488e78da621596e63c1001ad3e6d",
+      "collected_at": "2026-10-12T15:24:51.960907+00:00",
+      "family_ids": [],
+      "partition": "train"
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_00882-wikitree\t이",
+      "parent_document_id": "klue-ner:klue-ner-v1_dev_00882-wikitree\t이",
+      "source_row_id": "klue-ner-v1_dev_00882-wikitree\t이",
+      "dataset_revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "document_sha256": "6b63d7b49f806a132e95dfb6881074b389e59f671452373b6ac67bf30ea07434",
+      "collected_at": "2026-10-12T15:24:51.960907+00:00",
+      "family_ids": [],
+      "partition": "train"
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_01037-wikitree\t패션",
+      "parent_document_id": "klue-ner:klue-ner-v1_dev_01037-wikitree\t패션",
+      "source_row_id": "klue-ner-v1_dev_01037-wikitree\t패션",
+      "dataset_revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "document_sha256": "620c39876198875e995f889379871833d83c2c480c29d517208673d2740c24a3",
+      "collected_at": "2026-10-12T15:24:51.960907+00:00",
+      "family_ids": [],
+      "partition": "validation"
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_01395-wikitree\t세월호법을",
+      "parent_document_id": "klue-ner:klue-ner-v1_dev_01395-wikitree\t세월호법을",
+      "source_row_id": "klue-ner-v1_dev_01395-wikitree\t세월호법을",
+      "dataset_revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "document_sha256": "5b6eb2d43fc7c88b0234f7c8ac02904ed18a220fc37483f70a7d0559305e2bc8",
+      "collected_at": "2026-10-12T15:24:51.960907+00:00",
+      "family_ids": [],
+      "partition": "test"
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_01429-wikitree\t쇼챔피언'",
+      "parent_document_id": "klue-ner:klue-ner-v1_dev_01429-wikitree\t쇼챔피언'",
+      "source_row_id": "klue-ner-v1_dev_01429-wikitree\t쇼챔피언'",
+      "dataset_revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "document_sha256": "ce63af423a6b2410a2547053661fb97ce5da4a17920570b10c4f6ce8c093395e",
+      "collected_at": "2026-10-12T15:24:51.960907+00:00",
+      "family_ids": [],
+      "partition": "train"
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_01574-nsmc\t찰리",
+      "parent_document_id": "klue-ner:klue-ner-v1_dev_01574-nsmc\t찰리",
+      "source_row_id": "klue-ner-v1_dev_01574-nsmc\t찰리",
+      "dataset_revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "document_sha256": "b9fa5f5bcfbd86b94594c3f63675206076228133bebe5cc8055e156418dfbcb1",
+      "collected_at": "2026-10-12T15:24:51.960907+00:00",
+      "family_ids": [],
+      "partition": "train"
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_02123-nsmc\t근데",
+      "parent_document_id": "klue-ner:klue-ner-v1_dev_02123-nsmc\t근데",
+      "source_row_id": "klue-ner-v1_dev_02123-nsmc\t근데",
+      "dataset_revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "document_sha256": "0e2b307106d1bc58ce8fad8e421ddb5be2fa9105dfadf6c194faec7493732b77",
+      "collected_at": "2026-10-12T15:24:51.960907+00:00",
+      "family_ids": [],
+      "partition": "train"
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_02530-nsmc\t왠지",
+      "parent_document_id": "klue-ner:klue-ner-v1_dev_02530-nsmc\t왠지",
+      "source_row_id": "klue-ner-v1_dev_02530-nsmc\t왠지",
+      "dataset_revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "document_sha256": "ebde83860d734bdfad59b53684093bbedf30ff8d5b5567d7a5f94dd13018dc74",
+      "collected_at": "2026-10-12T15:24:51.960907+00:00",
+      "family_ids": [],
+      "partition": "validation"
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_02554-nsmc\t가슴",
+      "parent_document_id": "klue-ner:klue-ner-v1_dev_02554-nsmc\t가슴",
+      "source_row_id": "klue-ner-v1_dev_02554-nsmc\t가슴",
+      "dataset_revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "document_sha256": "bbe258027ffc3fdabc2387c32adbfd2278aec7cd81f75a14207a950341eb3bd9",
+      "collected_at": "2026-10-12T15:24:51.960907+00:00",
+      "family_ids": [],
+      "partition": "test"
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_02854-nsmc\t바세코를",
+      "parent_document_id": "klue-ner:klue-ner-v1_dev_02854-nsmc\t바세코를",
+      "source_row_id": "klue-ner-v1_dev_02854-nsmc\t바세코를",
+      "dataset_revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "document_sha256": "1c94c10c73cfd60898ff8fad27d5c24256f2ae9b3e0b3a9b7c5a6153fadd084d",
+      "collected_at": "2026-10-12T15:24:51.960907+00:00",
+      "family_ids": [],
+      "partition": "train"
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_03009-wikitree\t핫세가",
+      "parent_document_id": "klue-ner:klue-ner-v1_dev_03009-wikitree\t핫세가",
+      "source_row_id": "klue-ner-v1_dev_03009-wikitree\t핫세가",
+      "dataset_revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "document_sha256": "e2cb634e3c8f10c73304146b3fb0cea35d5571dc9b7861a08a6e2cf415d1c444",
+      "collected_at": "2026-10-12T15:24:51.960907+00:00",
+      "family_ids": [],
+      "partition": "train"
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_03399-nsmc\t시나리오,",
+      "parent_document_id": "klue-ner:klue-ner-v1_dev_03399-nsmc\t시나리오,",
+      "source_row_id": "klue-ner-v1_dev_03399-nsmc\t시나리오,",
+      "dataset_revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "document_sha256": "f319fa63773fcd970dfd0e67e2bc2bb23af60798986cc634883f4fec6dc658db",
+      "collected_at": "2026-10-12T15:24:51.960907+00:00",
+      "family_ids": [],
+      "partition": "train"
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_03570-nsmc\t내가",
+      "parent_document_id": "klue-ner:klue-ner-v1_dev_03570-nsmc\t내가",
+      "source_row_id": "klue-ner-v1_dev_03570-nsmc\t내가",
+      "dataset_revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "document_sha256": "f90de73d8f6ec0a1ba265562e88f654d28f357e0781c23089e2da510045a3180",
+      "collected_at": "2026-10-12T15:24:51.960907+00:00",
+      "family_ids": [],
+      "partition": "train"
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_03764-wikitree\t이날",
+      "parent_document_id": "klue-ner:klue-ner-v1_dev_03764-wikitree\t이날",
+      "source_row_id": "klue-ner-v1_dev_03764-wikitree\t이날",
+      "dataset_revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "document_sha256": "ac109b11fd15f9a3c54bd6dd49e742272ac5cb9080600e4951bd00bd9999480c",
+      "collected_at": "2026-10-12T15:24:51.960907+00:00",
+      "family_ids": [],
+      "partition": "validation"
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_04028-nsmc\t어떻게",
+      "parent_document_id": "klue-ner:klue-ner-v1_dev_04028-nsmc\t어떻게",
+      "source_row_id": "klue-ner-v1_dev_04028-nsmc\t어떻게",
+      "dataset_revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "document_sha256": "06176584da8193ef933e15d67d5d9b14bcec60e31e50644e268e4af9958e6587",
+      "collected_at": "2026-10-12T15:24:51.960907+00:00",
+      "family_ids": [],
+      "partition": "train"
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_04255-wikitree\t서울중앙지법",
+      "parent_document_id": "klue-ner:klue-ner-v1_dev_04255-wikitree\t서울중앙지법",
+      "source_row_id": "klue-ner-v1_dev_04255-wikitree\t서울중앙지법",
+      "dataset_revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "document_sha256": "1879ffbc33167a919407e1d847a1c716abfa98d9ec6e15d7ada3ad64a8252905",
+      "collected_at": "2026-10-12T15:24:51.960907+00:00",
+      "family_ids": [],
+      "partition": "train"
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_04662-nsmc\t1틴봐서",
+      "parent_document_id": "klue-ner:klue-ner-v1_dev_04662-nsmc\t1틴봐서",
+      "source_row_id": "klue-ner-v1_dev_04662-nsmc\t1틴봐서",
+      "dataset_revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "document_sha256": "1d4c8e53b3d22a1c08162e9dd03d30409eb9e48a4b725cb36d102ea2dbd4e8a2",
+      "collected_at": "2026-10-12T15:24:51.960907+00:00",
+      "family_ids": [],
+      "partition": "train"
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_04866-wikitree\t저는",
+      "parent_document_id": "klue-ner:klue-ner-v1_dev_04866-wikitree\t저는",
+      "source_row_id": "klue-ner-v1_dev_04866-wikitree\t저는",
+      "dataset_revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "document_sha256": "8f0060430b4544aa162bbb24f691d682735923bef3d7666b888b5899fc68c464",
+      "collected_at": "2026-10-12T15:24:51.960907+00:00",
+      "family_ids": [],
+      "partition": "validation"
+    },
+    {
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_04881-nsmc\t이청준의",
+      "parent_document_id": "klue-ner:klue-ner-v1_dev_04881-nsmc\t이청준의",
+      "source_row_id": "klue-ner-v1_dev_04881-nsmc\t이청준의",
+      "dataset_revision": "b6c98a457f9b13379a815bb153ae94dee2872cd4",
+      "document_sha256": "76ad6acebac3649d7803024be0b133af6bbce7933338d251adf7e5c27e99e76d",
+      "collected_at": "2026-10-12T15:24:51.960907+00:00",
+      "family_ids": [],
+      "partition": "train"
+    }
+  ],
+  "seal_sha256": "e63e62e598c709ea8af569cae04c73382c885020664f4d04db80662fe31cf141"
+}

@@ -1,0 +1,311 @@
+{
+  "status": "AI_ANNOTATED_AND_ADJUDICATED",
+  "annotation_date": "2026-10-13",
+  "annotation_origin": "AI",
+  "human_verified": false,
+  "human_gold_status": "NOT_HUMAN_VERIFIED",
+  "quality_claim": false,
+  "risk_status": "UNVALIDATED",
+  "protocol_path": "eval/annotations/blind_review_20261013/protocol.json",
+  "protocol_sha256": "21e1a9350f80b4ef64ed251e0c4c39411813825b95d0a41f73f3b3b7a2e7d755",
+  "glossary_sha256": "d4750b467dc968ea753f08bc13e94c720406241cdb6abdd16155b680b3376cd7",
+  "annotation_code_revision": "e4fb55b",
+  "procedure": {
+    "first_passes": [
+      "codex-ai-a",
+      "codex-ai-b"
+    ],
+    "adjudicator": "codex-ai-adjudicator",
+    "model_family": "GPT-6",
+    "precise_backend_revision": "NOT_RECORDED",
+    "all_documents_reread_by_adjudicator": true,
+    "initial_passes_blind_to_resolver_external_labels_and_each_other": true,
+    "same_model_family_correlation": true,
+    "adjudication_scope": "all documents, including shared omissions and full-surface judgments"
+  },
+  "sources": {
+    "konec": {
+      "initial_a": {
+        "documents": 20,
+        "empty_documents": 2,
+        "mentions": 46,
+        "labels": {
+          "AMBIGUOUS": 2,
+          "LINK": 1,
+          "NIL": 43
+        },
+        "mention_types": {
+          "LOCATION": 13,
+          "ORG": 6,
+          "PERSON": 14,
+          "PRODUCT": 7,
+          "TERM": 2,
+          "WORK": 4
+        },
+        "full_identity": {
+          "DISTINCT": 4,
+          "JUXTAPOSED": 3,
+          "SAME": 39
+        }
+      },
+      "initial_b": {
+        "documents": 20,
+        "empty_documents": 2,
+        "mentions": 45,
+        "labels": {
+          "AMBIGUOUS": 1,
+          "LINK": 1,
+          "NIL": 43
+        },
+        "mention_types": {
+          "LOCATION": 13,
+          "ORG": 6,
+          "PERSON": 14,
+          "PRODUCT": 7,
+          "TERM": 2,
+          "WORK": 3
+        },
+        "full_identity": {
+          "DISTINCT": 4,
+          "JUXTAPOSED": 3,
+          "SAME": 38
+        }
+      },
+      "adjudicated": {
+        "documents": 20,
+        "empty_documents": 2,
+        "mentions": 47,
+        "labels": {
+          "AMBIGUOUS": 2,
+          "LINK": 1,
+          "NIL": 44
+        },
+        "mention_types": {
+          "LOCATION": 13,
+          "ORG": 8,
+          "PERSON": 14,
+          "PRODUCT": 7,
+          "TERM": 2,
+          "WORK": 3
+        },
+        "full_identity": {
+          "DISTINCT": 5,
+          "JUXTAPOSED": 3,
+          "SAME": 39
+        }
+      },
+      "initial_document_exact_agreements": 16,
+      "initial_disagreement_documents": 4,
+      "manifest_seal_sha256": "e63e62e598c709ea8af569cae04c73382c885020664f4d04db80662fe31cf141",
+      "partitions": {
+        "test": 2,
+        "train": 14,
+        "validation": 4
+      },
+      "test_documents": [
+        "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_01395-wikitree\t세월호법을",
+        "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_02554-nsmc\t가슴"
+      ]
+    },
+    "koneobench": {
+      "initial_a": {
+        "documents": 20,
+        "empty_documents": 0,
+        "mentions": 30,
+        "labels": {
+          "AMBIGUOUS": 2,
+          "NIL": 28
+        },
+        "mention_types": {
+          "ORG": 2,
+          "PERSON": 1,
+          "TERM": 26,
+          "WORK": 1
+        },
+        "full_identity": {
+          "DISTINCT": 1,
+          "SAME": 29
+        }
+      },
+      "initial_b": {
+        "documents": 20,
+        "empty_documents": 0,
+        "mentions": 26,
+        "labels": {
+          "NIL": 26
+        },
+        "mention_types": {
+          "ORG": 1,
+          "TERM": 24,
+          "WORK": 1
+        },
+        "full_identity": {
+          "DISTINCT": 1,
+          "SAME": 25
+        }
+      },
+      "adjudicated": {
+        "documents": 20,
+        "empty_documents": 0,
+        "mentions": 28,
+        "labels": {
+          "AMBIGUOUS": 2,
+          "NIL": 26
+        },
+        "mention_types": {
+          "ORG": 2,
+          "PERSON": 1,
+          "TERM": 24,
+          "WORK": 1
+        },
+        "full_identity": {
+          "DISTINCT": 1,
+          "SAME": 27
+        }
+      },
+      "initial_document_exact_agreements": 17,
+      "initial_disagreement_documents": 3,
+      "manifest_seal_sha256": "f34fec8a8157c3fc6b92853aef6be120d0f3c39bc407ea0234619041bb0d3b5e",
+      "partitions": {
+        "test": 7,
+        "train": 6,
+        "validation": 7
+      },
+      "test_documents": [
+        "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2021-0070",
+        "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2021-0287",
+        "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2022-0211",
+        "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2022-0253",
+        "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2024-0281",
+        "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2024-0340",
+        "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2024-0374"
+      ]
+    }
+  },
+  "adjudications": [
+    {
+      "source": "konec",
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_01037-wikitree\t패션",
+      "reason_codes": [
+        "MENTION_TYPE",
+        "FULL_SURFACE"
+      ],
+      "rationale": "사진 게시 행위의 주체인 매체 조직으로 분류한다. 인명 뒤 경칭은 같은 인물의 전체 명사 표현에 포함한다."
+    },
+    {
+      "source": "konec",
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_02123-nsmc\t근데",
+      "reason_codes": [
+        "FULL_SURFACE"
+      ],
+      "rationale": "인명 core에서 경칭을 제외하되 전체 표현에는 경칭을 포함한다. 동일 인물이다."
+    },
+    {
+      "source": "konec",
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_03764-wikitree\t이날",
+      "reason_codes": [
+        "FULL_SURFACE"
+      ],
+      "rationale": "노선 core는 번호가 있는 이름이고 전체 표현은 교통수단 분류사를 포함한다. 하이픈으로 병렬 연결된 역들의 전체 표현은 JUXTAPOSED로 유지한다."
+    },
+    {
+      "source": "konec",
+      "document_id": "konec:b6c98a457f9b13379a815bb153ae94dee2872cd4:klue-ner-v1_dev_04255-wikitree\t서울중앙지법",
+      "reason_codes": [
+        "MENTION_COVERAGE",
+        "FULL_SURFACE"
+      ],
+      "rationale": "번호 있는 재판부를 산하 조직 NIL로 추가한다. 법원 core는 LINK이고 재판부까지 포함한 전체 표현은 DISTINCT다. 인명의 직함은 SAME으로 포함한다. 성만 나온 개인과 특정 기관을 식별할 수 없는 공소 수행 주체는 AMBIGUOUS로 보존한다."
+    },
+    {
+      "source": "koneobench",
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2024-0374",
+      "reason_codes": [
+        "MENTION_COVERAGE"
+      ],
+      "rationale": "문맥만으로 어휘화를 뒷받침하기 어려운 생산적 산지 범주 표현과 수식어는 제외한다. 확실한 명사 조어만 포함한다."
+    },
+    {
+      "source": "koneobench",
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2023-0005",
+      "reason_codes": [
+        "MENTION_COVERAGE"
+      ],
+      "rationale": "조직명이 가려진 자리표시자는 실제 조직을 지시하므로 AMBIGUOUS로 남긴다. 사전에 없다고 단정하거나 유명 기업으로 복원하지 않는다."
+    },
+    {
+      "source": "koneobench",
+      "document_id": "koneobench:d251cd9ab3ba2ca90cba434979deead637af4161:KN2022-0253",
+      "reason_codes": [
+        "MENTION_COVERAGE",
+        "FULL_SURFACE"
+      ],
+      "rationale": "익명 인물의 자리표시자는 AMBIGUOUS로 남기고 직함을 포함한 전체 표현은 SAME이다. 명시된 정당명과 조어는 동결 사전에 없으므로 NIL이다."
+    }
+  ],
+  "artifact_sha256": {
+    "eval/annotations/blind_review_20261013/konec.ai-a.jsonl": "2f9c1c97538c98ff6fb1857aa3fd0ea2e03f1ef6c7c71ead58ea5b41ae06fde6",
+    "eval/annotations/blind_review_20261013/konec.ai-b.jsonl": "91e693028cd4749c61ac37361db2974c001d93c6da8c06c12999dfd5e0995c95",
+    "eval/annotations/blind_review_20261013/konec.adjudicated.jsonl": "c0bd36de36a0fd5c42acdcaf7f15316a4f000c7e77d0830262c6e2170f24f01c",
+    "eval/annotations/blind_review_20261013/konec.manifest.json": "a77f0ce1395414ccdd4c4d4bae837774a93a10f14b5b2a2e931803ff67bcecaf",
+    "eval/annotations/blind_review_20261013/koneobench.ai-a.jsonl": "a1130c3814241999078716963418acca3c22211ca8889555da49270b21c5217a",
+    "eval/annotations/blind_review_20261013/koneobench.ai-b.jsonl": "3eac8e37e31c89ef59bcf4e408bede9cc4a1c772abf94b4e95bfb814366acdea",
+    "eval/annotations/blind_review_20261013/koneobench.adjudicated.jsonl": "3184d02dfc4bc258f194e7dabfcbddebabd4f0eeddbf4806f04d80d2576605fa",
+    "eval/annotations/blind_review_20261013/koneobench.manifest.json": "ae725686a51ebed054563125d87e7abae81a23f9ed77dca92698d984aa0ff906"
+  },
+  "limitations": [
+    "AI authored labels; separate contexts share a model family and are not independent human annotations.",
+    "The 40 existing preparation-smoke documents are not a random audit of deployment traffic.",
+    "The fixed organization glossary contains only one linkable occurrence in this broad-scope sample; commit precision and risk bounds cannot be validated here.",
+    "KoNeoBench usage was reconstructed from masked source examples and is a formation supplement.",
+    "KONEC shares source sentences with KLUE; do not pool them as independent corpora.",
+    "Original partitions and preparation manifests are unchanged. No resolver scoring or tuning was performed in this annotation task.",
+    "Archives omit text, surfaces and free-text notes; source IDs and family identifiers can include original words."
+  ],
+  "totals": {
+    "documents": 40,
+    "empty_documents": 2,
+    "mentions": 75,
+    "labels": {
+      "AMBIGUOUS": 4,
+      "LINK": 1,
+      "NIL": 70
+    },
+    "mention_types": {
+      "LOCATION": 13,
+      "ORG": 10,
+      "PERSON": 15,
+      "PRODUCT": 7,
+      "TERM": 26,
+      "WORK": 4
+    },
+    "full_identity": {
+      "DISTINCT": 6,
+      "JUXTAPOSED": 3,
+      "SAME": 66
+    },
+    "characters_reviewed_per_pass": 2091,
+    "initial_document_exact_agreements": 33,
+    "initial_disagreement_documents": 7,
+    "initial_document_exact_agreement_rate": 0.825
+  },
+  "validation": {
+    "all_packet_spans_and_surfaces_valid": true,
+    "all_LINK_ids_in_frozen_glossary": true,
+    "all_six_archive_roundtrips_preserve_decisions": true,
+    "original_manifest_seals_verified": true,
+    "original_glossary_sha256_verified": true,
+    "resolver_not_invoked": true,
+    "focused_tests": {
+      "command": "/tmp/ktrf-review-venv/bin/python -m pytest -q tests/test_annotation_archive.py tests/test_blind_gold.py",
+      "passed": 60,
+      "seconds": 1.01,
+      "exit_code": 0
+    }
+  },
+  "source_sha256": {
+    "eval/blind_gold.py": "c7642008b5fd20ff580712f1a50bb047225822647787f1c95f13e8add49595d6",
+    "eval/annotation_archive.py": "0af3a3ffb575deae853e3b08fa0272bcb67098de188a764042665bb22023742d",
+    "tests/test_annotation_archive.py": "618bae2aa988a540d1ed03e2d482e803e64fb4cd91b9003e71688369069bf127"
+  }
+}

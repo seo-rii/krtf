@@ -167,11 +167,54 @@ record로 제외한다. 제외한 원천 sentence ID는 `import_exclusions`와 �
 
 준비한 20문서씩의 두 주석 packet은 로컬의 `eval/data/blind_review_20261013/konec/`와
 `eval/data/blind_review_20261013/koneobench/`에 있다. 이 디렉터리는 gitignored이며
-공식 원문이나 주석 packet을 원격으로 배포하지 않는다. 봉인된 glossary는 준비 시
-`examples/realorg_glossary.yaml`이다. 아직 complete=false이며 실제 사람의 독립
-주석과 실사용 용어 glossary 설계는 남아 있다. 보조 형성 시험에는 목적에 맞는
+공식 원문이나 원문이 포함된 주석 packet을 원격으로 배포하지 않는다. 봉인된 glossary는 준비 시
+`examples/realorg_glossary.yaml`이다. 원래 사람 주석용 template은 `complete=false`로
+보존하고, 아래 AI 주석은 별도 파일에 기록한다. 실사용 용어 glossary 설계는
+남아 있다. 보조 형성 시험에는 목적에 맞는
 glossary/protocol을 먼저 정하고 새 batch를 준비한다. 이 smoke packet 자체는
 실사용 무작위 감사 표본이 아니다.
 
 `source_file_sha256`는 UTF-8-sig로 읽은 텍스트를 UTF-8로 다시 인코딩한 hash다.
 BOM이나 원천 파일 바이트까지 검증하려면 다운로드 원본의 hash도 별도로 보존한다.
+
+### 2026-10-13 AI 문서 주석
+
+사용자 요청에 따라 준비된 40문서 전체를 AI가 주석했다. 두 별도 AI context는
+원문과 동결 사전만 보고 각각 작성했으며, resolver 출력·원천 NER 정답·상대방의
+주석을 읽지 않았다. 이후 세 번째 AI 검토에서 문서를 다시 읽고 이견을 조정했다.
+범위는 [주석 protocol](../eval/annotations/blind_review_20261013/protocol.json),
+집계와 판정 근거는 [주석 보고서](../reports/BLIND_AI_ANNOTATION.json)에 있다.
+
+최종 75개 mention은 LINK 1개, NIL 70개, AMBIGUOUS 4개다. 대상이 없는
+2문서도 전체 검토를 마쳤다. 최초 두 판정은 33문서에서 일치했고 7문서의
+이견을 조정했다. 조정 시 두 판정에서 함께 빠진 번호 있는 재판부도 추가했다.
+core/full 의미는 SAME 66개, DISTINCT 6개, JUXTAPOSED 3개다.
+
+사람 검증을 받지 않은 AI 주석이므로 `annotation_origin=AI`,
+`human_verified=false`를 명시한다. 같은 모델 계열의 두 context를 사람 2인의
+독립 주석으로 해석하지 않는다. 사전의 170개 기관 외 인명·지명·작품·신조어도
+범위에 포함하므로 NIL이 많다. 이 자료의 일치율은 주석 정확도가 아니며,
+resolver 성능·배포 오류율·calibration coverage를 보장하지 않는다.
+
+로컬 `ai-a.jsonl`, `ai-b.jsonl`, `ai-adjudicated.jsonl`은 원문과 자유 서술을 포함한다.
+git에는 `eval/annotations/blind_review_20261013/` 아래 두 최초 판정과 최종 판정의
+archive 및 기존 봉인 manifest를 저장한다. archive는 원문, surface, 자유 서술을
+제외하고 문서 ID·hash·offset·판정·AI 출처·이견 조정 reason code를 보존한다.
+원천 ID에 포함된 header의 일부 단어나 family 식별자는 그대로 남는다.
+
+다음 명령은 같은 20문서와 hash를 가진 로컬 원문으로 최종 packet을 복원한다.
+출력 파일이 이미 있거나 문서 ID·hash·span·archive 봉인이 다르면 실패한다.
+
+```sh
+python -m eval.annotation_archive restore \
+  --annotations eval/annotations/blind_review_20261013/konec.adjudicated.jsonl \
+  --documents eval/data/blind_review_20261013/konec/documents.jsonl \
+  --out /tmp/konec-ai-restored.jsonl
+```
+
+KoNeoBench는 위 경로의 `konec`을 `koneobench`로 바꾸면 된다. 최초 판정은
+`{source}.ai-a.jsonl`, `{source}.ai-b.jsonl`로 복원한다. `export`는 검증된 전체
+packet에서 같은 archive를 만든다. `original_annotation_sha256`는 원래 packet의
+정규 JSON hash이며 `archive_sha256`는 공개 필드의 변경 탐지용 hash다. 삭제한
+자유 서술은 복원하지 않으므로 복원 packet의 hash가 최초 packet과 같다고
+주장하지 않는다. 원래 manifest·partition·glossary는 변경하지 않았다.
