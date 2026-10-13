@@ -145,3 +145,20 @@ def test_unknown_track_is_rejected_before_creating_artifacts(tmp_path):
         runner.run_benchmark(endpoint="http://localhost/v1", model="served",
                              out_dir=out, code_revision="sha", track="unknown")
     assert not out.exists()
+
+
+def test_json_object_with_invalid_id_type_is_retained_and_marked_malformed(tmp_path, monkeypatch):
+    row = next(r for r in build_requests() if r["case_id"] == "missing:structured_routing"
+               and r["condition"] == "no_context")
+    monkeypatch.setattr(runner, "build_requests", lambda: [row])
+    monkeypatch.setattr(runner, "urlopen", lambda request, timeout: FakeResponse(
+        {"data": [{"id": "served"}]} if request.full_url.endswith("/models") else
+        _completion('{"entity_id":[]}')))
+    manifest = runner.run_benchmark(endpoint="http://localhost/v1", model="served",
+        out_dir=tmp_path / "run", code_revision="frozen-sha")
+    assert manifest["status"] == "COMPLETE" and manifest["malformed_count"] == 1
+    row = json.loads((tmp_path / "run" / "responses.jsonl").read_text())
+    assert row["status"] == "MALFORMED" and row["response"] == {"entity_id": []}
+    grade = json.loads((tmp_path / "run" / "graded.json").read_text())["model_results"]
+    assert grade["metrics"]["no_context"]["malformed"] == 1
+    assert grade["metrics"]["no_context"]["safe_abstention"] == 0

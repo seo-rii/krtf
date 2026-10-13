@@ -126,6 +126,14 @@ def build_requests():
     return rows
 
 
+def malformed_response_field(response, field):
+    if field not in response:
+        return True
+    value = response[field]
+    return value is not None and (not isinstance(value, str) or
+                                  (field == "entity_id" and not value.strip()))
+
+
 def grade_outputs(requests, outputs):
     """Missing model outputs stay missing; they are never safe abstentions."""
     known = {(r["case_id"], r["condition"]): r for r in requests}
@@ -139,12 +147,12 @@ def grade_outputs(requests, outputs):
             raise ValueError("response must be an object")
         field = "answer" if req["task"] == "document_qa" else "entity_id"
         expected = req["expected_answer"] if field == "answer" else req["expected_entity_id"]
-        malformed = field not in response
+        malformed = malformed_response_field(response, field)
         abstained = not malformed and response[field] is None
         correct = not malformed and response[field] == expected
         if field == "entity_id":
-            gate = validate_llm_grounding({"selections": [{"surface": "ABC",
-                "entity_id": response.get("entity_id")}]}, req["pack"], purpose="execution")
+            gate = validate_llm_grounding({"selections": [{"surface": req.get("target_surface", "ABC"),
+                "entity_id": None if malformed else response.get("entity_id")}]}, req["pack"], purpose="execution")
             correct = correct and gate["valid"]
         scored[key] = {"correct": correct, "safe_abstention": expected is None and abstained,
                       "over_abstention": expected is not None and abstained,

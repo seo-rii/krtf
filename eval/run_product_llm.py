@@ -1,8 +1,9 @@
 """Run the frozen synthetic product intervention track against a live endpoint.
 
-Only each case's system/user strings reach the model. Ground truth and resolver
-packs stay in the local request artifact and grader. No retries or answer repair
-are performed: malformed outputs and transport failures remain distinct.
+Only each case's system/user strings reach the model. Ground truth and grading
+metadata stay in the request artifact; a full-pack condition explicitly renders
+the resolver pack in its user prompt. No retries or answer repair are performed:
+malformed outputs and transport failures remain distinct.
 """
 from __future__ import annotations
 
@@ -17,7 +18,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
-from eval.product_utility import build_requests, grade_outputs, local_swap_checks
+from eval.product_utility import (build_requests, grade_outputs, local_swap_checks,
+                                 malformed_response_field)
 
 
 def _json_bytes(value):
@@ -66,6 +68,11 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
             CONTRACT_PROTOCOL, build_contract_requests, grade_contract_outputs)
         request_builder, grader = build_contract_requests, grade_contract_outputs
         protocol_id, declared_protocol = "product_contract_probe_v1", CONTRACT_PROTOCOL
+    elif track == "synthetic_expansion":
+        from eval.synthetic_grounding import (
+            EXPANSION_PROTOCOL, build_expanded_requests, grade_expanded_outputs)
+        request_builder, grader = build_expanded_requests, grade_expanded_outputs
+        protocol_id, declared_protocol = "synthetic_grounding_expansion_v1", EXPANSION_PROTOCOL
     else:
         raise ValueError("unknown experiment track")
     endpoint = endpoint.rstrip("/")
@@ -124,6 +131,9 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
                     content = message.get("content") if isinstance(message, dict) else None
                     record["raw_text"] = content
                     record["response"] = parse_model_json(content)
+                    field = "answer" if row["task"] == "document_qa" else "entity_id"
+                    if malformed_response_field(record["response"], field):
+                        raise ValueError(f"response {field} must be present and string or null")
                 except HTTPError as error:
                     record["status"] = "HTTP_ERROR"
                     record["error"] = {"type": type(error).__name__, "http_status": error.code,
@@ -177,7 +187,7 @@ def main():
     parser.add_argument("--timeout", type=float, default=180)
     parser.add_argument("--omit-seed", action="store_true", help="Only when endpoint lacks seed support")
     parser.add_argument("--enable-thinking", action="store_true")
-    parser.add_argument("--track", choices=("factorial", "contract_probe"), default="factorial")
+    parser.add_argument("--track", choices=("factorial", "contract_probe", "synthetic_expansion"), default="factorial")
     args = parser.parse_args()
     manifest = run_benchmark(endpoint=args.endpoint, model=args.model, out_dir=args.out_dir,
         code_revision=args.code_revision, max_tokens=args.max_tokens, timeout=args.timeout,
