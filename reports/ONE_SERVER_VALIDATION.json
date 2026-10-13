@@ -1,0 +1,659 @@
+{
+  "status": "COMPLETED",
+  "tested_commit": "bfce711f4538464f8bd8dd932a0b7aea6c8a82ae",
+  "measured_at": "2026-10-13T00:44:18.770430+00:00",
+  "server": "one-server",
+  "environment": {
+    "python": "3.12.3",
+    "platform": "Linux-6.8.0-90-generic-x86_64-with-glibc2.39",
+    "cpu_count": 16,
+    "packages": {
+      "ktrf": "0.1.0",
+      "pytest": "9.1.1",
+      "PyYAML": "6.0.3",
+      "build": "1.6.1",
+      "setuptools": null
+    },
+    "model": {
+      "served_id": "mil-gemma4-12b-bf16",
+      "checkpoint_path": "/data/one/mil_llm_refusal/models/gemma-4-12B-it",
+      "max_model_len": 8192,
+      "revision": "NOT_VERIFIED",
+      "metadata_sha256": {
+        "config.json": "478c46e8d2c52d5c2d85bf67e3b3e8c90e7c9d91086cee27e3c267907e936bd9",
+        "tokenizer_config.json": "a62f4e85a47c0c136edaaa3a4f591fd6783717299a9def47e5ad03a49f6a5eb9",
+        "generation_config.json": "a8349d9bd64cc5841297fcb5002f0fdc4749c473c8f1b10ea337f9ce4ee7014e"
+      }
+    },
+    "gpu": "NVIDIA A100-SXM4-80GB",
+    "gpu_memory_mib": 81920,
+    "shared_existing_model_server": true
+  },
+  "execution": {
+    "pid": 101245,
+    "elapsed_seconds": 263.4052965641022,
+    "exit_code": 0,
+    "process_exit_verified": true,
+    "remote_source_root": "/home/one/experiments/krtf-one-server-20261013T003732Z/source",
+    "remote_log": "/home/one/logs/krtf-one-server-20261013T003732Z-validation.log",
+    "remote_status": "/home/one/logs/krtf-one-server-20261013T003732Z-validation.status.json",
+    "remote_pytest_log": "/home/one/logs/krtf-one-server-20261013T003732Z-pytest.log",
+    "local_log": "/home/seorii/logs/krtf-one-server-20261013T003732Z-validation.log",
+    "local_status": "/home/seorii/logs/krtf-one-server-20261013T003732Z-validation.status.json",
+    "local_pytest_log": "/home/seorii/logs/krtf-one-server-20261013T003732Z-pytest.log",
+    "setup": {
+      "pid": 101037,
+      "log": "/home/one/logs/krtf-one-server-20261013T003732Z-setup-2.log",
+      "status": "/home/one/logs/krtf-one-server-20261013T003732Z-setup-2.status.json",
+      "exit_code": 0
+    },
+    "initial_setup": {
+      "pid": 100818,
+      "log": "/home/one/logs/krtf-one-server-20261013T003732Z-setup.log",
+      "status": "/home/one/logs/krtf-one-server-20261013T003732Z-setup.status.json",
+      "exit_code": 1,
+      "reason": "system Python lacks ensurepip; retry seeds isolated venv using existing pip"
+    }
+  },
+  "pytest": {
+    "command": "python -m pytest -q",
+    "passed": 541,
+    "seconds": 13.26,
+    "exit_code": 0,
+    "neural_extras_installed": false,
+    "scope": "full repository core regression suite in an isolated Python3.12 environment"
+  },
+  "product_llm": {
+    "scope": "tiny synthetic fixed-candidate format/policy/glossary-swap track",
+    "requests": 126,
+    "received": 126,
+    "missing": 0,
+    "transport_errors": 0,
+    "malformed": 0,
+    "exit_code": 0,
+    "actual_usage": {
+      "completion_tokens": {
+        "observed_responses": 126,
+        "total": 2583
+      },
+      "prompt_tokens": {
+        "observed_responses": 126,
+        "total": 33880
+      },
+      "total_tokens": {
+        "observed_responses": 126,
+        "total": 36463
+      }
+    },
+    "finish_reason_counts": {
+      "stop": 126
+    },
+    "max_completion_tokens_observed": 43,
+    "decoding": {
+      "chat_template_kwargs": {
+        "enable_thinking": false
+      },
+      "max_tokens": 128,
+      "seed": 0,
+      "temperature": 0
+    },
+    "conditions": {
+      "ktrf:plain:evidence_only": {
+        "by_task": {
+          "document_qa": {
+            "observed": 7,
+            "success": 2
+          },
+          "structured_routing": {
+            "observed": 7,
+            "success": 3
+          }
+        },
+        "correct_meaning_switch": 0,
+        "estimated_input_tokens": 5744,
+        "expected": 14,
+        "glossary_swap_pairs": 3,
+        "harmful_flip": 0,
+        "helpful_flip": 3,
+        "latency_ms_observations": [
+          1003.197,
+          1047.798,
+          2190.886,
+          1239.711,
+          2285.692,
+          3624.79,
+          954.03,
+          2639.345,
+          1618.324,
+          2255.443,
+          2879.109,
+          3215.214,
+          1292.189,
+          1670.79
+        ],
+        "malformed": 0,
+        "observed": 14,
+        "over_abstention": 8,
+        "paired_with_baseline": 14,
+        "previous_meaning_retained": 0,
+        "safe_abstention": 4,
+        "task_success": 5,
+        "positive_cases": {
+          "document_qa": {
+            "observed": 5,
+            "success": 0
+          },
+          "structured_routing": {
+            "observed": 5,
+            "success": 1
+          }
+        },
+        "actual_prompt_tokens": 4190,
+        "actual_completion_tokens": 263,
+        "latency_ms_p50": 1930.838,
+        "latency_ms_p95_nearest_rank": 3624.79
+      },
+      "ktrf:plain:knowledge": {
+        "by_task": {
+          "document_qa": {
+            "observed": 7,
+            "success": 2
+          },
+          "structured_routing": {
+            "observed": 7,
+            "success": 3
+          }
+        },
+        "correct_meaning_switch": 0,
+        "estimated_input_tokens": 5119,
+        "expected": 14,
+        "glossary_swap_pairs": 3,
+        "harmful_flip": 0,
+        "helpful_flip": 3,
+        "latency_ms_observations": [
+          2526.386,
+          2569.38,
+          3326.473,
+          2290.053,
+          1339.489,
+          1387.493,
+          952.235,
+          1403.699,
+          1914.136,
+          1221.43,
+          1951.439,
+          1296.874,
+          2302.183,
+          956.049
+        ],
+        "malformed": 0,
+        "observed": 14,
+        "over_abstention": 8,
+        "paired_with_baseline": 14,
+        "previous_meaning_retained": 0,
+        "safe_abstention": 4,
+        "task_success": 5,
+        "positive_cases": {
+          "document_qa": {
+            "observed": 5,
+            "success": 0
+          },
+          "structured_routing": {
+            "observed": 5,
+            "success": 1
+          }
+        },
+        "actual_prompt_tokens": 3686,
+        "actual_completion_tokens": 268,
+        "latency_ms_p50": 1658.9175,
+        "latency_ms_p95_nearest_rank": 3326.473
+      },
+      "ktrf:structured:evidence_only": {
+        "by_task": {
+          "document_qa": {
+            "observed": 7,
+            "success": 2
+          },
+          "structured_routing": {
+            "observed": 7,
+            "success": 3
+          }
+        },
+        "correct_meaning_switch": 0,
+        "estimated_input_tokens": 6114,
+        "expected": 14,
+        "glossary_swap_pairs": 3,
+        "harmful_flip": 0,
+        "helpful_flip": 3,
+        "latency_ms_observations": [
+          1339.976,
+          955.376,
+          2237.944,
+          1333.57,
+          2052.463,
+          2291.221,
+          1571.499,
+          1095.467,
+          953.429,
+          1372.474,
+          1336.535,
+          3828.355,
+          954.281,
+          869.6
+        ],
+        "malformed": 0,
+        "observed": 14,
+        "over_abstention": 9,
+        "paired_with_baseline": 14,
+        "previous_meaning_retained": 0,
+        "safe_abstention": 4,
+        "task_success": 5,
+        "positive_cases": {
+          "document_qa": {
+            "observed": 5,
+            "success": 0
+          },
+          "structured_routing": {
+            "observed": 5,
+            "success": 1
+          }
+        },
+        "actual_prompt_tokens": 4532,
+        "actual_completion_tokens": 237,
+        "latency_ms_p50": 1338.2555000000002,
+        "latency_ms_p95_nearest_rank": 3828.355
+      },
+      "ktrf:structured:knowledge": {
+        "by_task": {
+          "document_qa": {
+            "observed": 7,
+            "success": 2
+          },
+          "structured_routing": {
+            "observed": 7,
+            "success": 3
+          }
+        },
+        "correct_meaning_switch": 0,
+        "estimated_input_tokens": 5489,
+        "expected": 14,
+        "glossary_swap_pairs": 3,
+        "harmful_flip": 0,
+        "helpful_flip": 3,
+        "latency_ms_observations": [
+          1963.068,
+          1047.576,
+          1618.434,
+          1192.402,
+          1238.533,
+          3526.923,
+          1480.785,
+          1003.912,
+          5240.215,
+          2553.551,
+          1395.144,
+          1633.725,
+          1632.103,
+          2879.355
+        ],
+        "malformed": 0,
+        "observed": 14,
+        "over_abstention": 9,
+        "paired_with_baseline": 14,
+        "previous_meaning_retained": 0,
+        "safe_abstention": 4,
+        "task_success": 5,
+        "positive_cases": {
+          "document_qa": {
+            "observed": 5,
+            "success": 0
+          },
+          "structured_routing": {
+            "observed": 5,
+            "success": 1
+          }
+        },
+        "actual_prompt_tokens": 4028,
+        "actual_completion_tokens": 261,
+        "latency_ms_p50": 1625.2685000000001,
+        "latency_ms_p95_nearest_rank": 5240.215
+      },
+      "lexical:plain:evidence_only": {
+        "by_task": {
+          "document_qa": {
+            "observed": 7,
+            "success": 2
+          },
+          "structured_routing": {
+            "observed": 7,
+            "success": 3
+          }
+        },
+        "correct_meaning_switch": 0,
+        "estimated_input_tokens": 5744,
+        "expected": 14,
+        "glossary_swap_pairs": 3,
+        "harmful_flip": 0,
+        "helpful_flip": 3,
+        "latency_ms_observations": [
+          1235.827,
+          948.741,
+          3206.915,
+          1906.417,
+          2632.246,
+          2095.885,
+          2576.492,
+          3010.117,
+          2002.704,
+          3942.903,
+          952.056,
+          912.547,
+          2059.117,
+          1050.521
+        ],
+        "malformed": 0,
+        "observed": 14,
+        "over_abstention": 8,
+        "paired_with_baseline": 14,
+        "previous_meaning_retained": 0,
+        "safe_abstention": 4,
+        "task_success": 5,
+        "positive_cases": {
+          "document_qa": {
+            "observed": 5,
+            "success": 0
+          },
+          "structured_routing": {
+            "observed": 5,
+            "success": 1
+          }
+        },
+        "actual_prompt_tokens": 4190,
+        "actual_completion_tokens": 263,
+        "latency_ms_p50": 2030.9105,
+        "latency_ms_p95_nearest_rank": 3942.903
+      },
+      "lexical:plain:knowledge": {
+        "by_task": {
+          "document_qa": {
+            "observed": 7,
+            "success": 2
+          },
+          "structured_routing": {
+            "observed": 7,
+            "success": 3
+          }
+        },
+        "correct_meaning_switch": 0,
+        "estimated_input_tokens": 5119,
+        "expected": 14,
+        "glossary_swap_pairs": 3,
+        "harmful_flip": 0,
+        "helpful_flip": 3,
+        "latency_ms_observations": [
+          1050.011,
+          1152.454,
+          1236.16,
+          1242.837,
+          1573.641,
+          1475.764,
+          3193.522,
+          2284.681,
+          4575.755,
+          947.051,
+          1722.379,
+          1338.958,
+          2824.565,
+          2835.907
+        ],
+        "malformed": 0,
+        "observed": 14,
+        "over_abstention": 8,
+        "paired_with_baseline": 14,
+        "previous_meaning_retained": 0,
+        "safe_abstention": 4,
+        "task_success": 5,
+        "positive_cases": {
+          "document_qa": {
+            "observed": 5,
+            "success": 0
+          },
+          "structured_routing": {
+            "observed": 5,
+            "success": 1
+          }
+        },
+        "actual_prompt_tokens": 3686,
+        "actual_completion_tokens": 268,
+        "latency_ms_p50": 1524.7024999999999,
+        "latency_ms_p95_nearest_rank": 4575.755
+      },
+      "lexical:structured:evidence_only": {
+        "by_task": {
+          "document_qa": {
+            "observed": 7,
+            "success": 2
+          },
+          "structured_routing": {
+            "observed": 7,
+            "success": 3
+          }
+        },
+        "correct_meaning_switch": 0,
+        "estimated_input_tokens": 6114,
+        "expected": 14,
+        "glossary_swap_pairs": 3,
+        "harmful_flip": 0,
+        "helpful_flip": 3,
+        "latency_ms_observations": [
+          1666.132,
+          2473.733,
+          2196.671,
+          1049.323,
+          3486.334,
+          2334.486,
+          1747.734,
+          1428.211,
+          1042.639,
+          1522.572,
+          2766.984,
+          3579.15,
+          954.038,
+          706.509
+        ],
+        "malformed": 0,
+        "observed": 14,
+        "over_abstention": 9,
+        "paired_with_baseline": 14,
+        "previous_meaning_retained": 0,
+        "safe_abstention": 4,
+        "task_success": 5,
+        "positive_cases": {
+          "document_qa": {
+            "observed": 5,
+            "success": 0
+          },
+          "structured_routing": {
+            "observed": 5,
+            "success": 1
+          }
+        },
+        "actual_prompt_tokens": 4532,
+        "actual_completion_tokens": 237,
+        "latency_ms_p50": 1706.933,
+        "latency_ms_p95_nearest_rank": 3579.15
+      },
+      "lexical:structured:knowledge": {
+        "by_task": {
+          "document_qa": {
+            "observed": 7,
+            "success": 2
+          },
+          "structured_routing": {
+            "observed": 7,
+            "success": 3
+          }
+        },
+        "correct_meaning_switch": 0,
+        "estimated_input_tokens": 5489,
+        "expected": 14,
+        "glossary_swap_pairs": 3,
+        "harmful_flip": 0,
+        "helpful_flip": 3,
+        "latency_ms_observations": [
+          1047.701,
+          1527.178,
+          951.027,
+          2004.626,
+          2244.066,
+          3196.2,
+          1526.136,
+          2430.424,
+          1429.074,
+          998.926,
+          1047.218,
+          948.143,
+          1385.531,
+          1720.308
+        ],
+        "malformed": 0,
+        "observed": 14,
+        "over_abstention": 9,
+        "paired_with_baseline": 14,
+        "previous_meaning_retained": 0,
+        "safe_abstention": 4,
+        "task_success": 5,
+        "positive_cases": {
+          "document_qa": {
+            "observed": 5,
+            "success": 0
+          },
+          "structured_routing": {
+            "observed": 5,
+            "success": 1
+          }
+        },
+        "actual_prompt_tokens": 4028,
+        "actual_completion_tokens": 261,
+        "latency_ms_p50": 1477.605,
+        "latency_ms_p95_nearest_rank": 3196.2
+      },
+      "no_context": {
+        "by_task": {
+          "document_qa": {
+            "observed": 7,
+            "success": 0
+          },
+          "structured_routing": {
+            "observed": 7,
+            "success": 2
+          }
+        },
+        "correct_meaning_switch": 0,
+        "estimated_input_tokens": 959,
+        "expected": 14,
+        "glossary_swap_pairs": 3,
+        "harmful_flip": 0,
+        "helpful_flip": 0,
+        "latency_ms_observations": [
+          1588.047,
+          2237.396,
+          3402.283,
+          3056.597,
+          3122.862,
+          2866.628,
+          2724.993,
+          3232.816,
+          2785.483,
+          3208.775,
+          1762.905,
+          4457.329,
+          1955.786,
+          3965.809
+        ],
+        "malformed": 0,
+        "observed": 14,
+        "over_abstention": 5,
+        "paired_with_baseline": 14,
+        "previous_meaning_retained": 0,
+        "safe_abstention": 2,
+        "task_success": 2,
+        "positive_cases": {
+          "document_qa": {
+            "observed": 5,
+            "success": 0
+          },
+          "structured_routing": {
+            "observed": 5,
+            "success": 0
+          }
+        },
+        "actual_prompt_tokens": 1008,
+        "actual_completion_tokens": 525,
+        "latency_ms_p50": 2961.6125,
+        "latency_ms_p95_nearest_rank": 4457.329
+      }
+    },
+    "selector_pair_count": 56,
+    "all_selector_pairs_have_identical_cards_prompts_and_parsed_outputs": true
+  },
+  "findings": [
+    {
+      "id": "RESULT-001",
+      "kind": "OBSERVED",
+      "text": "541 core regression tests passed; actual 126 model requests completed without transport, parsing or truncation errors."
+    },
+    {
+      "id": "RESULT-002",
+      "kind": "OBSERVED",
+      "text": "Every context condition succeeds 5/14, including 4 correct abstentions and only 1 correct answerable routing case. All 5 answerable QA cases per condition return null."
+    },
+    {
+      "id": "RESULT-003",
+      "kind": "OBSERVED",
+      "text": "Plain session routing returns session instead of session:session; the execution gate rejects this shortened ID. Structured session routing abstains."
+    },
+    {
+      "id": "RESULT-004",
+      "kind": "OBSERVED",
+      "text": "All 56 KTRF/lexical matched requests have identical cards, prompts and parsed responses. This experiment contains no selector distinction and establishes no KTRF advantage over retrieval."
+    },
+    {
+      "id": "RESULT-005",
+      "kind": "OBSERVED",
+      "text": "The system policy names resolved_terms and same-surface authorization. Both rendered formats omit resolved_terms and surface ABC; structured input is wrapped in terminology_data. The full local resolver pack contains the binding but is not transmitted."
+    },
+    {
+      "id": "RESULT-006",
+      "kind": "UNTESTED_CAUSAL_HYPOTHESIS",
+      "text": "Loss of the resolved-term/surface contract during prompt rendering may contribute to over-abstention. No corrected-stimulus ablation was performed."
+    }
+  ],
+  "validation": {
+    "manifest_seal_verified": true,
+    "all_artifact_hashes_verified": true,
+    "offline_regrading_exactly_matches": true,
+    "all_response_keys_unique": true,
+    "independent_raw_response_review": true,
+    "correct_QA_paraphrases_rejected_by_exact_matching": 0
+  },
+  "limitations": [
+    "Only one served model and a tiny synthetic glossary; not a deployment error bound or representative document trial.",
+    "Existing shared GPU API was reused; latency includes queueing and is not a dedicated GPU throughput benchmark.",
+    "Checkpoint revision/weight bytes of the existing service were not verified. Config hashes identify inspected metadata only.",
+    "No CUDA reranker, ONNX export/parity or human correction-time trial was added in this run.",
+    "The current rendered stimulus omits resolved binding fields; these scores are not direct measurements of complete production context packs."
+  ],
+  "artifact_sha256": {
+    "reports/one_server_20261013/graded.json": "bfefd6c6a70fb5524de7d593e555f89c361e5c9a0740f0b9994469d52427b938",
+    "reports/one_server_20261013/requests.jsonl": "82e65b894fa7bc148c540ae8589792c844790e52d241473aa41eb4d7be44b5f8",
+    "reports/one_server_20261013/responses.jsonl": "dafbb34eb1fb2b155182c11b0edf48aa88dee631ecc9752be71cff4cb3c7b406",
+    "reports/one_server_20261013/run_manifest.json": "3da937591ca277d087db2deb72661f35eb6282ac5504df641166b84bf880ecd5"
+  },
+  "source_sha256": {
+    "eval/product_utility.py": "510c98958140d31df4ad658c24071a4156d14ac1a278051e7f4c165c31d9cebb",
+    "eval/run_product_llm.py": "78e1c285421d42c8fb630d583b2acc4a36477266cc397b8d41bde85dc57934b9",
+    "ktrf/context.py": "cd01406cbf02354c22c4a5625706f39aa7266f0b3c8358d6830a095924fb9166",
+    "tests/test_product_llm_runner.py": "e9cfc430aae2ea8a5499d9ff9a52d55821a8d1f2801b256aad5b971509788913"
+  }
+}

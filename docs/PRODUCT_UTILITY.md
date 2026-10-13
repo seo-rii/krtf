@@ -88,3 +88,32 @@ tests passed (33 tests). The configured default Ollama endpoint,
 `localhost:11434`, refused the read-only model-list connection, so no LLM
 factorial run or human trial is represented by this result. The machine-readable
 summary is in `reports/PRODUCT_UTILITY.json`.
+
+## one-server run, 2026-10-13
+
+The full core suite passed on Python 3.12.3: **541 tests in 13.26 seconds**.
+The existing A100/vLLM service `mil-gemma4-12b-bf16` completed all 126 live
+requests with no transport or JSON errors. The runner forwards only each
+request's system/user prompts and records actual tokens, raw responses, fixed
+decoding settings and a sealed manifest:
+
+```sh
+python -m eval.run_product_llm \
+  --endpoint http://127.0.0.1:18090/v1 --model mil-gemma4-12b-bf16 \
+  --out-dir /path/to/new-exclusive-run --code-revision COMMIT_SHA \
+  --max-tokens 128 --timeout 180
+```
+
+Every contextual condition scored 5/14; the no-context baseline scored 2/14.
+Four contextual successes are safe abstentions, and the remaining success is a
+project routing ID. All five answerable QA cases per condition returned null.
+KTRF and lexical retrieval produced identical cards, prompts and responses in
+all 56 paired requests, so this sample cannot measure a selector advantage.
+
+The rendered cards omit the `resolved_terms` field and the `ABC` surface binding
+required by the system policy. This is an observed mismatch between stimulus
+and policy. Its contribution to over-abstention needs a controlled follow-up;
+these scores do not measure a complete production context pack. No corrected
+stimulus or policy was substituted during the run. Detailed outcomes and
+provenance are in [the remote report](../reports/ONE_SERVER_VALIDATION.md) and
+[the recorded run](../reports/one_server_20261013/run_manifest.json).

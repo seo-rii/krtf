@@ -22,7 +22,18 @@
     "contract_scope_checks": 8,
     "product_requests_prepared": 126,
     "suite_passed": 490,
-    "suite_seconds": 21.23
+    "suite_seconds": 21.23,
+    "one_server": {
+      "tested_commit": "bfce711f4538464f8bd8dd932a0b7aea6c8a82ae",
+      "suite_passed": 541,
+      "suite_seconds": 13.26,
+      "live_requests": 126,
+      "live_errors": 0,
+      "exit_code": 0,
+      "report": "reports/ONE_SERVER_VALIDATION.json",
+      "log": "/home/one/logs/krtf-one-server-20261013T003732Z-validation.log",
+      "status": "/home/one/logs/krtf-one-server-20261013T003732Z-validation.status.json"
+    }
   },
   "independent_document_gold": {
     "status": "AI_ANNOTATED_AND_ADJUDICATED",
@@ -63,7 +74,8 @@
     "human_verified_representative_deployment_documents",
     "representative_random_audit_calibration_and_risk",
     "ONNX_export_inference_parity",
-    "real_LLM_factorial_and_human_task_cost_trial"
+    "representative_LLM_task_trial_and_human_correction_cost",
+    "resolved_binding_prompt_alignment_controlled_followup"
   ],
   "source_sha256": {
     "ktrf/resolver.py": "f9771ad4670cca29524a9f5977375c48886d95d32ee8376bb0cd59cb4f4ac6fa",
@@ -77,5 +89,10 @@
     "eval/fixed_risk.py": "53a38993e7449027836e8eaccd29e91c022da1440de245741fd8cdc8b748432e",
     "eval/product_utility.py": "510c98958140d31df4ad658c24071a4156d14ac1a278051e7f4c165c31d9cebb",
     "eval/run_rerank_ablation.py": "a47968942a0c6357f81215aa900dd18f376df68aa2fa45bb4bc9ee0bfd85cd25"
+  },
+  "product_model_validation": {
+    "status": "SYNTHETIC_RUN_COMPLETED_WITH_OVER_ABSTENTION",
+    "report": "reports/ONE_SERVER_VALIDATION.json",
+    "production_quality_claim": false
   }
 }
