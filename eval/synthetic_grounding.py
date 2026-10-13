@@ -90,7 +90,7 @@ def _target_span(case):
     return [start, start + len(target)]
 
 
-def validate_families(families):
+def validate_families(families, *, cases_per_family=4):
     ids, case_ids = set(), set()
     for family in families:
         fid = family["family_id"]
@@ -103,8 +103,9 @@ def validate_families(families):
         if not family.get("domain") or not family.get("worlds"):
             raise ValueError("domain and authored glossary worlds required")
         source = {name: _source_entities(world) for name, world in family["worlds"].items()}
-        if len(family["worlds"]) < 2 or len(family["cases"]) != 4:
-            raise ValueError("each family needs at least two worlds and four documents")
+        if (len(family["worlds"]) < 2 or len(family["cases"]) < 4 or
+                (cases_per_family is not None and len(family["cases"]) != cases_per_family)):
+            raise ValueError("each family needs at least two worlds and the declared document count")
         for case in family["cases"]:
             if case["case_id"] in case_ids:
                 raise ValueError("duplicate case ID")
@@ -165,9 +166,11 @@ def _binding_cards(pack):
     return list({digest(c): c for c in cards}.values())
 
 
-def build_expanded_requests(families=None):
+def build_expanded_requests(families=None, *, cases_per_family=4, candidate_order="resolver"):
+    if candidate_order not in {"resolver", "opaque_id"}:
+        raise ValueError("unknown candidate presentation order")
     families = load_families() if families is None else deepcopy(families)
-    validate_families(families)
+    validate_families(families, cases_per_family=cases_per_family)
     rows, task_counts = [], Counter()
     for family in families:
         snapshots = {name: _snapshot(family, name) for name in family["worlds"]}
@@ -183,6 +186,9 @@ def build_expanded_requests(families=None):
                                               max_candidates_per_mention=6))
             pack = prepared.context_pack
             binding_cards = _binding_cards(pack)
+            if candidate_order == "opaque_id":
+                binding_cards.sort(key=lambda card: (card["status"] != "RESOLVED",
+                    card["entity_id"], card["binding_surface"]))
             if len(binding_cards) > 24:
                 raise ValueError("input cards exceed the declared allowance; never silently truncate")
             cards = [{k: v for k, v in c.items() if k != "binding_surface"} for c in binding_cards]

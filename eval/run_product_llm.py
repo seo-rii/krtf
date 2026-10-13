@@ -73,6 +73,11 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
             EXPANSION_PROTOCOL, build_expanded_requests, grade_expanded_outputs)
         request_builder, grader = build_expanded_requests, grade_expanded_outputs
         protocol_id, declared_protocol = "synthetic_grounding_expansion_v1", EXPANSION_PROTOCOL
+    elif track == "synthetic_expansion_v2":
+        from eval.synthetic_grounding import grade_expanded_outputs
+        from eval.synthetic_grounding_v2 import BALANCED_PROTOCOL, build_balanced_requests
+        request_builder, grader = build_balanced_requests, grade_expanded_outputs
+        protocol_id, declared_protocol = "synthetic_grounding_expansion_v2", BALANCED_PROTOCOL
     else:
         raise ValueError("unknown experiment track")
     endpoint = endpoint.rstrip("/")
@@ -187,7 +192,8 @@ def main():
     parser.add_argument("--timeout", type=float, default=180)
     parser.add_argument("--omit-seed", action="store_true", help="Only when endpoint lacks seed support")
     parser.add_argument("--enable-thinking", action="store_true")
-    parser.add_argument("--track", choices=("factorial", "contract_probe", "synthetic_expansion"), default="factorial")
+    parser.add_argument("--track", choices=("factorial", "contract_probe", "synthetic_expansion",
+                                           "synthetic_expansion_v2"), default="factorial")
     args = parser.parse_args()
     manifest = run_benchmark(endpoint=args.endpoint, model=args.model, out_dir=args.out_dir,
         code_revision=args.code_revision, max_tokens=args.max_tokens, timeout=args.timeout,

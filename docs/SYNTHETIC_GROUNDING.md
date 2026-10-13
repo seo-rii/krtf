@@ -22,6 +22,8 @@ All 400 document text hashes differ. The
 source hash, generated request hash, label counts and family-connected split.
 Entity keys include their source family, preventing a constant `global:main`
 answer from becoming a shortcut across unrelated dictionaries.
+This does not remove role suffixes such as `.main` and `.rival`: the review
+below documents a remaining text-blind shortcut in this v1 corpus.
 
 | Whole-target gold | Documents |
 |---|---:|
@@ -129,3 +131,74 @@ the experiment. This is a new runtime, so absolute latency is not directly
 comparable with the earlier shared-service runs. The serving model ID and
 config hashes do not verify the full checkpoint weight revision. A second model, blind real-document gold
 and representative random audits remain separate experiments.
+
+## Review addendum for the frozen v1 run
+
+The running v1 experiment retains its original source, requests and grades.
+Request-only diagnostics found that selecting the unique candidate whose ID
+does not end in `.main` answers **35/37 contextual-collision documents (94.6%)**
+correctly for exact-definition QA and raw semantic routing. It reads neither
+the document nor model outputs. First- and last-candidate baselines score
+14/37 and 23/37 respectively. All those contextual IDs remain execution-blocked.
+Consequently this stratum's semantic score alone cannot establish contextual
+reasoning by the model.
+
+A perfect semantic oracle reaches QA **400/400**, routing **336/400**, and
+overall **736/800 (92%)** in each v1 condition. The 64 remaining routing cases
+have a known glossary answer but no execution authorization. This is a guard
+ceiling, assuming the answer is known, rather than a claim that the model has
+enough supplied information to attain it. The supplemental report separates
+nulls required by that guard from avoidable nulls on authorized positive cases,
+without changing the original semantic gold or overall grade.
+
+After a run completes, create an additional report without overwriting its
+original `summary.json`, `RESULTS.md`, grades or sealed artifacts:
+
+```sh
+python -m eval.report_synthetic_grounding --run-dir /path/to/completed-v1-run \
+  --supplement --analysis-revision ANALYSIS_COMMIT_SHA
+```
+
+This writes `reviewed_summary.json` and `REVIEWED_RESULTS.md`. The original
+experiment revision and the supplemental reporting revision remain distinct.
+
+## Balanced v2 corpus
+
+V2 preserves all 400 original documents and adds **37 independently authored
+contrasts**. Another AI context reviewed every contrast against its source
+dictionary, without resolver or live-model outputs. Each of the 37 contextual
+collision families now has two same-world documents: one for each candidate.
+There are **437 documents, 874 task cases and 4,370 requests**, including
+74 contextual-collision documents. Gold remains AI synthetic and unverified by
+humans. The added texts and rationales live in
+[the contrast fixtures](../eval/fixtures/grounding_expansion_v2/); the
+[v2 manifest](../reports/SYNTHETIC_GROUNDING_V2_CORPUS.json) records source
+lineage, pair counts, assignments and request hash.
+
+Every authored entity key is replaced deterministically with an opaque hash
+key; scope prefixes remain because approval scope is part of the contract.
+The four minimal-card conditions sort by status, opaque ID and binding surface,
+independently of document text and gold. This gives each pair exactly the same
+two candidate cards in the same order. The first and last positions are each
+correct **37/74 (50%)** of the time; the `.main`-suffix rule has zero applicable
+cases. The `full_pack` reference retains actual production ordering and scores,
+so it can contain resolver ranking information in addition to the minimal cards.
+
+Original family partitions are retained; each new contrast inherits its source
+partition. No sibling pair crosses a partition, and none of the original 400
+documents moves between train, validation and test. All partitions remain
+descriptive evaluation material, not a sealed risk test. Existing v1 fixture
+bytes and generated request hash are covered by a regression check.
+
+The extra 37 positive routing cases are also guard-blocked. V2's semantic
+oracle ceiling is **773/874 (88.44%)**: QA 437/437 and routing 336/437. A lower
+aggregate ceiling here reflects the changed task mix, not a resolver regression.
+Dataset size, opaque IDs and minimal-card ordering all changed, so v1-versus-v2
+model scores would not isolate a single intervention. These baseline diagnostics
+are local deterministic checks; a v2 model score requires a separate live run:
+
+```sh
+python -m eval.run_product_llm --track synthetic_expansion_v2 \
+  --endpoint EXISTING_ENDPOINT --model MODEL_ID \
+  --out-dir /path/to/new-v2-run --code-revision V2_COMMIT_SHA
+```
