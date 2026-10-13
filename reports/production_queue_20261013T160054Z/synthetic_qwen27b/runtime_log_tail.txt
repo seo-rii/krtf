@@ -1,0 +1,35 @@
+INFO:     127.0.0.1:37142 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35786 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+(APIServer pid=223743) INFO 10-14 02:10:22 [loggers.py:320] Engine 000: Avg prompt throughput: 202.9 tokens/s, Avg generation throughput: 13.1 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+INFO:     127.0.0.1:35790 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35794 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35798 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+(APIServer pid=223743) INFO 10-14 02:10:32 [loggers.py:320] Engine 000: Avg prompt throughput: 238.2 tokens/s, Avg generation throughput: 13.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 3.1%, Prefix cache hit rate: 0.0%
+INFO:     127.0.0.1:40692 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40708 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40718 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40732 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40746 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+(APIServer pid=223743) INFO 10-14 02:10:42 [loggers.py:320] Engine 000: Avg prompt throughput: 190.8 tokens/s, Avg generation throughput: 8.3 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+(APIServer pid=223743) INFO 10-14 02:10:50 [launcher.py:128] [shutdown] API server: shutdown triggered
+(EngineCore pid=223886) INFO 10-14 02:10:50 [core.py:1409] [shutdown] EngineCore: trigger received signal=SIGTERM
+(APIServer pid=223743) INFO 10-14 02:10:50 [launcher.py:144] [shutdown] API server: stopping engine client mode=abort timeout=0s
+(EngineCore pid=223886) INFO 10-14 02:10:50 [core.py:1558] [shutdown] EngineCore: start mode=abort timeout=0s
+(EngineCore pid=223886) INFO 10-14 02:10:50 [core.py:1589] [shutdown] EngineCore: request processing complete; starting resource teardown
+(EngineCore pid=223886) INFO 10-14 02:10:50 [core.py:1422] [shutdown] EngineCore: exiting busy loop
+(APIServer pid=223743) INFO 10-14 02:10:50 [core_client.py:762] [shutdown] MPClient: start timeout=0s
+(APIServer pid=223743) INFO 10-14 02:10:50 [core_client.py:764] [shutdown] MPClient: stopping engine manager
+(APIServer pid=223743) INFO 10-14 02:10:50 [utils.py:638] [shutdown] Process manager: send sigterm to process EngineCore
+(APIServer pid=223743) WARNING 10-14 02:10:50 [utils.py:658] [shutdown] Process manager: force killing remaining processes count=1
+(APIServer pid=223743) WARNING 10-14 02:10:50 [utils.py:663] [shutdown] Process manager: force killing remaining process EngineCore pid 223886
+(APIServer pid=223743) INFO 10-14 02:10:50 [core_client.py:766] [shutdown] MPClient: engine manager stopped
+(APIServer pid=223743) INFO 10-14 02:10:50 [core_client.py:767] [shutdown] MPClient: cleaning up background resources
+(APIServer pid=223743) INFO 10-14 02:10:50 [core_client.py:769] [shutdown] MPClient: complete
+(APIServer pid=223743) INFO 10-14 02:10:50 [launcher.py:153] [shutdown] API server: engine client stopped
+(APIServer pid=223743) INFO 10-14 02:10:50 [launcher.py:156] [shutdown] API server: signalling HTTP server shutdown
+(APIServer pid=223743) INFO 10-14 02:10:50 [launcher.py:178] [shutdown] API server: shutting down FastAPI HTTP server
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+/usr/lib/python3.12/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
