@@ -52,7 +52,8 @@ def parse_model_json(content):
 
 
 def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
-                  timeout=180, seed=0, enable_thinking=False, track="factorial"):
+                  timeout=180, seed=0, enable_thinking=False, track="factorial",
+                  requests_file=None):
     """Serial requests to an existing server, returning a sealed run manifest."""
     parsed = urlsplit(endpoint)
     if (parsed.scheme not in {"http", "https"} or not parsed.netloc
@@ -60,6 +61,10 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
         raise ValueError("endpoint must be an HTTP(S) base URL without credentials or query")
     if max_tokens <= 0 or timeout <= 0 or not code_revision:
         raise ValueError("positive token/timeout budgets and code revision are required")
+    production = track in {"production_synthetic", "production_real"}
+    if requests_file is not None and not production:
+        raise ValueError("frozen request files are supported only for production tracks")
+    request_provenance = None
     if track == "factorial":
         request_builder, grader = build_requests, grade_outputs
         protocol_id, declared_protocol = "product_utility_live_v1", None
@@ -82,13 +87,28 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
         from eval.qa_policy_probe import PROTOCOL, build_policy_requests, grade_policy_outputs
         request_builder, grader = build_policy_requests, grade_policy_outputs
         protocol_id, declared_protocol = "qa_policy_separation_v1", PROTOCOL
+    elif production:
+        from eval.production_grounding import (
+            PROTOCOL, build_production_requests, grade_production_outputs,
+            load_production_request_file, production_response_error)
+        grader = grade_production_outputs
+        if requests_file is not None:
+            frozen_requests, declared_protocol, request_provenance = load_production_request_file(
+                requests_file, track=track)
+            request_builder = lambda: frozen_requests
+        elif track == "production_real":
+            raise ValueError("production_real requires a frozen --requests-file")
+        else:
+            request_builder, declared_protocol = build_production_requests, PROTOCOL
+        protocol_id = declared_protocol["kind"]
     else:
         raise ValueError("unknown experiment track")
     endpoint = endpoint.rstrip("/")
+    # Validate all frozen rows before creating artifacts or contacting a server.
+    requests = request_builder()
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=False)
     started = datetime.now(timezone.utc).isoformat()
-    requests = request_builder()
     requests_path = out_dir / "requests.jsonl"
     requests_path.write_bytes(b"".join(_json_bytes(row) for row in requests))
     decoding = {"temperature": 0, "max_tokens": max_tokens,
@@ -103,6 +123,10 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
                 "response_parser": "JSON object, bare or one enclosing JSON code fence; no extra prose",
                 "retries": 0, "request_corpus_sha256": hashlib.sha256(requests_path.read_bytes()).hexdigest(),
                 "served_models": None, "setup_error": None}
+    if production:
+        manifest["request_provenance"] = request_provenance
+        manifest["frozen_request_file_sha256"] = (hashlib.sha256(Path(requests_file).read_bytes()).hexdigest()
+                                                  if requests_file is not None else None)
     records, outputs = [], []
     try:
         served = _request_json(endpoint + "/models", timeout=timeout)
@@ -140,9 +164,14 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
                     content = message.get("content") if isinstance(message, dict) else None
                     record["raw_text"] = content
                     record["response"] = parse_model_json(content)
-                    field = "answer" if row["task"] == "document_qa" else "entity_id"
-                    if malformed_response_field(record["response"], field):
-                        raise ValueError(f"response {field} must be present and string or null")
+                    if production:
+                        error = production_response_error(record["response"], row)
+                        if error:
+                            raise ValueError(error)
+                    else:
+                        field = "answer" if row["task"] == "document_qa" else "entity_id"
+                        if malformed_response_field(record["response"], field):
+                            raise ValueError(f"response {field} must be present and string or null")
                 except HTTPError as error:
                     record["status"] = "HTTP_ERROR"
                     record["error"] = {"type": type(error).__name__, "http_status": error.code,
@@ -162,7 +191,11 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
                 if "response" in record:
                     outputs.append(record)
 
-    graded = {"local_checks": local_swap_checks(), "model_results": grader(requests, outputs)}
+    graded = {"local_checks": ({"request_contract_validated": True,
+                               "execution_uses_raw_complete_response": True} if production else local_swap_checks()),
+              "model_results": grader(requests, outputs)}
+    if production:
+        graded["model_results"]["limitations"] = list(declared_protocol["limitations"])
     missing = graded["model_results"]["missing_outputs"]
     errors = sum(record["error"] is not None for record in records)
     manifest.update({"finished_at": datetime.now(timezone.utc).isoformat(),
@@ -197,12 +230,15 @@ def main():
     parser.add_argument("--omit-seed", action="store_true", help="Only when endpoint lacks seed support")
     parser.add_argument("--enable-thinking", action="store_true")
     parser.add_argument("--track", choices=("factorial", "contract_probe", "synthetic_expansion",
-                                           "synthetic_expansion_v2", "qa_policy_probe"), default="factorial")
+                                           "synthetic_expansion_v2", "qa_policy_probe",
+                                           "production_synthetic", "production_real"), default="factorial")
+    parser.add_argument("--requests-file", type=Path,
+                        help="Frozen production envelope with protocol, provenance and requests")
     args = parser.parse_args()
     manifest = run_benchmark(endpoint=args.endpoint, model=args.model, out_dir=args.out_dir,
         code_revision=args.code_revision, max_tokens=args.max_tokens, timeout=args.timeout,
         seed=None if args.omit_seed else 0, enable_thinking=args.enable_thinking,
-        track=args.track)
+        track=args.track, requests_file=args.requests_file)
     print(json.dumps({"out_dir": str(args.out_dir), "status": manifest["status"],
                       "received": manifest["received_count"], "missing": manifest["missing_count"],
                       "errors": manifest["error_count"], "malformed": manifest["malformed_count"]}))
