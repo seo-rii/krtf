@@ -89,6 +89,7 @@ class MentionNode:
     doc_local_entities: set[str] = field(default_factory=set)
     sources: set[str] = field(default_factory=set)
     pass2_applied: bool = False
+    contextual_evidence: dict | None = None
 
 
 _OPTION_SCHEMA = {
@@ -410,6 +411,9 @@ def resolve(
             degraded |= _rerank(nodes, snapshot, text, context, mode,
                                 policy, trace)
 
+    if mode != "fast" and policy.contextual_exact_resolution:
+        _contextual_exact(nodes, snapshot, text, context, mode, trace)
+
     # ---- decisions + response assembly ----
     ordered = sorted(nodes.values(), key=lambda n: (n.core_span[0],
                                                     -(n.core_span[1] - n.core_span[0])))
@@ -448,6 +452,49 @@ def resolve(
         metrics.record_resolve(mode, 1000 * (_time.perf_counter() - _t0),
                                resp, trace)
     return resp
+
+
+def _contextual_exact(nodes, snapshot, text, context, mode, trace):
+    """Literal self-definitions can disambiguate an exact collision.
+
+    Evidence cannot restore dropped candidates, weak boundaries or derived
+    identities. Learned artifacts have not been fitted to this new feature,
+    so their existing decisions are left to their original feature schema.
+    """
+    from dataclasses import asdict
+    from .context_resolution import assess_context
+
+    if snapshot.calibrator is not None or snapshot.fusion is not None:
+        trace["contextual_exact_skipped"] = "unsupported_learned_artifact"
+        return
+    accepted = 0
+    for node in nodes.values():
+        candidates = node.pool.all_candidates()
+        tail = _tail_of(node)
+        if (len({c.entity_id for c in candidates}) < 2
+                or node.pool.truncated or node.pool.exact_overflow
+                or any(not c.is_exact or c.commit_blocked for c in candidates)
+                or (tail is not None and (tail[2] != SAME or tail[5]))
+                or any(c.provenance.get("boundary") not in (None, "PASS") for c in candidates)):
+            continue
+        records = []
+        for cand in candidates:
+            entity = snapshot.glossary.entity(cand.entity_id)
+            if entity is not None:
+                records.append({"entity_id": cand.entity_id, "canonical": entity.canonical,
+                    "definition": (entity.grounding or {}).get("short_definition") or entity.description,
+                    "examples": list(entity.examples)})
+        evidence = asdict(assess_context(text, node.core_span, node.surface, records,
+                                        {"enabled": True, "allow_document_scope": False}))
+        node.contextual_evidence = evidence
+        if evidence["chosen_entity_id"] is None:
+            continue
+        accepted += 1
+        for cand in candidates:
+            if cand.entity_id == evidence["chosen_entity_id"]:
+                cand.provenance["context_definition"] = evidence
+        _fuse(node, snapshot, text, context, mode)
+    trace["contextual_exact_supported"] = accepted
 
 
 def _rerank(nodes, snapshot: Snapshot, text: str, context: dict, mode: str,
@@ -666,7 +713,8 @@ def _fuse(node: MentionNode, snapshot: Snapshot, text: str,
             # context/scope evidence. Marginal per candidate, never
             # normalized across the prediction set (§7.12/INV-019).
             if cand.is_exact:
-                prior = 0.92 if n_exact <= 1 else max(0.15, 0.80 / n_exact)
+                prior = (0.92 if n_exact <= 1 or cand.provenance.get("context_definition")
+                         else max(0.15, 0.80 / n_exact))
                 prior -= min(0.2, cand.surface_transform_cost)
                 # surface-path quality gates the prior hard: SOFT boundaries
                 # and UNKNOWN residuals must not reach commit thresholds on
@@ -872,6 +920,8 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
         "span": omap.span_dict(s, e),
         "generation_channels": sorted(node.sources),
     }
+    if node.contextual_evidence is not None:
+        m["contextual_resolution"] = dict(node.contextual_evidence)
     if node.proposal is not None:
         p = node.proposal
         m["full_span"] = omap.span_dict(*p.full_span)
@@ -1026,6 +1076,8 @@ def _mention_response(node: MentionNode, idx: int, snapshot: Snapshot,
             "canonical": ent.canonical if ent else None,
             "calibrated_probability": top_p,
         }
+        if top.provenance.get("context_definition"):
+            m["resolved_entity"]["decision_basis"] = "EXPERIMENTAL_CONTEXT_DEFINITION"
     # Serialize only after the decision. The budget includes non-entity
     # alternatives too; count/truncation explicitly describe what was lost.
     total_member_count = len(set_members)

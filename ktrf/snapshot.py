@@ -45,7 +45,7 @@ NORMALIZER_VERSION = "nrm-2"
 # miss a change to the rule itself (M2 moved the verdict from "head-final
 # only" to "any distinct part wins"). Bump this when that rule changes.
 TAIL_GRAMMAR_VERSION = "tail-2"
-RESOLVER_SEMANTICS_VERSION = "safety-2-path-union-1"
+RESOLVER_SEMANTICS_VERSION = "safety-2-path-union-1-context-definition-1"
 
 
 @dataclass
@@ -68,10 +68,15 @@ class RuntimePolicy:
     prediction_set_min_p: float = 0.15
     candidate_budget: CandidateBudget = field(default_factory=CandidateBudget)
     rerank_input: str = "context"
+    # Experimental literal self-definition evidence, disabled by default.
+    # This is a heuristic, not a learned contextual confidence guarantee.
+    contextual_exact_resolution: bool = False
 
     def __post_init__(self):
         if self.rerank_input not in ("surface", "context", "target", "path"):
             raise ValueError("unknown rerank input variant")
+        if type(self.contextual_exact_resolution) is not bool:
+            raise ValueError("contextual_exact_resolution must be boolean")
 
 
 @dataclass(frozen=True)

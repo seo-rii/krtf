@@ -296,6 +296,9 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
                 p = m["resolved_entity"].get("calibrated_probability")
                 if p is not None:
                     card["resolution"]["probability"] = p
+            if m.get("contextual_resolution", {}).get("chosen_entity_id") == eid:
+                card["resolution"]["decision_basis"] = "EXPERIMENTAL_CONTEXT_DEFINITION"
+                card["resolution"]["contextual_evidence"] = dict(m["contextual_resolution"])
             card["mentions"].append(_mention_ref(m))
             if "doc_local" in m.get("generation_channels", []):
                 doc_defs.append({
