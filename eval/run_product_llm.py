@@ -63,9 +63,10 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
         raise ValueError("positive token/timeout budgets and code revision are required")
     production = track in {"production_synthetic", "production_real"}
     baseline = track in {"baseline_synthetic", "baseline_real"}
-    strict_tasks = production or baseline
+    document_context = track == "document_context"
+    strict_tasks = production or baseline or document_context
     if requests_file is not None and not strict_tasks:
-        raise ValueError("frozen request files are supported only for production and baseline tracks")
+        raise ValueError("frozen request files are supported only for production, baseline and document context tracks")
     request_provenance = None
     if track == "factorial":
         request_builder, grader = build_requests, grade_outputs
@@ -89,6 +90,15 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
         from eval.qa_policy_probe import PROTOCOL, build_policy_requests, grade_policy_outputs
         request_builder, grader = build_policy_requests, grade_policy_outputs
         protocol_id, declared_protocol = "qa_policy_separation_v1", PROTOCOL
+    elif document_context:
+        from eval.document_context import load_document_context_request_file, grade_document_context_outputs
+        from eval.production_grounding import production_response_error
+        if requests_file is None:
+            raise ValueError("document context requires a frozen --requests-file")
+        frozen_requests, declared_protocol, request_provenance = load_document_context_request_file(
+            requests_file, track=track)
+        request_builder, grader = lambda: frozen_requests, grade_document_context_outputs
+        protocol_id = declared_protocol["kind"]
     elif baseline:
         from eval.production_baseline import load_baseline_request_file, grade_baseline_outputs
         from eval.production_grounding import production_response_error
@@ -207,6 +217,9 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
     if baseline:
         local_checks.update(ktrf_resolver_used=False, ktrf_guard_used=False,
                             execution_validation="schema and provided glossary ID membership only")
+    if document_context:
+        local_checks.update(execution_validation="condition-specific; KTRF guard only for KTRF knowledge",
+                            original_documents_preserved=True)
     graded = {"local_checks": local_checks,
               "model_results": grader(requests, outputs)}
     if strict_tasks:
@@ -247,9 +260,9 @@ def main():
     parser.add_argument("--track", choices=("factorial", "contract_probe", "synthetic_expansion",
                                            "synthetic_expansion_v2", "qa_policy_probe",
                                            "production_synthetic", "production_real",
-                                           "baseline_synthetic", "baseline_real"), default="factorial")
+                                           "baseline_synthetic", "baseline_real", "document_context"), default="factorial")
     parser.add_argument("--requests-file", type=Path,
-                        help="Frozen production or baseline envelope with protocol, provenance and requests")
+                        help="Frozen production, baseline or document context envelope with protocol, provenance and requests")
     args = parser.parse_args()
     manifest = run_benchmark(endpoint=args.endpoint, model=args.model, out_dir=args.out_dir,
         code_revision=args.code_revision, max_tokens=args.max_tokens, timeout=args.timeout,
