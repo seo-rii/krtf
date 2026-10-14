@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "fixture_id": "document_context_v1",
+  "created_date": "2026-10-14",
+  "annotation_origin": "AI_AUTHORED_SYNTHETIC",
+  "human_verified": false,
+  "provenance": {
+    "source": "newly authored synthetic Korean business documents and knowledge memos",
+    "author": "document_context_corpus AI agent",
+    "source_document_collection": "not applicable; complete documents authored for this fixture",
+    "real_world_corpus": false,
+    "expands_external_source_sentences": false,
+    "resolver_outputs_used_for_selection_or_annotation": false,
+    "evaluated_model_outputs_used_for_selection_or_annotation": false,
+    "sealed_before_evaluated_model_runs": true
+  },
+  "independent_review": {
+    "status": "PASSED",
+    "method": "separate AI agent semantic review of all source and knowledge texts",
+    "reviewer": "root AI agent",
+    "document_count": 32,
+    "human_verified": false,
+    "findings": "Two separate AI agents reviewed all 32 source and knowledge texts and found no gold semantic conflicts. Knowledge definitions were separated with neutral paragraphs before evaluation to make retrieval coverage observable; source text and gold remain unchanged. All aliases collide and documents are brief; stress-test and length limitations are documented.",
+    "additional_reviewer": "document_context_engine AI agent"
+  },
+  "counts": {
+    "families": 8,
+    "knowledge_documents": 8,
+    "source_documents": 32,
+    "registered_entities": 16,
+    "gold_labels": {
+      "LINK": 16,
+      "AMBIGUOUS": 4,
+      "NIL": 4,
+      "COMPOSITIONAL": 4,
+      "NON_MENTION": 4
+    },
+    "strata": {
+      "remote_link": 8,
+      "local_link": 8,
+      "ambiguous": 4,
+      "nil": 4,
+      "compositional": 4,
+      "non_mention": 4
+    }
+  },
+  "limits": {
+    "source_characters_min": 354,
+    "source_characters_max": 402,
+    "source_paragraphs": 6,
+    "knowledge_characters_min": 579,
+    "knowledge_characters_max": 648,
+    "knowledge_paragraphs": 6
+  },
+  "files": {
+    "families.jsonl": {
+      "sha256": "6218fae159a3dfcc81efa436baf0da8a0b02ef7d1a95dc39abda86f9f45d97b1",
+      "bytes": 65115
+    },
+    "README.md": {
+      "sha256": "4f1deef6156ad0487c0e9e1bf0e21b0cac723ec7f882af544a8bba1895dc6efd",
+      "bytes": 5046
+    }
+  },
+  "limitations": [
+    "All shared aliases deliberately collide; this is not a representative deployment sample.",
+    "Complete source documents are short, so results cannot establish long-context capacity or large-corpus retrieval quality.",
+    "Explicit controls and repeated paragraph structure can make examples easier than natural documents.",
+    "Gold is AI-authored and separately AI-reviewed; no human verification or independently sourced real-world corpus."
+  ]
+}
