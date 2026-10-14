@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "review_status": "ADJUDICATED_BEFORE_INFERENCE",
+  "targets": 384,
+  "agreement_count": 384,
+  "disagreement_count": 0,
+  "decisions": [],
+  "authored_label_counts": {
+    "LINK": 240,
+    "AMBIGUOUS": 24,
+    "NIL": 48,
+    "NON_MENTION": 48,
+    "COMPOSITIONAL": 24
+  },
+  "blind_label_counts": {
+    "LINK": 240,
+    "AMBIGUOUS": 24,
+    "NIL": 48,
+    "NON_MENTION": 48,
+    "COMPOSITIONAL": 24
+  },
+  "final_label_counts": {
+    "LINK": 240,
+    "AMBIGUOUS": 24,
+    "NIL": 48,
+    "NON_MENTION": 48,
+    "COMPOSITIONAL": 24
+  },
+  "source_text_changed": false,
+  "grading_changed": false,
+  "scores_seen_during_review": false,
+  "reviewer_type": "INDEPENDENT_BLIND_AI_PASS",
+  "human_verified": false,
+  "annotation_independence_scope": "Separate AI agent given source/catalog/target-only projection; not independent human annotation."
+}
