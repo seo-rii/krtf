@@ -1,0 +1,293 @@
+{
+  "annotation_origin": "AI_AUTHORED_SYNTHETIC",
+  "counts": {
+    "families": 8,
+    "gold_labels": {
+      "AMBIGUOUS": 4,
+      "COMPOSITIONAL": 4,
+      "LINK": 16,
+      "NIL": 4,
+      "NON_MENTION": 4
+    },
+    "registered_entities": 16,
+    "source_documents": 32,
+    "strata": {
+      "competing_named_meanings": 4,
+      "direct_canonical": 8,
+      "direct_definition": 8,
+      "quoted_rejected_assertion": 4,
+      "unregistered_object_declaration": 4,
+      "whole_role_expression": 4
+    }
+  },
+  "created_date": "2026-10-14",
+  "documents": [
+    {
+      "characters": 606,
+      "document_id": "cd-f01-d01",
+      "gold_label": "LINK",
+      "source_sha256": "74c336bc703093c763596f5d84a662db5df4007cff794d9dd0a22a4872677d1c",
+      "target_surface": "모아"
+    },
+    {
+      "characters": 621,
+      "document_id": "cd-f01-d02",
+      "gold_label": "LINK",
+      "source_sha256": "9240b20eed776658a43023d068b022f0a5920273835f241445ddd867b31c0c8b",
+      "target_surface": "모아"
+    },
+    {
+      "characters": 635,
+      "document_id": "cd-f01-d03",
+      "gold_label": "NON_MENTION",
+      "source_sha256": "b42777663504126402fecdbb467bc73aa6957d0de8db61ef577a2c4491443676",
+      "target_surface": "모아"
+    },
+    {
+      "characters": 652,
+      "document_id": "cd-f01-d04",
+      "gold_label": "NIL",
+      "source_sha256": "8f4b85eed44fd6fcf7f07b25b519d0517a4a4021bda4a10062f4d23cf7964a5f",
+      "target_surface": "모아"
+    },
+    {
+      "characters": 623,
+      "document_id": "cd-f02-d01",
+      "gold_label": "LINK",
+      "source_sha256": "aeba610f7a757504ab4e94047df06a7d04550965873ec9658c2f05325f7ea6db",
+      "target_surface": "누리"
+    },
+    {
+      "characters": 611,
+      "document_id": "cd-f02-d02",
+      "gold_label": "LINK",
+      "source_sha256": "25fbb23f5fbc370bf65d3d26c84e89f3cb5e25c832b38e18e14681ca4f52979c",
+      "target_surface": "누리"
+    },
+    {
+      "characters": 643,
+      "document_id": "cd-f02-d03",
+      "gold_label": "AMBIGUOUS",
+      "source_sha256": "49a0f864d74c8fa8dffd21ab1ed8bf27ff82d6dda3fd6d261ff1f2af66d525ee",
+      "target_surface": "누리"
+    },
+    {
+      "characters": 644,
+      "document_id": "cd-f02-d04",
+      "gold_label": "COMPOSITIONAL",
+      "source_sha256": "81c7ab19397db6b8e0ef3a3cc1c74417ceb2e615ba948a391be27cf8a295607d",
+      "target_surface": "누리장"
+    },
+    {
+      "characters": 599,
+      "document_id": "cd-f03-d01",
+      "gold_label": "LINK",
+      "source_sha256": "4a7feee62c03c221280af511a60984f0b6bc5466447840b64edb62b6365cbc6f",
+      "target_surface": "여울"
+    },
+    {
+      "characters": 632,
+      "document_id": "cd-f03-d02",
+      "gold_label": "LINK",
+      "source_sha256": "b4a3616ce6bd6954731a6c5bf36245f3d194c02c3ce82ea2ef3c4046f5e8dfbf",
+      "target_surface": "여울"
+    },
+    {
+      "characters": 647,
+      "document_id": "cd-f03-d03",
+      "gold_label": "AMBIGUOUS",
+      "source_sha256": "e33b1c9ab235c2678297bbfcbebbbe7ef2d3ba742370673f765e595aae7289c3",
+      "target_surface": "여울"
+    },
+    {
+      "characters": 652,
+      "document_id": "cd-f03-d04",
+      "gold_label": "COMPOSITIONAL",
+      "source_sha256": "56bb947f3addff5d3fd2bd9c4cb147ff55eb7f7dfccba20dbbe557102e3a2d11",
+      "target_surface": "여울장"
+    },
+    {
+      "characters": 624,
+      "document_id": "cd-f04-d01",
+      "gold_label": "LINK",
+      "source_sha256": "c788366e2991131d9d3634e4e2ef77a9521873fb6a3106dc81dd77c03f2d47a3",
+      "target_surface": "다온"
+    },
+    {
+      "characters": 610,
+      "document_id": "cd-f04-d02",
+      "gold_label": "LINK",
+      "source_sha256": "99046fbb03fca16b30753bafb5b046a472117989fdc1b4443a76659d817b4056",
+      "target_surface": "다온"
+    },
+    {
+      "characters": 635,
+      "document_id": "cd-f04-d03",
+      "gold_label": "NON_MENTION",
+      "source_sha256": "78b75cc37095867b155423342e7e692b843059bc6bd4fa0b360c753b6658adb1",
+      "target_surface": "다온"
+    },
+    {
+      "characters": 655,
+      "document_id": "cd-f04-d04",
+      "gold_label": "NIL",
+      "source_sha256": "2d7423a9e1056236c309e1a31b5bdd4a04b974ae15d341f5b79ad83aa5728d18",
+      "target_surface": "다온"
+    },
+    {
+      "characters": 613,
+      "document_id": "cd-f05-d01",
+      "gold_label": "LINK",
+      "source_sha256": "dc62bccc275c6d866290e670bc7303d1d33e1ebf93b6d45ce8290c002910f3ee",
+      "target_surface": "이음"
+    },
+    {
+      "characters": 623,
+      "document_id": "cd-f05-d02",
+      "gold_label": "LINK",
+      "source_sha256": "bff3142b81a19f4b0c9481a0002aac0916d493d051f4f897754bbdd6dd794d02",
+      "target_surface": "이음"
+    },
+    {
+      "characters": 637,
+      "document_id": "cd-f05-d03",
+      "gold_label": "NON_MENTION",
+      "source_sha256": "7cedaf2f35f5a233e85f9703f87727e3fcb427dafb766d895650dccff1dd3020",
+      "target_surface": "이음"
+    },
+    {
+      "characters": 656,
+      "document_id": "cd-f05-d04",
+      "gold_label": "NIL",
+      "source_sha256": "d61932b093e974b3c4f82247ff906dc9436bb679da23eef42c13f53610463c19",
+      "target_surface": "이음"
+    },
+    {
+      "characters": 623,
+      "document_id": "cd-f06-d01",
+      "gold_label": "LINK",
+      "source_sha256": "c0e45dcc6e557255bec87417916a941c62ea5fde082c4fa6d2027f8d1d8c245f",
+      "target_surface": "한빛"
+    },
+    {
+      "characters": 611,
+      "document_id": "cd-f06-d02",
+      "gold_label": "LINK",
+      "source_sha256": "14d3bf467fe48d11087b181d99c656dd02ec2112240484652ccbfc1b1e2b6992",
+      "target_surface": "한빛"
+    },
+    {
+      "characters": 625,
+      "document_id": "cd-f06-d03",
+      "gold_label": "AMBIGUOUS",
+      "source_sha256": "4402c454d1980da538f1a5dcbf2cdabd92920f304d3734a6342cd95447bd6ff8",
+      "target_surface": "한빛"
+    },
+    {
+      "characters": 633,
+      "document_id": "cd-f06-d04",
+      "gold_label": "COMPOSITIONAL",
+      "source_sha256": "1dc31a698e58202125b4e78c03f6c219c96ab43cf52442379101db1a5c4c5ead",
+      "target_surface": "한빛장"
+    },
+    {
+      "characters": 623,
+      "document_id": "cd-f07-d01",
+      "gold_label": "LINK",
+      "source_sha256": "fceca5a997cc487f6c5373da79d2d8dae1671cf85eb9dbc90aaca1db084bd0bd",
+      "target_surface": "새봄"
+    },
+    {
+      "characters": 625,
+      "document_id": "cd-f07-d02",
+      "gold_label": "LINK",
+      "source_sha256": "cda80ad702a53e218e3fc560588c54def12ea2702d58af6882c7fc66ad875622",
+      "target_surface": "새봄"
+    },
+    {
+      "characters": 641,
+      "document_id": "cd-f07-d03",
+      "gold_label": "AMBIGUOUS",
+      "source_sha256": "9262501ab87ce61d93ad1c78b0af8c52a087f50a4f231bffb495b7f3a6372180",
+      "target_surface": "새봄"
+    },
+    {
+      "characters": 642,
+      "document_id": "cd-f07-d04",
+      "gold_label": "COMPOSITIONAL",
+      "source_sha256": "00dc130f6230f029e719e178ab866f9198eba4aaa99a1a7e19d2cf7d8ce99add",
+      "target_surface": "새봄장"
+    },
+    {
+      "characters": 634,
+      "document_id": "cd-f08-d01",
+      "gold_label": "LINK",
+      "source_sha256": "bb63ef7a9c9d5bb6c2a29edeb1cd7555573faeeca442baa94521ee3eca757b8f",
+      "target_surface": "마루"
+    },
+    {
+      "characters": 609,
+      "document_id": "cd-f08-d02",
+      "gold_label": "LINK",
+      "source_sha256": "8c7952115803d62e4765e9e57e723dececa867bbbf595b87dca795b838d921e8",
+      "target_surface": "마루"
+    },
+    {
+      "characters": 631,
+      "document_id": "cd-f08-d03",
+      "gold_label": "NON_MENTION",
+      "source_sha256": "6d28e7aa4827297f872bd5c518e970e76fd6fc657468ca227e4454045f6102dd",
+      "target_surface": "마루"
+    },
+    {
+      "characters": 658,
+      "document_id": "cd-f08-d04",
+      "gold_label": "NIL",
+      "source_sha256": "5b3435586cedba93d334d57aa5dce9912efa633a8eb9be422d3c29faed99147a",
+      "target_surface": "마루"
+    }
+  ],
+  "file_sha256": {
+    "README.md": "f2fb266e678df303b73f8e235f672280683f8d7764165c3af9e7d805a39846a2",
+    "families.jsonl": "50d453a71710c3da5199a6819aa90566a92bae7e36c804aa147a3e6b3e961199"
+  },
+  "fixture_id": "context_definitions_v1",
+  "human_verified": false,
+  "independent_review": {
+    "document_count": 32,
+    "findings": "All LINK IDs/definitions and all null-gold distinctions are supported by authored source and KB. Role fixtures use organizations. Targets occur once; quotes are verbatim. Gold and source remain unchanged after symbolic preflight exposed unsupported styles; function coverage is reported separately.",
+    "human_verified": false,
+    "method": "Two separate AI semantic reviews of all source documents against the unchanged family glossary; not human verification.",
+    "reviewers": [
+      "root AI agent",
+      "context_review AI agent"
+    ],
+    "status": "PASSED"
+  },
+  "limitations": [
+    "New source documents reuse previously evaluated synthetic glossary families and aliases.",
+    "This controlled diagnostic is not an independent deployment-risk validation set.",
+    "Six brief paragraphs and explicit scope cues do not measure long-document behavior.",
+    "Some workflow and closure prose is shared across documents; operational facts and negative cases are newly authored.",
+    "AI-authored labels have no human verification. No statistical coverage guarantee follows."
+  ],
+  "limits": {
+    "paragraphs_per_source": 6,
+    "source_characters_max": 658,
+    "source_characters_min": 599,
+    "target_occurrences_per_source": 1
+  },
+  "provenance": {
+    "all_family_terms_and_knowledge_copied_exactly": true,
+    "author": "control_tests AI agent",
+    "authored_before_evaluated_model_runs": true,
+    "evaluated_model_outputs_used_for_selection_or_annotation": false,
+    "expands_external_source_sentences": false,
+    "previous_glossary_fixture": "document_context_v1",
+    "previous_glossary_fixture_sha256": "6218fae159a3dfcc81efa436baf0da8a0b02ef7d1a95dc39abda86f9f45d97b1",
+    "real_world_corpus": false,
+    "resolver_outputs_used_for_selection_or_annotation": false,
+    "source": "newly authored complete Korean operational documents against unchanged approved synthetic glossary"
+  },
+  "schema_version": 1
+}
