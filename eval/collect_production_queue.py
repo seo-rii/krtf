@@ -20,9 +20,10 @@ def collect(config):
     plan = validate_plan(json.loads(Path(config["plan_path"]).read_text()))
     baseline = plan.get("schema_version") == 2
     document_context = plan.get("schema_version") == 3
+    definition_control = plan.get("schema_version") == 4
     report_module = import_module(report_module_for_plan(plan))
     prepare_report, render_markdown = report_module.prepare_report, report_module.render_markdown
-    prefix = "document_context" if document_context else "baseline" if baseline else "production"
+    prefix = "definition_control" if definition_control else "document_context" if document_context else "baseline" if baseline else "production"
     state = {"pid": os.getpid(), "status": "RUNNING", "phase": "WAITING_FOR_QUEUE",
              "exit_code": None, "run_id": plan["run_id"], "started_at": datetime.now(timezone.utc).isoformat(),
              "pushed_commits": [], "remote_status": plan["status_path"]}
@@ -89,7 +90,7 @@ def collect(config):
         save_json(root / "queue_plan.json", plan)
         save_json(root / "queue_status.json", terminal)
         copy(plan["unit_status"], root / "unit_test_status.json")
-        if document_context:
+        if document_context or definition_control:
             copy(plan["token_status"], root / "token_preflight.json")
         # Read only bounded excerpts after the entire queue and owned runtimes exited.
         (root / "queue_log_tail.txt").write_text(remote("tail -n 50 " + shlex.quote(plan["log_path"])))
@@ -125,8 +126,8 @@ def collect(config):
                 (target / "RESULTS.md").write_text("# Stage did not complete\n\nNo completed model score is claimed. See job_status.json.\n")
             commit_paths([str(target.relative_to(repo))], "test: report " + prefix + " grounding " + stage["id"])
         comparisons = []
-        for corpus in (("documents",) if document_context else ("synthetic", "real")):
-            track = "document_context" if document_context else prefix + "_" + corpus
+        for corpus in (("documents",) if document_context or definition_control else ("synthetic", "real")):
+            track = prefix if document_context or definition_control else prefix + "_" + corpus
             pair = [stage for stage in plan["stages"] if stage["track"] == track]
             if all(stage["id"] in summaries for stage in pair):
                 comparison = prepare_report(root / pair[1]["id"], compare=root / pair[0]["id"])
@@ -156,6 +157,14 @@ def collect(config):
                 "KTRF policies and guard apply only to the KTRF arm; semantic scores precede execution validation.",
                 "Both models run every new condition; no prior production responses are relabeled.",
                 "Model family and size both change; synthetic scores do not establish deployment risk."]
+        if definition_control:
+            overview.update(schema_version=4)
+            overview["limitations"] = [
+                "Six matched definition-format/candidate/authorization controls on short AI-authored documents.",
+                "Exact QA, literal-normalized diagnostics and unassessed review cases are distinct.",
+                "Context definition authorization is an opt-in experimental heuristic, not a risk certificate.",
+                "Both models infer all new arms; historical outputs are not relabeled.",
+                "System contracts differ between proposal and executable arms; no deployment risk guarantee."]
         save_json(root / "summary.json", overview)
         description = ("All stages run frozen baseline B with separate stateless QA and execution requests. "
                        "The KTRF execution guard is not applied to baseline B. Each stage compares against "
@@ -166,6 +175,9 @@ def collect(config):
             description = ("Each model runs all four knowledge modes and three source-document modes, "
                            "with separate QA and routing calls. Full documents are preserved; retrieved "
                            "paragraph windows retain offsets and hashes. No prior inference is reused.")
+        if definition_control:
+            description = ("Each model runs all six matched source/definition controls with separate QA and routing calls. "
+                           "Definition boundaries and source/gold are fixed. Heuristic authorization is disabled by default.")
         lines = ["# " + prefix.capitalize() + " grounding queue", "", f"Status: **{terminal['status']}**. Exit code: `{terminal['exit_code']}`.", "",
                  description, "",
                  "| Stage | Status | Received / planned | Malformed |", "|---|---|---:|---:|"]
@@ -177,7 +189,7 @@ def collect(config):
         files = [str((root / name).relative_to(repo)) for name in
                  ("queue_plan.json", "queue_status.json", "unit_test_status.json", "queue_log_tail.txt", "summary.json", "RESULTS.md")]
         files.extend(str((root / name).relative_to(repo)) for name in comparisons)
-        if document_context:
+        if document_context or definition_control:
             files.append(str((root / "token_preflight.json").relative_to(repo)))
         commit_paths(files, "test: summarize sequential " + prefix + " grounding experiments")
         subprocess.run(["python3", "scripts/staging_md.py", "done", "--id", config["staging_id"]],

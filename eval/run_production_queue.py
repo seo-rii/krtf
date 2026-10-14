@@ -47,6 +47,8 @@ def report_module_for_plan(plan):
         return "eval.report_production_baseline"
     if plan.get("schema_version") == 3:
         return "eval.report_document_context"
+    if plan.get("schema_version") == 4:
+        return "eval.report_definition_control"
     raise ValueError("unknown queue schema version")
 
 
@@ -57,9 +59,10 @@ def validate_plan(plan):
                 (prefix + "_synthetic", "qwen27b"),
                 (prefix + "_real", "gemma12b"),
                 (prefix + "_real", "qwen27b")]
-    if version == 3:
-        expected = [("document_context", "gemma12b"), ("document_context", "qwen27b")]
-    if version not in (1, 2, 3) or [
+    if version in (3, 4):
+        track = "document_context" if version == 3 else "definition_control"
+        expected = [(track, "gemma12b"), (track, "qwen27b")]
+    if version not in (1, 2, 3, 4) or [
             (s["track"], s["model_key"]) for s in plan["stages"]] != expected:
         raise ValueError("expected the four predeclared synthetic/real or two document context model stages")
     if len({s["id"] for s in plan["stages"]}) != len(expected):
@@ -71,8 +74,8 @@ def validate_plan(plan):
             raise ValueError("frozen request and envelope hashes required")
         if version == 2 and stage["request_count"] != (874 if stage["track"] == "baseline_synthetic" else 120):
             raise ValueError("baseline queue requires 874 synthetic and 120 real requests per model")
-    tracks = ("document_context",) if version == 3 else (prefix + "_synthetic", prefix + "_real")
-    if version == 3 and not plan.get("token_status"):
+    tracks = (track,) if version in (3, 4) else (prefix + "_synthetic", prefix + "_real")
+    if version in (3, 4) and not plan.get("token_status"):
         raise ValueError("document context queue requires actual tokenizer preflight")
     for track in tracks:
         stages = [s for s in plan["stages"] if s["track"] == track]
@@ -186,7 +189,7 @@ def run_queue(plan):
             raise ValueError("successful tests at the frozen revision are required")
         for stage in plan["stages"]:
             validate_requests(stage)
-        if plan.get("schema_version") == 3:
+        if plan.get("schema_version") in (3, 4):
             token_proof = json.loads(Path(plan["token_status"]).read_text())
             if token_proof.get("exit_code") != 0 or token_proof.get("code_revision") != plan["code_revision"]:
                 raise ValueError("successful tokenizer preflight at the frozen revision is required")

@@ -77,7 +77,7 @@ def test_baseline_schema_keeps_fixed_counts_and_disallows_production_mix(tmp_pat
     with pytest.raises(ValueError, match='identical frozen requests'):
         queue.validate_plan(unmatched)
     with pytest.raises(ValueError, match='unknown queue schema'):
-        queue.report_module_for_plan({'schema_version': 4})
+        queue.report_module_for_plan({'schema_version': 5})
 
 
 @pytest.mark.parametrize('schema_version', [1, 2])
@@ -194,7 +194,7 @@ def test_successful_stages_release_runtime_before_starting_next(tmp_path, monkey
     assert all(s['status'] == 'COMPLETE' and s['received_count'] == stage['request_count']
                for s, stage in zip(status['stages'], plan['stages']))
     expected_module = {1: 'eval.report_production_grounding', 2: 'eval.report_production_baseline',
-                       3: 'eval.report_document_context'}[schema_version]
+                       3: 'eval.report_document_context', 4: 'eval.report_definition_control'}[schema_version]
     assert len(reports) == 4 and all(command[2] == expected_module for command in reports)
     for stage, command in zip(plan['stages'], benchmarks):
         assert command[command.index('--track') + 1] == stage['track']
@@ -223,17 +223,17 @@ def test_collector_rejects_invalid_plan_before_remote_access(tmp_path, monkeypat
         collector.collect({'repository': str(tmp_path), 'plan_path': str(plan_path)})
 
 
-@pytest.mark.parametrize('schema_version', [1, 2, 3])
+@pytest.mark.parametrize('schema_version', [1, 2, 3, 4])
 def test_collector_dispatches_same_corpus_model_comparisons_and_scopes_commits(tmp_path, monkeypatch, schema_version):
     import shutil
     from types import SimpleNamespace
     from eval import collect_production_queue as collector
 
     plan = _plan(tmp_path, schema_version=schema_version)
-    if schema_version == 3:
+    if schema_version in (3, 4):
         plan['stages'] = plan['stages'][:2]
         for stage in plan['stages']:
-            stage['track'] = 'document_context'
+            stage['track'] = 'document_context' if schema_version == 3 else 'definition_control'
         token_proof = tmp_path / 'tokens.json'
         token_proof.write_text('{}')
         plan['token_status'] = str(token_proof)
@@ -300,7 +300,7 @@ def test_collector_dispatches_same_corpus_model_comparisons_and_scopes_commits(t
         'workspace': str(tmp_path), 'staging_id': 'owned-staging-id'}
     assert collector.collect(config) == 0
     expected_module = {1: 'eval.report_production_grounding', 2: 'eval.report_production_baseline',
-                       3: 'eval.report_document_context'}[schema_version]
+                       3: 'eval.report_document_context', 4: 'eval.report_definition_control'}[schema_version]
     assert imported == [expected_module]
     assert report_calls == [(stage['id'], None) for stage in plan['stages']] + [
         (plan['stages'][i + 1]['id'], plan['stages'][i]['id'])
@@ -308,7 +308,12 @@ def test_collector_dispatches_same_corpus_model_comparisons_and_scopes_commits(t
     report_root = repo / config['report_dir']
     overview = json.loads((report_root / 'summary.json').read_text())
     markdown = (report_root / 'RESULTS.md').read_text()
-    if schema_version == 3:
+    if schema_version == 4:
+        assert overview['schema_version'] == 4
+        assert (report_root / 'token_preflight.json').exists()
+        assert (report_root / 'documents_comparison.md').exists()
+        assert 'six matched' in markdown
+    elif schema_version == 3:
         assert overview['knowledge_conditions'] == ['none', 'full', 'retrieved', 'ktrf']
         assert overview['source_conditions'] == ['none', 'full', 'retrieved']
         assert (report_root / 'token_preflight.json').exists()
