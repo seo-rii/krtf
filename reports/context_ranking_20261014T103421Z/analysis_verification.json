@@ -1,0 +1,26 @@
+{
+  "verification_kind": "deterministic_recompute_with_separate_AI_review",
+  "human_verified": false,
+  "risk_recomputed_from_all320_rows_per_backend": true,
+  "repeated_rankings_and_scores_stable": true,
+  "all10_risk_statuses_insufficient_data": true,
+  "top1_counts": {
+    "lexical": {
+      "surface": 16,
+      "local_context": 25,
+      "target_local": 25,
+      "target_full": 32,
+      "path_full": 32
+    },
+    "nano": {
+      "surface": 16,
+      "local_context": 28,
+      "target_local": 28,
+      "target_full": 32,
+      "path_full": 32
+    }
+  },
+  "no_production_authorization": true,
+  "analysis_sha256": "224a8a7d6c3b223e58db99e327d826a24a366847b7c50d76f3e5f6f0f9683d4b",
+  "separate_AI_analysis_review": "Passed; package version wording aligned with saved runtime metadata."
+}
