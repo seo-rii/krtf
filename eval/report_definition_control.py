@@ -146,6 +146,14 @@ def render_markdown(summary):
                 change=values[metric]
                 lines.append(f"| {contrast} | {task} | {metric} | {values['comparable']} | "
                              f"{len(change['helpful_case_ids'])} | {len(change['harmful_case_ids'])} |")
+    lines += ['', '## Definition availability', '',
+              'Catalog/card exposure and full model-input exposure are separate; source text can itself contain a definition.', '',
+              '| Condition | Task | Catalog definition / positive | Definition in model input / positive |',
+              '|---|---|---:|---:|']
+    for condition,scores in summary['metrics']['by_condition'].items():
+        for task,values in scores['by_task'].items():
+            lines.append(f"| {condition} | {task} | {values['catalog_definition_visible']}/{values['positive_gold']} | "
+                         f"{values['definition_visible_in_model_input']}/{values['positive_gold']} |")
     lines += ['', '## Costs', '', '| Condition | Task | Prompt tokens | p95 latency ms |', '|---|---|---:|---:|']
     for condition,tasks in summary['operational'].items():
         for task,values in tasks.items():

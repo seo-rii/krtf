@@ -44,14 +44,14 @@ LIMITATIONS = [
     "Production controls use actual task-specific QA/automation packs, fixed production policies and complete-response execution guards for routing.",
     "Contextual exact resolution is explicitly enabled only in the contextual diagnostic arm; production default remains unchanged.",
     "Exact QA, conservative semantic QA assessment and routing correctness are separate scores; UNASSESSED paraphrases receive no automatic credit.",
-    "All arms receive the same full source, explicit target and opaque IDs. The definition inventory is grading metadata, not extra model context.",
+    "All arms receive the same full source and explicit target, and share the opaque ID scheme. Candidate/ID exposure varies by arm; the complete definition inventory is grading metadata, not extra model context.",
     "Full inputs are never silently truncated; tokenizer capacity must be checked before model inference.",
     "Model-family comparisons do not isolate parameter count. Preparation costs are excluded from model-call latency.",
 ]
 PROTOCOL = {
     "kind": VERSION, "version": VERSION, "conditions": list(CONDITIONS), "tasks": list(TASKS),
     "source_visibility": "full", "gold_origin": "AI_AUTHORED_SYNTHETIC", "human_verified": False,
-    "gold_source": "Same authored complete documents and family glossary as document_context_v1.",
+    "gold_source": "Unchanged document_context_v1 cases plus newly authored context_definitions cases, with identical family glossary facts across collections.",
     "formatting_control": "prose_all and cards_all contain identical catalog facts, including explicitly bounded exact definitions.",
     "retrieval": "Existing normalized-character/bigram paragraph retrieval on target plus full source, top paragraph +/-1; cards require a visible full ID and definition.",
     "candidate_control": "ktrf_qa_cards uses only actually injected qa_grounding pack cards under the neutral system.",
@@ -145,12 +145,16 @@ def build_envelope(fixture=FIXTURE, *, include_contextual=True):
             retrieved_cards = [deepcopy(card) for card in catalog
                 if _id_visible(card["entity_id"], retrieval["text"]) and card["definition"] in retrieval["text"]]
             prepared_by_condition = {}
+            prepared_cache = {}
             for condition in conditions[3:]:
                 snap = contextual if condition == "ktrf_contextual_execution_cards" else snapshot
                 for task in TASKS:
                     profile = "qa_grounding" if condition == "ktrf_qa_cards" or task == "document_qa" else "automation"
                     policy = ContextPolicy(profile=profile, **CONTEXT_BUDGET)
-                    prepared_by_condition[condition, task] = (policy, prepare_llm_context(snap, source, query=target, context_policy=policy), snap)
+                    cache_key = snap.snapshot_id, profile
+                    if cache_key not in prepared_cache:
+                        prepared_cache[cache_key] = prepare_llm_context(snap, source, query=target, context_policy=policy)
+                    prepared_by_condition[condition, task] = (policy, prepared_cache[cache_key], snap)
             for condition in conditions:
                 for task in TASKS:
                     row = {"protocol_version": VERSION, "case_id": document_id + ":" + task,
@@ -179,7 +183,7 @@ def build_envelope(fixture=FIXTURE, *, include_contextual=True):
                     else:
                         policy, prepared, snap = prepared_by_condition[condition, task]
                         cards = _binding_cards(prepared.context_pack) if prepared.should_inject else []
-                        row.update(pack=prepared.context_pack, context_policy=asdict(policy), snapshot_id=snap.snapshot_id,
+                        row.update(pack=deepcopy(prepared.context_pack), context_policy=asdict(policy), snapshot_id=snap.snapshot_id,
                             resolver_input=source, injected=prepared.should_inject, candidate_cards=cards,
                             resolver_authorized_entity_id=_authorized(prepared.context_pack, target))
                         if condition in EXECUTION_CONDITIONS:
@@ -192,6 +196,8 @@ def build_envelope(fixture=FIXTURE, *, include_contextual=True):
                     row["entity_id_visible"] = eid in row["candidate_entity_ids"] if eid is not None else None
                     row["system"] = BASE_SYSTEM + ("\n" + row["policy_fragment"] if row["injected"] and row["policy_fragment"] else "")
                     row["user"] = _user(row)
+                    row["catalog_definition_visible"] = row["definition_visible"]
+                    row["definition_visible_in_model_input"] = answer in row["system"]+row["user"] if answer is not None else None
                     row["estimated_input_tokens"] = CharTokenCounter().count(row["system"] + row["user"])
                     rows.append(row)
     validate_requests(rows)
@@ -211,7 +217,7 @@ def validate_requests(rows, *, check_current_policy=True):
         "glossary_catalog", "glossary_catalog_sha256", "snapshot_id", "provenance", "candidate_cards", "candidate_entity_ids",
         "pack", "context_policy", "policy_fragment", "prompt_fragment", "injected", "resolver_input", "resolver_authorized_entity_id",
         "runtime_policy", "execution_validation", "knowledge_retrieval", "candidate_recall", "definition_visible", "entity_id_visible",
-        "system", "user", "estimated_input_tokens"}
+        "system", "user", "estimated_input_tokens", "catalog_definition_visible", "definition_visible_in_model_input"}
     for row in rows:
         if not isinstance(row, dict) or not required.issubset(row):
             raise ValueError("missing definition control fields")
@@ -293,6 +299,9 @@ def validate_requests(rows, *, check_current_policy=True):
             raise ValueError("candidate visibility mismatch")
         if row["system"] != BASE_SYSTEM + ("\n" + row["policy_fragment"] if row["injected"] and row["policy_fragment"] else "") or row["user"] != _user(row):
             raise ValueError("model input differs from frozen control rendering")
+        if (row["catalog_definition_visible"] != row["definition_visible"] or
+                row["definition_visible_in_model_input"] != (answer in row["system"]+row["user"] if answer is not None else None)):
+            raise ValueError("catalog or source definition visibility mismatch")
         if row["estimated_input_tokens"] != CharTokenCounter().count(row["system"] + row["user"]):
             raise ValueError("input token estimate mismatch")
     return rows
@@ -319,6 +328,8 @@ def _summary(items):
         "candidate_recall": sum(item["candidate_recall"] is True for item in items),
         "definition_visible": sum(item["definition_visible"] is True for item in items),
         "entity_id_visible": sum(item["entity_id_visible"] is True for item in items),
+        "catalog_definition_visible": sum(item["catalog_definition_visible"] is True for item in items),
+        "definition_visible_in_model_input": sum(item["definition_visible_in_model_input"] is True for item in items),
         "semantic_status": {status: sum(item.get("semantic_status") == status for item in observed)
                             for status in ("MATCH", "NULL_CORRECT", "MISMATCH", "UNASSESSED")}}
 
@@ -338,7 +349,8 @@ def grade_outputs(requests, outputs):
     for key, row in known.items():
         output = recorded.get(key)
         item = {field: row[field] for field in ("case_id", "condition", "document_id", "family_id", "stratum", "task",
-            "candidate_recall", "definition_visible", "entity_id_visible", "execution_validation")}
+            "candidate_recall", "definition_visible", "entity_id_visible", "execution_validation",
+            "catalog_definition_visible", "definition_visible_in_model_input")}
         item.update(missing=output is None, positive_gold=row["expected_entity_id"] is not None,
                     collection=row.get("collection", "unspecified"))
         if output is None:

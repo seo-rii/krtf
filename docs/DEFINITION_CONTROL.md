@@ -29,14 +29,16 @@ accepted correct/wrong non-null IDs, candidate availability and actual costs.
 
 The runtime flag `RuntimePolicy.contextual_exact_resolution` defaults to false.
 The experimental path recognizes literal direct identity declarations for an
-exact alias collision. It preserves the complete candidate pool and output
+exact alias collision, optionally introduced by a closed set of document/request
+locatives. It preserves the complete candidate pool and output
 budget invariants, requires valid exact boundaries and SAME full-surface
 identity, and cannot bypass structural, scope or overflow blockers. Quotes,
 disputed definitions, unsupported role/NIL context and competing registered
 anchors prevent promotion. Implicit adjacent or distant antecedents do not
 provide execution authorization. Denial checks cover the target paragraph and
 its next paragraph; this bounded experiment does not validate every assertion
-elsewhere in the document. Fitted fusion/calibration artifacts are not
+elsewhere in the document. Unrelated workflow negation is kept distinct from
+identity denial. Short canonical names below the anchor minimum remain unsupported. Fitted fusion/calibration artifacts are not
 used with this untrained evidence feature. The resulting prior is explicitly
 heuristic, with evidence offsets/quotes and no valid coverage guarantee.
 

@@ -98,3 +98,22 @@ def test_preparation_keeps_original_and_new_documents_identified(tmp_path):
     assert list(split.values()).count('original_context') == list(split.values()).count('fresh_definition') == 32
     assert all(row['collection']==split[row['document_id']] for row in envelope['requests'])
     assert len(envelope['provenance']['source_fixture_sha256']) == 2
+
+
+def test_source_definition_availability_is_not_hidden_by_empty_candidate_pack(tmp_path,envelope):
+    family=json.loads(controls.FIXTURE.read_text().splitlines()[0])
+    document=family['documents'][0]
+    definition=document['expected_answer']
+    document['text']=document['target_surface']+'를 검토한다.\n\n'+definition+'이다.'
+    document['decisive_evidence']=[]
+    family['documents']=[document]
+    fixture=tmp_path/'visible-source.jsonl'
+    fixture.write_text(json.dumps(family,ensure_ascii=False)+'\n')
+    rows=controls.build_envelope(fixture)['requests']
+    row=next(r for r in rows if r['condition']=='ktrf_execution_cards' and r['task']=='structured_routing')
+    assert row['catalog_definition_visible'] is False
+    assert row['definition_visible_in_model_input'] is True
+    changed=deepcopy(row)
+    changed['definition_visible_in_model_input']=False
+    with pytest.raises(ValueError,match='definition visibility'):
+        controls.validate_requests([changed])
