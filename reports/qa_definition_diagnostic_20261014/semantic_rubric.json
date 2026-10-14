@@ -1,0 +1,39 @@
+{
+  "aggregation": {
+    "exploratory_full_denominator": "For each model, add reviewed MATCH cases to the existing bounded normalized credited count and divide by all 384 planned QA responses. This is a post hoc AI estimate with a shared answer-level rubric, not an official primary score or independent risk certificate.",
+    "no_credit": "PARTIAL, MISMATCH, INVALID, and UNASSESSED receive zero added credit.",
+    "positive_null_separation": "Report positive-definition matches separately from null correctness; the overall denominator includes 192 positive and 192 null-gold requests per model.",
+    "review_queue_counts": "Report verdict counts over the 57 reviewed cases and over each model queue separately."
+  },
+  "decisions": {
+    "INVALID": "The response is missing, malformed, or schema-invalid. A recovered or embedded null receives zero credit.",
+    "MATCH": "All match requirements hold. Additional grounded sentences and wording changes can be accepted after reviewing the entire answer, never by substring containment alone.",
+    "MISMATCH": "The answer selects a different candidate, retains a candidate collision, gives only an alias/metadata label, contradicts the gold meaning, or violates the registered-definition/null contract.",
+    "PARTIAL": "The gold candidate or a relevant function/type is present, but the answer lacks a sufficient definition or clearly selects no referent. Partial answers receive zero binary semantic credit.",
+    "UNASSESSED": "Evidence is insufficient to make any of the preceding decisions. This remains uncredited."
+  },
+  "declaration_timing": "Post hoc: the experiment and descriptive review already existed and the reviewer had seen the answers. This rubric is recorded separately before creating semantic verdict artifacts; it is not pre-registration.",
+  "declared_at_utc": "2026-10-14T04:36:13.440310+00:00",
+  "evidence_policy": {
+    "claim_checks": "Record supported claims with verbatim frozen evidence, and record contradictory or unsupported claims separately. Entire answers, not only the expected-definition substring, must be inspected.",
+    "grounding_inventory": "Only the sealed original request knowledge_text/source_text and their frozen entity/definition pairs; no contemporary fixture, general world knowledge, or model-generated support.",
+    "source_availability": "Meaning against the gold is assessed separately from whether disambiguating source evidence was actually visible to the model. MATCH with source_gold_visible=false does not establish a justified resolution."
+  },
+  "human_verified": false,
+  "limitations": [
+    "AI-authored, gold-visible, post hoc adjudication with two separate AI reviews lacks independent human annotation.",
+    "The original 32 AI-authored documents are a controlled synthetic sample, not independent deployment documents.",
+    "Only the 57 normalization-UNASSESSED answers are newly adjudicated; original definite matches/mismatches and positive abstentions keep their existing interpretation.",
+    "The rubric can be revised before a prospective experiment, but these post hoc choices must not be described as pre-registered."
+  ],
+  "required_for_match": [
+    "The complete answer identifies only the gold registered referent, with no unresolved competing candidate.",
+    "It supplies a sufficient definition: the core operational function and the entity kind, explicitly or through a named entity kind such as team/center/committee. Registry name alone is PARTIAL even if the name is descriptive.",
+    "Every factual assertion added to the definition is supported by the frozen family knowledge document or frozen source document.",
+    "It does not negate the definition, assign it to another candidate, or conflate a core organization with a whole-surface person role, derived artifact, or NIL target."
+  ],
+  "reviewer": "Codex AI assistant",
+  "scope": "All 57 UNASSESSED answers from qa_definition_normalization_v1, gold-visible. This adjudication does not alter any original or normalized score.",
+  "title": "Meaning-preserving registered definition answer, separate from verbatim format",
+  "version": "qa_posthoc_ai_semantic_rubric_v1"
+}
