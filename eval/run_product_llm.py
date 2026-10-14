@@ -92,12 +92,12 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
         request_builder, grader = build_policy_requests, grade_policy_outputs
         protocol_id, declared_protocol = "qa_policy_separation_v1", PROTOCOL
     elif definition_control:
-        from eval.definition_control import load_request_file, grade_outputs
+        from eval.definition_control import load_request_file, grade_outputs as grade_definition_outputs
         from eval.production_grounding import production_response_error
         if requests_file is None:
             raise ValueError("definition control requires a frozen --requests-file")
         frozen_requests, declared_protocol, request_provenance = load_request_file(requests_file)
-        request_builder, grader = lambda: frozen_requests, grade_outputs
+        request_builder, grader = lambda: frozen_requests, grade_definition_outputs
         protocol_id = declared_protocol["kind"]
     elif document_context:
         from eval.document_context import load_document_context_request_file, grade_document_context_outputs

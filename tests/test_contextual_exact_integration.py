@@ -156,3 +156,16 @@ def test_fresh_authored_corpus_preserves_negative_guards_and_authorizes_supporte
                     response={'selections':[{'surface':document['target_surface'],'entity_id':entity.entity_id}]}
                     assert not validate_llm_grounding(response,prepared.context_pack,purpose='execution')['valid']
     assert accepted==15  # One valid short canonical intentionally remains outside this evidence rule.
+
+
+def test_default_snapshot_identity_preserves_pre_feature_policy_hash():
+    import dataclasses
+    from ktrf.snapshot import _hash
+    snap=snapshot()
+    original_policy=dataclasses.asdict(snap.policy)
+    original_policy.pop('contextual_exact_resolution')
+    assert snap.manifest['policy_hash']==_hash(original_policy)
+    assert snap.manifest['resolver_semantics_version']=='safety-2-path-union-1'
+    assert 'context_definition_semantics_version' not in snap.manifest
+    enabled=snapshot(True)
+    assert enabled.manifest['context_definition_semantics_version']=='context-definition-2'

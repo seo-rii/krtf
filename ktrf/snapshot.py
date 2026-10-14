@@ -45,7 +45,8 @@ NORMALIZER_VERSION = "nrm-2"
 # miss a change to the rule itself (M2 moved the verdict from "head-final
 # only" to "any distinct part wins"). Bump this when that rule changes.
 TAIL_GRAMMAR_VERSION = "tail-2"
-RESOLVER_SEMANTICS_VERSION = "safety-2-path-union-1-context-definition-2"
+RESOLVER_SEMANTICS_VERSION = "safety-2-path-union-1"
+CONTEXT_DEFINITION_SEMANTICS_VERSION = "context-definition-2"
 
 
 @dataclass
@@ -263,7 +264,12 @@ def compile_snapshot(
     # kinds, boundary/fuzzy policies, relations — not just IDs and surfaces.
     # Any semantically meaningful edit therefore changes the snapshot_id.
     glossary_hash = _hash(glossary_to_dict(glossary))
-    policy_hash = _hash(dataclasses.asdict(policy))
+    policy_values = dataclasses.asdict(policy)
+    # Default-disabled evidence preserves existing frozen snapshot identities.
+    # An enabled policy records both its value and the new recognizer version.
+    if not policy.contextual_exact_resolution:
+        policy_values.pop("contextual_exact_resolution")
+    policy_hash = _hash(policy_values)
     manifest = {
         "schema_version": glossary.schema_version,
         "glossary_id": glossary.glossary_id,
@@ -293,6 +299,9 @@ def compile_snapshot(
         "conformance_fixtures_hash": None,
         "conformance": None,
     }
+    if policy.contextual_exact_resolution:
+        manifest["context_definition_semantics_version"] = CONTEXT_DEFINITION_SEMANTICS_VERSION
+
     if encoder is not None:
         from .dense import DenseArtifacts
 
