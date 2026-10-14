@@ -171,6 +171,16 @@ def test_gold_and_annotation_excluded_from_model_pair_inputs(unit_cases):
     assert "FAKE GOLD ANSWER" not in json.dumps(first)
 
 
+def test_single_repeat_leaves_stability_unverified(unit_cases):
+    report = runner.evaluate(unit_cases, ConstantScorer(), repeats=1,
+                             variants=("target_full",))
+    result = report["variants"]["target_full"]
+    assert result["repetition_stability_checked"] is False
+    assert result["all_scores_repeat_stable"] is None
+    assert all(row["deterministic"] is None and not row["repetition_stability_checked"]
+               for row in result["cases"])
+
+
 def test_constant_score_ties_abstain_without_probability_transform(unit_cases):
     report = runner.evaluate(unit_cases, ConstantScorer(-12.75), backend="nano", repeats=2,
                              variants=("target_full",))

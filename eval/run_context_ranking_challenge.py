@@ -277,7 +277,9 @@ def evaluate(cases, scorer, *, backend="lexical", repeats=1, variants=INPUT_VARI
                    "gold_in_shortlist": bool(gold and any(h.entity_id == gold
                         and h.path.core_span == tuple(case["core_span"]) and h.path.full_identity == "SAME"
                         for h in shortlist)),
-                   "deterministic": stable, "production_authorized": False, "coverage_valid": False,
+                   "deterministic": stable if repeats > 1 else None,
+                   "repetition_stability_checked": repeats > 1,
+                   "production_authorized": False, "coverage_valid": False,
                    "candidates": _ranked_payload(ranked)}
             row["proposal_selected"] = _propose(row, protocol["rule"])
             row["proposal_entity_id"] = row["top_entity_id"] if row["proposal_selected"] else None
