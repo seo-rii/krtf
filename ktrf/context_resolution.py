@@ -4,7 +4,9 @@ This is a deliberately small definition recognizer, not a semantic model or a
 calibrated confidence estimator. It accepts a full registered canonical name or
 definition only when an explicit identity statement ties it to the target.
 Ordinary contextual similarity, pronoun references, adjacent bare definitions,
-examples, and unrelated name occurrences do not authorize a choice. The resolver must still enforce every structural guard.
+examples, and unrelated name occurrences do not authorize a choice. The resolver
+must still enforce every structural guard. Denial checks are lexical and bounded
+to the target paragraph and the following paragraph, not a semantic guarantee.
 """
 
 from __future__ import annotations
@@ -32,17 +34,34 @@ _SENTENCE_END = re.compile(r"[.!?。？！](?=\s|$)")
 _COPULA = re.compile(r"(?:이다|다|입니다|임)[.。]*$")
 _DIRECT_PREFIX = re.compile(r"(?:은|는|란|이란)(?:\s+바로)?\s*$")
 _DIRECT_NAME_SUFFIX = re.compile(r"\)(?:이다|다|입니다|임)?[.。]*$")
-# These vetoes intentionally trade recall for conservative experimental scope.
-# They inspect the bounded evidence scope, not arbitrary words in other documents.
+_BENIGN_LOCATIVE_PREFIX = re.compile(r"(?:이\s*(?:업무\s*)?문서에서|이번\s*요청에서)\s*$")
+# Sentence-level vetoes inspect the assertion outside registered anchors.
+# Operational warnings in other sentences are not identity contradictions.
 _UNSUPPORTED_CONTEXT = re.compile(
     r"아니|않|없|못|제외|무관|미등록|등록되지|비언급|보통명사|"
     r"문자열|입력 견본|입력견본|상표|상품명|행사명|비유|"
     r"개인|책임자|직함|센터장|팀장|실장|원장|노조|"
     r"만약|가정|예시|예문|추정|불확실|미확인|모르|[?？]|"
-    r"틀리|틀린|틀렸|거짓|허위|오해|반례|정정|철회|번복|오인|"
-    r"사실과\s*다르|"
-    r"(?:주장|설명|정의|해석|진술|문구)[^\n.!?。？！]{0,40}오류|"
-    r"오류[^\n.!?。？！]{0,16}(?:주장|설명|정의|해석|진술|문구)"
+    r"틀리|틀린|틀렸|거짓|허위|오해|반례|오인"
+)
+_CLAIM_SUBJECT = (
+    r"(?:(?:그|이|위|앞의|해당)\s*)?"
+    r"(?:설명|주장|정의|해석|진술|문구|문장|이름|명칭|용어|표현|낱말|단어|대상)"
+)
+_SCOPED_IDENTITY_CONTRADICTION = re.compile(
+    # A denial belongs to the same clause as its identity/claim subject. An
+    # affirmative declaration followed by a comma and a denial of an example
+    # is not itself denied (e.g. "이 설명은 명칭 선언이며, 예시가 아니다").
+    _CLAIM_SUBJECT + r"[^,;\n.!?。？！]{0,40}"
+    r"(?:틀리|틀린|틀렸|거짓|허위|오해|오류|아니|않|없|못|미등록|등록되지|"
+    r"예시|예문|상품명|행사명|상표|보통명사|입력\s*견본|비유|추정|불확실|미확인)"
+    r"|" + _CLAIM_SUBJECT + r"(?:을|를|은|는)?\s*(?:정정|철회|번복)"
+    r"|(?:여기서는|이번에|이\s*(?:업무\s*)?문서에서|"
+    r"전체\s*표현|표현\s*전체|(?:그|이)\s*(?:이름|명칭|용어|표현|낱말|대상|물체))"
+    r"[^,;\n.!?。？！]{0,60}(?:개인|책임자|직함|센터장|팀장|실장|원장|노조|"
+    r"미등록|등록되지|입력\s*견본|무관|상품명|행사명|상표|비유)"
+    r"|(?:입력\s*견본|시험\s*문자열|문자열\s*견본|비언급|보통명사)"
+    r"|(?:주장|설명|정의|해석|진술|문구)[^,;\n.!?。？！]{0,40}사실과\s*다르"
 )
 _QUOTES = frozenset('"\'“”‘’「」『』')
 
@@ -141,6 +160,8 @@ def _identity_relation(text: str, target: tuple[int, int],
                        ) -> str | None:
     """Require a target-subject assertion in the same sentence.
 
+    A closed set of benign document/request locatives may precede the subject.
+
     Pronouns and bare adjacent definitions have no verified antecedent. Quoted
     target names or registered names remain valid when their identity assertion
     is outside the quotation; quoted assertions themselves are insufficient.
@@ -150,9 +171,11 @@ def _identity_relation(text: str, target: tuple[int, int],
     if (bounds is None or not bounds[0] <= anchor[0] < bounds[1]
             or anchor[0] < target[1]):
         return None
-    # Subject must begin the assertion. Arbitrary introductory text can turn
-    # an embedded statement into a citation, example, or false claim.
-    if _normalize(text[bounds[0]:target[0]]):
+    # Subject must begin the assertion after an optional benign locative.
+    # Arbitrary introductory text can turn an embedded statement into a
+    # citation, example, or false claim.
+    prefix = _normalize(text[bounds[0]:target[0]])
+    if prefix and not _BENIGN_LOCATIVE_PREFIX.fullmatch(prefix):
         return None
     raw_sentence = text[bounds[0]:bounds[1]]
     quote_spans, malformed = _quotation_spans(raw_sentence)
@@ -239,14 +262,27 @@ def assess_context(text: str, span: tuple[int, int], surface: str,
             last_reason = "CONTEXT_BUDGET_EXCEEDED"
             continue
         context = text[start:end]
-        if _UNSUPPORTED_CONTEXT.search(_normalize(context)):
-            return abstain("UNSUPPORTED_OR_NEGATED_CONTEXT", scope)
         if context.count(surface) != 1:
             return abstain("REPEATED_TARGET_IN_CONTEXT", scope)
         sentences = []
         for paragraph_start, paragraph_end in paragraphs:
             if start <= paragraph_start and paragraph_end <= end:
                 sentences.extend(_sentences(text, paragraph_start, paragraph_end))
+        target_sentence = next(bounds for bounds in sentences
+                               if bounds[0] <= target[0] < bounds[1])
+        assertion = list(text[target_sentence[0]:target_sentence[1]])
+        # Registered definitions can themselves contain words such as
+        # "정정", "없", or job titles. They are evidence, not a negation of it.
+        for entity_anchors in anchors.values():
+            for _, anchor in entity_anchors:
+                for anchor_start, anchor_end in _anchor_occurrences(
+                        text, *target_sentence, anchor):
+                    a = anchor_start - target_sentence[0]
+                    b = anchor_end - target_sentence[0]
+                    assertion[a:b] = " " * (b - a)
+        if (_UNSUPPORTED_CONTEXT.search(_normalize("".join(assertion)))
+                or _SCOPED_IDENTITY_CONTRADICTION.search(_normalize(context))):
+            return abstain("UNSUPPORTED_OR_NEGATED_CONTEXT", scope)
         seen_entities: set[str] = set()
         supports: list[tuple[str, str, tuple[int, int], str]] = []
         for entity_id, entity_anchors in anchors.items():

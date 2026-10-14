@@ -240,3 +240,48 @@ def test_parenthetical_name_with_a_trailing_clause_is_not_an_identity_assertion(
     result = assess(text)
     assert result.chosen_entity_id is None
     assert result.abstention_reason == "NO_EXPLICIT_REGISTERED_DEFINITION"
+
+
+@pytest.mark.parametrize("prefix", ["이 문서에서 ", "이 업무 문서에서 ", "이번 요청에서 "])
+def test_closed_document_locatives_are_allowed_before_the_direct_subject(prefix):
+    assert assess(f"{prefix}새길은 {DEFINITION}이다.").chosen_entity_id == "global:network"
+
+
+@pytest.mark.parametrize("prefix", ["틀린 주장: ", "문구는 다음과 같다: ", "누군가는 말했다: "])
+def test_arbitrary_introductory_text_is_not_a_benign_locative(prefix):
+    assert assess(f"{prefix}새길은 {DEFINITION}이다.").chosen_entity_id is None
+
+
+def test_legitimate_financial_correction_definition_and_workflow_warnings_are_not_denials():
+    definition = "과금 내역을 검토하고 청구 오류를 정정하는 내부 콘솔"
+    candidates = [dict(record, definition=definition if index == 0 else record["definition"])
+                  for index, record in enumerate(CANDIDATES)]
+    text = (f"이 업무 문서에서 새길은 {definition}이다. "
+            "이 설명은 실제 담당 대상을 지정하는 확정된 명칭 선언이며, "
+            "인용 예시나 미승인 초안이 아니다.\n\n"
+            "운영자는 승인 전에 접근키를 발급하지 않도록 안내한다. "
+            "확인되지 않은 예외나 자료가 없으면 요청자에게 확인한다.")
+    result = assess(text, candidates=candidates)
+    assert result.chosen_entity_id == "global:network"
+    assert text[slice(*result.anchor_span)] == definition
+
+
+def test_unrelated_operational_negation_in_the_same_paragraph_does_not_deny_identity():
+    text = (f"새길은 {DEFINITION}이다. "
+            "담당자는 자료가 없으면 승인하지 않고 청구 오류를 정정한다.")
+    assert assess(text).chosen_entity_id == "global:network"
+
+
+@pytest.mark.parametrize("denial", [
+    "그 설명은 사실과 다르다.",
+    "이 정의는 등록 대상이 아니다.",
+    "위 주장은 허위다.",
+    "여기서는 책임자 개인의 직함을 뜻한다.",
+    "이 이름은 미등록 상품명이다.",
+    "이 정의를 철회한다.",
+])
+def test_explicit_scoped_identity_denials_still_block_direct_evidence(denial):
+    text = f"새길은 {DEFINITION}이다.\n\n{denial}"
+    result = assess(text)
+    assert result.chosen_entity_id is None
+    assert result.abstention_reason == "UNSUPPORTED_OR_NEGATED_CONTEXT"

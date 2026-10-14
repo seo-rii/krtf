@@ -133,3 +133,26 @@ def test_context_evidence_cannot_rehabilitate_invalid_or_incomplete_candidate_po
     _contextual_exact({(0,2):node},snapshot(True),'공통은 월별 청구 오류를 검토하는 조직이다.',{},'commit',trace)
     assert node.contextual_evidence is None
     assert trace['contextual_exact_supported'] == 0
+
+
+def test_fresh_authored_corpus_preserves_negative_guards_and_authorizes_supported_declarations():
+    import json
+    from pathlib import Path
+    fixture=Path(__file__).resolve().parents[1]/'eval/fixtures/context_definitions/families.jsonl'
+    accepted=0
+    for line in fixture.read_text().splitlines():
+        family=json.loads(line)
+        glossary=load_glossary(compile_simple_terms({'terms':family['terms']},scope='global',glossary_id=family['family_id']))
+        snap=compile_snapshot(glossary,policy=RuntimePolicy(contextual_exact_resolution=True),run_conformance=False)
+        for document in family['documents']:
+            prepared=prepare_llm_context(snap,document['text'],query=document['target_surface'],
+                                         context_policy=ContextPolicy(profile='automation'))
+            expected=document['gold']['entity_ref']
+            proposed={'selections':[{'surface':document['target_surface'],'entity_id':expected}]}
+            if expected is not None and validate_llm_grounding(proposed,prepared.context_pack,purpose='execution')['valid']:
+                accepted+=1
+            if expected is None:
+                for entity in glossary.entities:
+                    response={'selections':[{'surface':document['target_surface'],'entity_id':entity.entity_id}]}
+                    assert not validate_llm_grounding(response,prepared.context_pack,purpose='execution')['valid']
+    assert accepted==15  # One valid short canonical intentionally remains outside this evidence rule.

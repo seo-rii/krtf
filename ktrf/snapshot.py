@@ -45,7 +45,7 @@ NORMALIZER_VERSION = "nrm-2"
 # miss a change to the rule itself (M2 moved the verdict from "head-final
 # only" to "any distinct part wins"). Bump this when that rule changes.
 TAIL_GRAMMAR_VERSION = "tail-2"
-RESOLVER_SEMANTICS_VERSION = "safety-2-path-union-1-context-definition-1"
+RESOLVER_SEMANTICS_VERSION = "safety-2-path-union-1-context-definition-2"
 
 
 @dataclass
