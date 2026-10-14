@@ -56,14 +56,14 @@ def test_real_template_preflight_rejects_overflow_without_truncation(tmp_path, m
     class Tokenizer:
         def apply_chat_template(self, messages, **kwargs):
             calls.append((messages, kwargs))
-            return [1] * length
+            return [1] * length if kwargs.get("return_dict") is False else {"input_ids": [1] * length, "attention_mask": [1] * length}
     monkeypatch.setitem(sys.modules, 'transformers', SimpleNamespace(
         AutoTokenizer=SimpleNamespace(from_pretrained=lambda path, **kw: Tokenizer())))
     result = prepare.check_tokens(plan)
     assert result['exit_code'] == exit_code
     assert all(model['max_prompt_tokens'] == length for model in result['models'].values())
     assert all(call[0][1]['content'] == 'complete document' for call in calls)
-    assert all(call[1] == {'tokenize': True, 'add_generation_prompt': True, 'enable_thinking': False}
+    assert all(call[1] == {'tokenize': True, 'add_generation_prompt': True, 'enable_thinking': False, 'return_dict': False}
                for call in calls)
     if exit_code:
         monkeypatch.setattr(queue, 'wait_for_resources', lambda *a: pytest.fail('no GPU on overflow'))
@@ -126,3 +126,14 @@ def test_frozen_document_track_sends_only_prompts_and_regrades_sealed_run(tmp_pa
     with pytest.raises(ValueError, match='frozen'):
         runner.run_benchmark(endpoint='http://localhost/v1', model='served', out_dir=tmp_path/'invalid',
                              code_revision='revision', track='document_context')
+
+
+@pytest.mark.parametrize('value', [{'input_ids': [1, 2], 'attention_mask': [1, 1]}, [[1, 2]], []])
+def test_token_preflight_rejects_mapping_or_batched_token_shapes(tmp_path, monkeypatch, value):
+    plan = _plan(tmp_path)
+    tokenizer = SimpleNamespace(apply_chat_template=lambda *args, **kwargs: value)
+    monkeypatch.setitem(sys.modules, 'transformers', SimpleNamespace(
+        AutoTokenizer=SimpleNamespace(from_pretrained=lambda *args, **kwargs: tokenizer)))
+    with pytest.raises(ValueError, match='flat list of token IDs'):
+        prepare.check_tokens(plan)
+    assert not Path(plan['token_status']).exists()

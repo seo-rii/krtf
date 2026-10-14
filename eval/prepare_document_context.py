@@ -36,9 +36,16 @@ def check_tokens(plan):
         model = plan['models'][stage['model_key']]
         rows = validate_requests(stage)['requests']
         tokenizer = AutoTokenizer.from_pretrained(model['path'], local_files_only=True)
-        lengths = [len(tokenizer.apply_chat_template(
-            [{'role': 'system', 'content': row['system']}, {'role': 'user', 'content': row['user']}],
-            tokenize=True, add_generation_prompt=True, enable_thinking=False)) for row in rows]
+        lengths = []
+        for row in rows:
+            token_ids = tokenizer.apply_chat_template(
+                [{'role': 'system', 'content': row['system']}, {'role': 'user', 'content': row['user']}],
+                tokenize=True, add_generation_prompt=True, enable_thinking=False, return_dict=False)
+            # Transformers may otherwise return BatchEncoding, whose length counts
+            # fields (e.g. input_ids and attention_mask), not tokens.
+            if not isinstance(token_ids, list) or not token_ids or any(type(t) is not int for t in token_ids):
+                raise ValueError('tokenizer must return a nonempty flat list of token IDs')
+            lengths.append(len(token_ids))
         result['models'][stage['model_key']] = {
             'model_path': model['path'], 'requests_sha256': stage['requests_sha256'],
             'request_count': len(rows), 'min_prompt_tokens': min(lengths),
