@@ -45,6 +45,8 @@ def report_module_for_plan(plan):
         return "eval.report_production_grounding"
     if plan.get("schema_version") == 2:
         return "eval.report_production_baseline"
+    if plan.get("schema_version") == 3:
+        return "eval.report_document_context"
     raise ValueError("unknown queue schema version")
 
 
@@ -55,10 +57,12 @@ def validate_plan(plan):
                 (prefix + "_synthetic", "qwen27b"),
                 (prefix + "_real", "gemma12b"),
                 (prefix + "_real", "qwen27b")]
-    if version not in (1, 2) or [
+    if version == 3:
+        expected = [("document_context", "gemma12b"), ("document_context", "qwen27b")]
+    if version not in (1, 2, 3) or [
             (s["track"], s["model_key"]) for s in plan["stages"]] != expected:
-        raise ValueError("expected the four predeclared synthetic/real, 12B/27B stages")
-    if len({s["id"] for s in plan["stages"]}) != 4:
+        raise ValueError("expected the four predeclared synthetic/real or two document context model stages")
+    if len({s["id"] for s in plan["stages"]}) != len(expected):
         raise ValueError("stage IDs must be unique")
     for stage in plan["stages"]:
         if not stage["id"].replace("_", "").isalnum() or stage["request_count"] < 1:
@@ -67,7 +71,10 @@ def validate_plan(plan):
             raise ValueError("frozen request and envelope hashes required")
         if version == 2 and stage["request_count"] != (874 if stage["track"] == "baseline_synthetic" else 120):
             raise ValueError("baseline queue requires 874 synthetic and 120 real requests per model")
-    for track in (prefix + "_synthetic", prefix + "_real"):
+    tracks = ("document_context",) if version == 3 else (prefix + "_synthetic", prefix + "_real")
+    if version == 3 and not plan.get("token_status"):
+        raise ValueError("document context queue requires actual tokenizer preflight")
+    for track in tracks:
         stages = [s for s in plan["stages"] if s["track"] == track]
         for field in ("requests_sha256", "envelope_sha256", "request_count"):
             if stages[0][field] != stages[1][field]:
@@ -80,6 +87,25 @@ def validate_plan(plan):
         if model.get("repo_id") and len(model.get("revision", "")) != 40:
             raise ValueError("downloaded checkpoint needs an immutable revision")
     return plan
+
+
+def wait_for_predecessors(plan, update):
+    """Wait for whole earlier queues, avoiding races during their model changes."""
+    deadline = time.monotonic() + plan.get("predecessor_wait_seconds", 6 * 86400)
+    for predecessor in plan.get("predecessors", []):
+        while True:
+            status = json.loads(Path(predecessor["status_path"]).read_text())
+            if (status.get("run_id") != predecessor["run_id"] or
+                    status.get("code_revision") != predecessor["code_revision"]):
+                raise ValueError("predecessor identity changed")
+            if status.get("exit_code") is not None:
+                if status.get("phase") != "FINISHED" or status.get("status") not in {"COMPLETE", "FAILED"}:
+                    raise ValueError("predecessor status is not terminal")
+                break
+            if time.monotonic() > deadline:
+                raise RuntimeError("predecessor queue did not finish within the wait deadline")
+            update(phase="WAITING_FOR_PREDECESSOR", predecessor_run_id=predecessor["run_id"])
+            time.sleep(60)
 
 
 def validate_requests(stage):
@@ -160,6 +186,19 @@ def run_queue(plan):
             raise ValueError("successful tests at the frozen revision are required")
         for stage in plan["stages"]:
             validate_requests(stage)
+        if plan.get("schema_version") == 3:
+            token_proof = json.loads(Path(plan["token_status"]).read_text())
+            if token_proof.get("exit_code") != 0 or token_proof.get("code_revision") != plan["code_revision"]:
+                raise ValueError("successful tokenizer preflight at the frozen revision is required")
+            for stage in plan["stages"]:
+                observed = token_proof.get("models", {}).get(stage["model_key"], {})
+                if (observed.get("requests_sha256") != stage["requests_sha256"] or
+                        observed.get("request_count") != stage["request_count"] or
+                        observed.get("model_path") != plan["models"][stage["model_key"]]["path"] or
+                        type(observed.get("max_prompt_tokens")) is not int or
+                        not 0 < observed["max_prompt_tokens"] <= 8192 - 128):
+                    raise ValueError("tokenizer preflight differs from frozen requests or context capacity")
+        wait_for_predecessors(plan, update)
         for index, stage in enumerate(plan["stages"]):
             current = state["stages"][index]
             model = plan["models"][stage["model_key"]]

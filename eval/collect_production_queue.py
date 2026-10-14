@@ -19,9 +19,10 @@ def collect(config):
     repo = Path(config["repository"])
     plan = validate_plan(json.loads(Path(config["plan_path"]).read_text()))
     baseline = plan.get("schema_version") == 2
+    document_context = plan.get("schema_version") == 3
     report_module = import_module(report_module_for_plan(plan))
     prepare_report, render_markdown = report_module.prepare_report, report_module.render_markdown
-    prefix = "baseline" if baseline else "production"
+    prefix = "document_context" if document_context else "baseline" if baseline else "production"
     state = {"pid": os.getpid(), "status": "RUNNING", "phase": "WAITING_FOR_QUEUE",
              "exit_code": None, "run_id": plan["run_id"], "started_at": datetime.now(timezone.utc).isoformat(),
              "pushed_commits": [], "remote_status": plan["status_path"]}
@@ -88,6 +89,8 @@ def collect(config):
         save_json(root / "queue_plan.json", plan)
         save_json(root / "queue_status.json", terminal)
         copy(plan["unit_status"], root / "unit_test_status.json")
+        if document_context:
+            copy(plan["token_status"], root / "token_preflight.json")
         # Read only bounded excerpts after the entire queue and owned runtimes exited.
         (root / "queue_log_tail.txt").write_text(remote("tail -n 50 " + shlex.quote(plan["log_path"])))
         summaries = {}
@@ -122,8 +125,9 @@ def collect(config):
                 (target / "RESULTS.md").write_text("# Stage did not complete\n\nNo completed model score is claimed. See job_status.json.\n")
             commit_paths([str(target.relative_to(repo))], "test: report " + prefix + " grounding " + stage["id"])
         comparisons = []
-        for corpus in ("synthetic", "real"):
-            pair = [stage for stage in plan["stages"] if stage["track"] == prefix + "_" + corpus]
+        for corpus in (("documents",) if document_context else ("synthetic", "real")):
+            track = "document_context" if document_context else prefix + "_" + corpus
+            pair = [stage for stage in plan["stages"] if stage["track"] == track]
             if all(stage["id"] in summaries for stage in pair):
                 comparison = prepare_report(root / pair[1]["id"], compare=root / pair[0]["id"])
                 save_json(root / (corpus + "_comparison.json"), comparison)
@@ -143,12 +147,25 @@ def collect(config):
             overview["limitations"].extend([
                 "Baseline B uses its own retrieval and execution contract; the KTRF execution guard is not applied.",
                 "Each baseline stage compares with referenced sealed production C outputs; C GPU inference is not rerun."])
+        if document_context:
+            overview.update(schema_version=3, knowledge_conditions=["none", "full", "retrieved", "ktrf"],
+                            source_conditions=["none", "full", "retrieved"])
+            overview["limitations"] = [
+                "Complete source and knowledge documents are newly AI authored, not reconstructed news articles.",
+                "Twelve matched knowledge/source conditions measure evidence availability as well as pipeline behavior.",
+                "KTRF policies and guard apply only to the KTRF arm; semantic scores precede execution validation.",
+                "Both models run every new condition; no prior production responses are relabeled.",
+                "Model family and size both change; synthetic scores do not establish deployment risk."]
         save_json(root / "summary.json", overview)
         description = ("All stages run frozen baseline B with separate stateless QA and execution requests. "
                        "The KTRF execution guard is not applied to baseline B. Each stage compares against "
                        "referenced sealed production C outputs; C GPU inference is not rerun."
                        if baseline else
                        "All stages use separate stateless QA and automation requests with the actual production profiles.")
+        if document_context:
+            description = ("Each model runs all four knowledge modes and three source-document modes, "
+                           "with separate QA and routing calls. Full documents are preserved; retrieved "
+                           "paragraph windows retain offsets and hashes. No prior inference is reused.")
         lines = ["# " + prefix.capitalize() + " grounding queue", "", f"Status: **{terminal['status']}**. Exit code: `{terminal['exit_code']}`.", "",
                  description, "",
                  "| Stage | Status | Received / planned | Malformed |", "|---|---|---:|---:|"]
@@ -160,6 +177,8 @@ def collect(config):
         files = [str((root / name).relative_to(repo)) for name in
                  ("queue_plan.json", "queue_status.json", "unit_test_status.json", "queue_log_tail.txt", "summary.json", "RESULTS.md")]
         files.extend(str((root / name).relative_to(repo)) for name in comparisons)
+        if document_context:
+            files.append(str((root / "token_preflight.json").relative_to(repo)))
         commit_paths(files, "test: summarize sequential " + prefix + " grounding experiments")
         subprocess.run(["python3", "scripts/staging_md.py", "done", "--id", config["staging_id"]],
                        cwd=config["workspace"], check=True)
