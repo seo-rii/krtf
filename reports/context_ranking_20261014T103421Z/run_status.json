@@ -1,0 +1,104 @@
+{
+  "run_id": "ktrf-context-ranking-20261014T103421Z",
+  "state": "COMPLETED",
+  "pid": 319830,
+  "started_at": 1791974399.8885934,
+  "source_revision": "8613d34789457e58d4c13409c43d93be8a4c77db",
+  "archive_sha256": "78ade99116f7f09c246ac030508d688536d1eb4b5a8d35ef9634f3b63a7dc897",
+  "stages": [
+    {
+      "name": "unit",
+      "state": "COMPLETED",
+      "command": [
+        "/home/one/experiments/krtf-one-server-20261013T003732Z/venv/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ],
+      "log_path": "/home/one/logs/ktrf-context-ranking-20261014T103421Z-unit.log",
+      "started_at": 1791974399.9036975,
+      "exit_code": 0,
+      "finished_at": 1791974474.8900707
+    },
+    {
+      "name": "freeze",
+      "state": "COMPLETED",
+      "command": [
+        "/home/one/.venvs/vllm/bin/python",
+        "/data/one/mil_llm_refusal/ktrf/experiments/ktrf-context-ranking-20261014T103421Z/freeze.py",
+        "/data/one/mil_llm_refusal/ktrf/experiments/ktrf-context-ranking-20261014T103421Z/metadata.json"
+      ],
+      "log_path": "/home/one/logs/ktrf-context-ranking-20261014T103421Z-freeze.log",
+      "started_at": 1791974474.890634,
+      "exit_code": 0,
+      "finished_at": 1791974476.5075498
+    },
+    {
+      "name": "lexical",
+      "state": "COMPLETED",
+      "command": [
+        "/home/one/experiments/krtf-one-server-20261013T003732Z/venv/bin/python",
+        "-m",
+        "eval.run_context_ranking",
+        "--cases",
+        "/data/one/mil_llm_refusal/ktrf/experiments/ktrf-context-ranking-20261014T103421Z/results/cases.jsonl",
+        "--repeats",
+        "3",
+        "--source-revision",
+        "8613d34789457e58d4c13409c43d93be8a4c77db",
+        "--backend",
+        "lexical",
+        "--out",
+        "/data/one/mil_llm_refusal/ktrf/experiments/ktrf-context-ranking-20261014T103421Z/results/lexical.json"
+      ],
+      "log_path": "/home/one/logs/ktrf-context-ranking-20261014T103421Z-lexical.log",
+      "started_at": 1791974476.5081677,
+      "exit_code": 0,
+      "finished_at": 1791974477.7244375
+    },
+    {
+      "name": "nano",
+      "state": "COMPLETED",
+      "command": [
+        "/home/one/.venvs/vllm/bin/python",
+        "-m",
+        "eval.run_context_ranking",
+        "--cases",
+        "/data/one/mil_llm_refusal/ktrf/experiments/ktrf-context-ranking-20261014T103421Z/results/cases.jsonl",
+        "--repeats",
+        "3",
+        "--source-revision",
+        "8613d34789457e58d4c13409c43d93be8a4c77db",
+        "--backend",
+        "scalar",
+        "--model-dir",
+        "/data/one/mil_llm_refusal/ktrf/models/KURE-Reranker-nano-f3b3eff2b525",
+        "--model-id",
+        "nlpai-lab/KURE-Reranker-nano",
+        "--model-revision",
+        "f3b3eff2b5251f135b638891ebe7d6c5ae94cc3e",
+        "--device",
+        "cuda",
+        "--max-length",
+        "1024",
+        "--out",
+        "/data/one/mil_llm_refusal/ktrf/experiments/ktrf-context-ranking-20261014T103421Z/results/nano.json"
+      ],
+      "log_path": "/home/one/logs/ktrf-context-ranking-20261014T103421Z-nano.log",
+      "started_at": 1791974477.7250144,
+      "exit_code": 0,
+      "finished_at": 1791974527.6378782
+    }
+  ],
+  "exit_code": 0,
+  "finished_at": 1791974527.645594,
+  "output_manifest": {
+    "cases.jsonl": "ce23c97048227872535bb6c33d74a91463b610cbec8775399c0202fb58c5c9cd",
+    "checkpoint.json": "875679c6e16e414862018f09d5d9ca4c6d62713a279bbee241ed599f90fb7931",
+    "lexical.json": "576719f319e2d9612d0558f2f9205ec998c88e21fc50d06722b22eb9f62aa015",
+    "lexical.md": "7e07b17abbee644f28a1a77957259736cf9ccdb10c6e265a2da3eada62833d42",
+    "nano.json": "de8278c3dcf223199e1c075241adcb7e286b089a5bb4cafd7510d65f55c4b713",
+    "nano.md": "c91dc940a6dfb229a2918e782ce490235b4b5aae79c6e593030004ccb08268ea",
+    "protocols.json": "45f5a5e8a6d7dbf2b281a08b75789e560e06a77c483b6c93efe9bf709f9045aa"
+  }
+}

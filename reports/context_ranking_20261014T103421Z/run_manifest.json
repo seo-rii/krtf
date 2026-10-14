@@ -1,0 +1,22 @@
+{
+  "run_id": "ktrf-context-ranking-20261014T103421Z",
+  "remote_root": "/data/one/mil_llm_refusal/ktrf/experiments/ktrf-context-ranking-20261014T103421Z",
+  "source": "/data/one/mil_llm_refusal/ktrf/experiments/ktrf-context-ranking-20261014T103421Z/source",
+  "python": "/home/one/experiments/krtf-one-server-20261013T003732Z/venv/bin/python",
+  "model_python": "/home/one/.venvs/vllm/bin/python",
+  "model_id": "nlpai-lab/KURE-Reranker-nano",
+  "model_revision": "f3b3eff2b5251f135b638891ebe7d6c5ae94cc3e",
+  "model_dir": "/data/one/mil_llm_refusal/ktrf/models/KURE-Reranker-nano-f3b3eff2b525",
+  "local_root": "/tmp/ktrf-context-ranking-20261014T103421Z",
+  "download_log": "/home/one/logs/ktrf-context-ranking-20261014T103421Z-download.log",
+  "download_status": "/home/one/logs/ktrf-context-ranking-20261014T103421Z-download.status.json",
+  "report_dir": "reports/context_ranking_20261014T103421Z",
+  "download_pid": 319249,
+  "source_revision": "8613d34789457e58d4c13409c43d93be8a4c77db",
+  "archive_sha256": "78ade99116f7f09c246ac030508d688536d1eb4b5a8d35ef9634f3b63a7dc897",
+  "expected_model_sha256": "139bfeeeb05e6d36886461102645b7e987ff6ac042b935faf45cbde4bf5622f9",
+  "log_dir": "/home/one/logs",
+  "status_path": "/home/one/logs/ktrf-context-ranking-20261014T103421Z.status.json",
+  "log_path": "/home/one/logs/ktrf-context-ranking-20261014T103421Z.log",
+  "worker_pid": 319830
+}

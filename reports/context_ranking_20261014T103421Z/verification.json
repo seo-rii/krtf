@@ -1,0 +1,18 @@
+{
+  "source_revision": "8613d34789457e58d4c13409c43d93be8a4c77db",
+  "run_id": "ktrf-context-ranking-20261014T103421Z",
+  "exit_code": 0,
+  "cases": 64,
+  "case_sha256": "ce23c97048227872535bb6c33d74a91463b610cbec8775399c0202fb58c5c9cd",
+  "backends": [
+    "lexical",
+    "nano"
+  ],
+  "variants_per_backend": 5,
+  "pair_inputs_per_backend": 640,
+  "measured_pairs_per_backend": 1920,
+  "checkpoint_sha256": "139bfeeeb05e6d36886461102645b7e987ff6ac042b935faf45cbde4bf5622f9",
+  "identical_candidate_and_input_pairs": true,
+  "role_guard_preserved_every_variant": true,
+  "output_manifest_verified": true
+}

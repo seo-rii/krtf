@@ -1,0 +1,101 @@
+{
+  "lexical": {
+    "version": "context_ranking_risk_v1",
+    "scorer_class": "lexical",
+    "variants": [
+      "surface",
+      "local_context",
+      "target_local",
+      "target_full",
+      "path_full"
+    ],
+    "minimum_scores": [
+      0.0,
+      0.3,
+      0.5,
+      0.7
+    ],
+    "minimum_margins": [
+      0.0,
+      0.025,
+      0.05,
+      0.1
+    ],
+    "epsilon": 0.05,
+    "alpha": 0.05,
+    "minimum_families": 1,
+    "family_partition": {
+      "tune": [
+        "f05",
+        "f03",
+        "f01",
+        "f02"
+      ],
+      "test": [
+        "f08",
+        "f06",
+        "f04",
+        "f07"
+      ]
+    },
+    "score_semantics": "raw_relevance_not_probability",
+    "risk_unit": "family_has_any_wrong_proposal_given_at_least_one_proposal",
+    "family_aggregation": "all_documents_across_source_collections",
+    "data_status": "AI_AUTHORED_SYNTHETIC_PREVIOUSLY_EXAMINED",
+    "test_status": "family_disjoint_diagnostic_partition_not_sealed_audit",
+    "selection_status": "threshold_choice_uses_tune_scores_only",
+    "coverage_valid": false,
+    "production_authorized": false
+  },
+  "nano": {
+    "version": "context_ranking_risk_v1",
+    "scorer_class": "nano",
+    "variants": [
+      "surface",
+      "local_context",
+      "target_local",
+      "target_full",
+      "path_full"
+    ],
+    "minimum_scores": [
+      -12.0,
+      -9.0,
+      -6.0,
+      -3.0,
+      0.0,
+      3.0
+    ],
+    "minimum_margins": [
+      0.0,
+      0.25,
+      0.5,
+      1.0,
+      2.0
+    ],
+    "epsilon": 0.05,
+    "alpha": 0.05,
+    "minimum_families": 1,
+    "family_partition": {
+      "tune": [
+        "f05",
+        "f03",
+        "f01",
+        "f02"
+      ],
+      "test": [
+        "f08",
+        "f06",
+        "f04",
+        "f07"
+      ]
+    },
+    "score_semantics": "raw_relevance_not_probability",
+    "risk_unit": "family_has_any_wrong_proposal_given_at_least_one_proposal",
+    "family_aggregation": "all_documents_across_source_collections",
+    "data_status": "AI_AUTHORED_SYNTHETIC_PREVIOUSLY_EXAMINED",
+    "test_status": "family_disjoint_diagnostic_partition_not_sealed_audit",
+    "selection_status": "threshold_choice_uses_tune_scores_only",
+    "coverage_valid": false,
+    "production_authorized": false
+  }
+}
