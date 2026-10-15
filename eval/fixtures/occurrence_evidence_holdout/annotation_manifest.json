@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "review_status": "ADJUDICATED_BEFORE_INFERENCE",
+  "review_completed_at": "2026-10-15T05:14:02.901041+00:00",
+  "reviewer_type": "INDEPENDENT_BLIND_AI_PASS",
+  "human_verified": false,
+  "annotation_origin": "AI_AUTHORED_SYNTHETIC_PLUS_BLIND_AI_REVIEW",
+  "selector_freeze_revision": "291e10faf8dc8594696e7d10243f19cd96eb224d",
+  "selector_source_sha256": "1bdaced2bad896ea61b649b4d464bf643cd03d0396f7e1f541e53635d4aa80f2",
+  "authored_fixture_sha256": "ee2b5d87f2ce88b998edcd279d54d8ca0f4c50fe43f998da0c3fdf6bff02e715",
+  "final_fixture_sha256": "ee2b5d87f2ce88b998edcd279d54d8ca0f4c50fe43f998da0c3fdf6bff02e715",
+  "selector_dependency_sha256": {
+    "ktrf/context_resolution.py": "a3e2dff5afa735382f9e4aea03061981314c69a516d2c8793d3bb50fa0ea067c"
+  },
+  "reviewed_targets": 168,
+  "reviewed_documents": 144,
+  "reviewed_families": 12,
+  "agreement_count": 168,
+  "disagreement_count": 0,
+  "scores_seen_during_review": false,
+  "blinding": {
+    "source_catalog_target_only": true,
+    "authored_gold": false,
+    "authored_rationale": false,
+    "authored_evidence": false,
+    "titles": false,
+    "strata": false,
+    "generator_order": false
+  },
+  "artifact_sha256": {
+    "blind_inputs.jsonl": "848d7b69401c3149111c2a21774f712850bc87804f86f075ff63278982ae715d",
+    "blind_binding.json": "05150a244d0a6929123216aa9f060e445eeb0b08a585f189cba7b820cb34c5a4",
+    "blind_review.jsonl": "5244c29f3b1bea508bff9f4f541af5ab9f484e1865a6300f02dfebd1913d5914",
+    "annotation_adjudication.json": "d790ece86e9d3e5f809d3b64f9dd4d7f09f5c434347f47707a043de96d8bd09b"
+  },
+  "limitations": [
+    "Related AI annotation agreement is not a human accuracy estimate.",
+    "New synthetic families are not a deployment-distribution audit."
+  ]
+}

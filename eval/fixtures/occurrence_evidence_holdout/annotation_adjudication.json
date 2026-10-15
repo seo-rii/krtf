@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "review_status": "ADJUDICATED_BEFORE_INFERENCE",
+  "targets": 168,
+  "agreement_count": 168,
+  "disagreement_count": 0,
+  "decisions": [],
+  "authored_label_counts": {
+    "LINK": 120,
+    "NON_MENTION": 12,
+    "COMPOSITIONAL": 12,
+    "NIL": 12,
+    "AMBIGUOUS": 12
+  },
+  "blind_label_counts": {
+    "LINK": 120,
+    "AMBIGUOUS": 12,
+    "COMPOSITIONAL": 12,
+    "NON_MENTION": 12,
+    "NIL": 12
+  },
+  "final_label_counts": {
+    "LINK": 120,
+    "NON_MENTION": 12,
+    "COMPOSITIONAL": 12,
+    "NIL": 12,
+    "AMBIGUOUS": 12
+  },
+  "source_text_changed": false,
+  "grading_changed": false,
+  "scores_seen_during_review": false,
+  "reviewer_type": "INDEPENDENT_BLIND_AI_PASS",
+  "human_verified": false
+}
