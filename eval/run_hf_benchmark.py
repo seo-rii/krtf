@@ -58,6 +58,22 @@ def partition_ner(records, seed=SEED):
     return training, heldout, len(records) - len(unique)
 
 
+def exclude_conflicting_ner(records):
+    """Quarantine every copy of a text with inconsistent source annotations."""
+    grouped = defaultdict(list)
+    for record in records:
+        grouped[record["document_sha256"]].append(record)
+    conflicts = []
+    invalid = set()
+    for sha, rows in sorted(grouped.items()):
+        if len({digest(row["ner_annotations"]) for row in rows}) > 1:
+            invalid.add(sha)
+            conflicts.append({"document_sha256": sha,
+                              "source_row_ids": [row["source_row_id"] for row in rows],
+                              "reason": "conflicting_annotations_for_identical_text"})
+    return [row for row in records if row["document_sha256"] not in invalid], conflicts
+
+
 def select_records(records, limit, seed=SEED):
     if limit < 1:
         raise ValueError("positive document limit required")
@@ -452,7 +468,8 @@ def main():
                     and r["parent_document_id"] not in parents]
     filtered_qa = [r for r in qa if r["document_sha256"] not in hashes
                    and r["parent_document_id"] not in parents and r["document_url"] not in parents]
-    training, heldout, duplicates = partition_ner(filtered_ner)
+    partitionable_ner, conflicting_ner = exclude_conflicting_ner(filtered_ner)
+    training, heldout, duplicates = partition_ner(partitionable_ner)
     selected_ner = select_records(heldout, args.ner_count)
     selected_qa = select_records(filtered_qa, args.qa_count)
     if not training or not selected_ner or not selected_qa:
@@ -462,6 +479,8 @@ def main():
         "seed": SEED,
         "kbmc": {"loaded_documents": len(ner), "excluded_source_rows": len(ner_exclusions),
                  "prior_overlap_exclusions": len(ner) - len(filtered_ner),
+                 "conflicting_annotation_text_groups": len(conflicting_ner),
+                 "conflicting_annotation_source_rows": len(filtered_ner) - len(partitionable_ner),
                  "training_documents": len(training), "eligible_heldout_documents": len(heldout),
                  "exact_duplicate_rows_removed": duplicates, "selected_documents": len(selected_ner),
                  "catalog_entries": len(reference_glossary.entities), "catalog_sha256": digest(catalog_data),
@@ -503,6 +522,7 @@ def main():
               "source_exclusion_counts": {
                   "kbmc": dict(Counter(row["reason"] for row in ner_exclusions)),
                   "tydiqa": dict(Counter(row["reason"] for row in qa_exclusions))},
+              "conflicting_ner_annotations": conflicting_ner,
               "invalid_minimal_annotation_questions": [
                   {"document_id": row["document_id"], "errors": row["annotation_errors"]}
                   for row in qa if row.get("annotation_errors")],

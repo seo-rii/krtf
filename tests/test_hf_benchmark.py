@@ -18,7 +18,7 @@ def _ner_record(document_id, terms):
         text += surface
         annotations.append({"span": [start, len(text)], "surface": surface, "type": kind})
     sha = hashlib.sha256(text.encode()).hexdigest()
-    return {"document_id": document_id, "parent_document_id": sha,
+    return {"document_id": document_id, "source_row_id": document_id, "parent_document_id": sha,
             "document_sha256": sha, "text": text, "ner_annotations": annotations}
 
 
@@ -68,6 +68,40 @@ def test_partition_rejects_conflicting_labels_for_identical_source():
     conflict["ner_annotations"][0]["type"] = "PER"
     with pytest.raises(ValueError, match="conflicting NER labels"):
         benchmark.partition_ner([original, conflict])
+
+
+@pytest.mark.parametrize("conflicting_copy_count", [2, 3])
+def test_conflict_quarantine_removes_every_copy_and_preserves_consistent_sources(conflicting_copy_count):
+    conflicting = [_ner_record("conflict-0", [("ORG", "같은기관")]),
+                   _ner_record("conflict-1", [("PER", "같은기관")])]
+    if conflicting_copy_count == 3:
+        # A third copy agrees with the first label, but the whole text is still quarantined.
+        conflicting.append(_ner_record("conflict-2", [("ORG", "같은기관")]))
+    consistent = [_ner_record("consistent-0", [("ORG", "정상기관")]),
+                  _ner_record("consistent-1", [("ORG", "정상기관")])]
+    untouched = _ner_record("unique", [("LOC", "정상장소")])
+    records = [conflicting[0], consistent[0], conflicting[1], untouched,
+               consistent[1], *conflicting[2:]]
+    original = deepcopy(records)
+    clean, conflicts = benchmark.exclude_conflicting_ner(records)
+    reversed_clean, reversed_conflicts = benchmark.exclude_conflicting_ner(list(reversed(records)))
+
+    assert clean == [consistent[0], untouched, consistent[1]]
+    assert records == original
+    assert clean[0] is consistent[0] and clean[1] is untouched and clean[2] is consistent[1]
+    assert conflicts == [{
+        "document_sha256": conflicting[0]["document_sha256"],
+        "source_row_ids": [row["source_row_id"] for row in conflicting],
+        "reason": "conflicting_annotations_for_identical_text",
+    }]
+    assert {row["document_id"] for row in clean} == {row["document_id"] for row in reversed_clean}
+    assert {item["document_sha256"] for item in conflicts} == {
+        item["document_sha256"] for item in reversed_conflicts}
+    assert set(reversed_conflicts[0]["source_row_ids"]) == set(conflicts[0]["source_row_ids"])
+    training, heldout, duplicates = benchmark.partition_ner(clean)
+    assert duplicates == 1 and len(training) + len(heldout) == 2
+    assert {row["document_sha256"] for row in [*training, *heldout]} == {
+        consistent[0]["document_sha256"], untouched["document_sha256"]}
 
 
 def test_selection_is_deterministic_and_cannot_use_reference_labels():
