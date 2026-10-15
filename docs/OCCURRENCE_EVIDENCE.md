@@ -1,5 +1,11 @@
 # Occurrence specific evidence comparison
 
+The [mode and evaluation guide](MODE_EVALUATION.md) distinguishes these
+experimental variants from resolver modes and LLM profiles. The completed
+[held-out analysis](../reports/occurrence_evidence_20261015T050659Z/ANALYSIS.md)
+reports each backend/input combination, remaining errors and risk limits;
+none of these variants is wired into the production resolver.
+
 This experiment separates selecting relevant source passages from checking
 whether a statement is affirmed. It follows the new-family challenge where
 whole-document nano input made 43 correct and 72 incorrect proposals under the

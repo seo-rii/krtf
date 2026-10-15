@@ -1,5 +1,10 @@
 # Knowledge documents and source-document context
 
+For resolver modes, LLM profiles and how these context conditions differ from
+reranking variants, see the [mode and evaluation guide](MODE_EVALUATION.md).
+The completed [document-context analysis](../reports/document_context_queue_20261014T024026Z/ANALYSIS.md)
+keeps the twelve conditions and their information/formatting limits separate.
+
 This experiment crosses two distinct information axes. Every model answers the
 same question about the same authored target under all twelve conditions:
 

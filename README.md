@@ -8,6 +8,11 @@ evidence and semantic guards. Uncertain links remain candidate sets with an
 explicit heuristic or fitted calibration status, rather than an implied
 coverage guarantee.
 
+See the [mode and evaluation guide](docs/MODE_EVALUATION.md) for resolver
+modes, LLM profiles, context baselines and the latest evidence-selection
+results. `aggressive` currently follows the same decision path as `commit`;
+the experimental `scoped_asserted` variant is not a production API mode.
+
 ```python
 from ktrf import load_glossary, compile_snapshot, resolve
 
@@ -287,6 +292,11 @@ and output-selected human reports retain their original sampling limitations.
 KTRF is evaluated in layers, each targeting a failure mode the previous
 layer cannot see. All reports are regenerated from code — the files under
 [reports/](reports/) are the source of truth for current numbers:
+
+The [mode and evaluation guide](docs/MODE_EVALUATION.md) links the newer
+document-context and held-out occurrence-evidence comparisons, explains their
+settings and separates experimental proposals from production commitments.
+Those cohorts and revisions are distinct from the historical reports below.
 
 The unit most of these count is the *occurrence*, which the frequent terms
 decide. Two of them count the *registered term* instead — the question a
