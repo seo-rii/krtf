@@ -307,6 +307,8 @@ semantic linking precision or LLM answer accuracy. The
 See the [measured results and limitations](reports/HF_BENCHMARK.md).
 The [HF LLM QA protocol](docs/HF_LLM_QA.md) separately specifies actual answer
 generation with six context/policy conditions and matched 12B/27B model runs.
+The [frozen generation plan](reports/HF_LLM_QA_PLAN.md) records the selected
+128 articles, identical 768 requests per model and verified tokenizer budgets.
 
 The unit most of these count is the *occurrence*, which the frequent terms
 decide. Two of them count the *registered term* instead — the question a
