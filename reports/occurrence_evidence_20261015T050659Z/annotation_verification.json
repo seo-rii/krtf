@@ -1,0 +1,15 @@
+{
+  "verification_kind": "ROOT_DETERMINISTIC_CHECK_AFTER_BLIND_AI_REVIEW",
+  "human_verified": false,
+  "target_events": 168,
+  "documents": 144,
+  "families": 12,
+  "verbatim_evidence_quotes": 336,
+  "all_quote_membership_and_target_offsets_verified": true,
+  "registered_id_membership_verified": true,
+  "selector_frozen_before_review": true,
+  "authored_and_final_source_hash_unchanged": true,
+  "annotation_artifact_hashes_verified": true,
+  "agreement": 168,
+  "disagreements": 0
+}

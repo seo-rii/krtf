@@ -1,0 +1,100 @@
+{
+  "run_id": "ktrf-occurrence-evidence-20261015T050659Z",
+  "state": "COMPLETED",
+  "pid": 360722,
+  "started_at": 1792041259.4629352,
+  "source_revision": "eda4afd218c5c766a787dda903dbd7c02f5c5d10",
+  "archive_sha256": "77af710978ea37c78c07fdc86ed041c573db21434c74921fa026ef7c456da126",
+  "stages": [
+    {
+      "name": "validation",
+      "state": "COMPLETED",
+      "command": [
+        "/home/one/experiments/krtf-one-server-20261013T003732Z/venv/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ],
+      "log_path": "/home/one/logs/ktrf-occurrence-evidence-20261015T050659Z-validation.log",
+      "started_at": 1792041259.4814425,
+      "exit_code": 0,
+      "finished_at": 1792041338.1855397
+    },
+    {
+      "name": "freeze",
+      "state": "COMPLETED",
+      "command": [
+        "/home/one/.venvs/vllm/bin/python",
+        "/data/one/mil_llm_refusal/ktrf/experiments/ktrf-occurrence-evidence-20261015T050659Z/freeze.py",
+        "/data/one/mil_llm_refusal/ktrf/experiments/ktrf-occurrence-evidence-20261015T050659Z/metadata.json"
+      ],
+      "log_path": "/home/one/logs/ktrf-occurrence-evidence-20261015T050659Z-freeze.log",
+      "started_at": 1792041338.1860268,
+      "exit_code": 0,
+      "finished_at": 1792041339.3017137
+    },
+    {
+      "name": "lexical",
+      "state": "COMPLETED",
+      "command": [
+        "/home/one/experiments/krtf-one-server-20261013T003732Z/venv/bin/python",
+        "-m",
+        "eval.run_occurrence_evidence",
+        "--source-revision",
+        "eda4afd218c5c766a787dda903dbd7c02f5c5d10",
+        "--backend",
+        "lexical",
+        "--out",
+        "/data/one/mil_llm_refusal/ktrf/experiments/ktrf-occurrence-evidence-20261015T050659Z/results/lexical.json"
+      ],
+      "log_path": "/home/one/logs/ktrf-occurrence-evidence-20261015T050659Z-lexical.log",
+      "started_at": 1792041339.302306,
+      "exit_code": 0,
+      "finished_at": 1792041343.1724074
+    },
+    {
+      "name": "nano",
+      "state": "COMPLETED",
+      "command": [
+        "/home/one/.venvs/vllm/bin/python",
+        "-m",
+        "eval.run_occurrence_evidence",
+        "--source-revision",
+        "eda4afd218c5c766a787dda903dbd7c02f5c5d10",
+        "--backend",
+        "scalar",
+        "--model-dir",
+        "/data/one/mil_llm_refusal/ktrf/models/KURE-Reranker-nano-f3b3eff2b525",
+        "--model-id",
+        "nlpai-lab/KURE-Reranker-nano",
+        "--model-revision",
+        "f3b3eff2b5251f135b638891ebe7d6c5ae94cc3e",
+        "--device",
+        "cuda",
+        "--max-length",
+        "1024",
+        "--out",
+        "/data/one/mil_llm_refusal/ktrf/experiments/ktrf-occurrence-evidence-20261015T050659Z/results/nano.json"
+      ],
+      "log_path": "/home/one/logs/ktrf-occurrence-evidence-20261015T050659Z-nano.log",
+      "started_at": 1792041343.1730936,
+      "exit_code": 0,
+      "finished_at": 1792041448.6573355
+    }
+  ],
+  "exit_code": 0,
+  "finished_at": 1792041448.7640364,
+  "output_manifest": {
+    "annotation_adjudication.json": "d790ece86e9d3e5f809d3b64f9dd4d7f09f5c434347f47707a043de96d8bd09b",
+    "annotation_manifest.json": "f92839ca348d36109568ad36a5f984b66e7f740df574643ea5fc4fb5efb9b854",
+    "blind_review.jsonl": "5244c29f3b1bea508bff9f4f541af5ab9f484e1865a6300f02dfebd1913d5914",
+    "checkpoint.json": "875679c6e16e414862018f09d5d9ca4c6d62713a279bbee241ed599f90fb7931",
+    "development_cases.jsonl": "2b59742c59fb9a952330bbf69d26d712ae995c224875a9ddd0e19c94f0ae676d",
+    "heldout_cases.jsonl": "283f05616540ae75289bbbbbe68997181180b7f0f5943bc59e51042e8b6ad821",
+    "lexical.json": "b1f343f3364d48fdfbc5fe4cbd68b725fe9007be7a6dfc178ca6b8fdeb9501b1",
+    "lexical.md": "a195ec127f0accd51bc69171f84e2d2a07d6dc6958569932c10ff26b0a415b6a",
+    "nano.json": "7084b51a9a4227ec6bd734ea8718255125930c5268bc3ce7a4843484c74a0488",
+    "nano.md": "8a5b2095c76ab80bf14f6c44e8d00a72f38ef7f371ea8495864ff9178ae6a1e2",
+    "protocol.json": "dd2c2f6abbe48f3b23f5185424fab8eebb1c47cca2be315ee69d3954e442dc6e"
+  }
+}

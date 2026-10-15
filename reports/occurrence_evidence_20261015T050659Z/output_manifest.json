@@ -1,0 +1,13 @@
+{
+  "annotation_adjudication.json": "d790ece86e9d3e5f809d3b64f9dd4d7f09f5c434347f47707a043de96d8bd09b",
+  "annotation_manifest.json": "f92839ca348d36109568ad36a5f984b66e7f740df574643ea5fc4fb5efb9b854",
+  "blind_review.jsonl": "5244c29f3b1bea508bff9f4f541af5ab9f484e1865a6300f02dfebd1913d5914",
+  "checkpoint.json": "875679c6e16e414862018f09d5d9ca4c6d62713a279bbee241ed599f90fb7931",
+  "development_cases.jsonl": "2b59742c59fb9a952330bbf69d26d712ae995c224875a9ddd0e19c94f0ae676d",
+  "heldout_cases.jsonl": "283f05616540ae75289bbbbbe68997181180b7f0f5943bc59e51042e8b6ad821",
+  "lexical.json": "b1f343f3364d48fdfbc5fe4cbd68b725fe9007be7a6dfc178ca6b8fdeb9501b1",
+  "lexical.md": "a195ec127f0accd51bc69171f84e2d2a07d6dc6958569932c10ff26b0a415b6a",
+  "nano.json": "7084b51a9a4227ec6bd734ea8718255125930c5268bc3ce7a4843484c74a0488",
+  "nano.md": "8a5b2095c76ab80bf14f6c44e8d00a72f38ef7f371ea8495864ff9178ae6a1e2",
+  "protocol.json": "dd2c2f6abbe48f3b23f5185424fab8eebb1c47cca2be315ee69d3954e442dc6e"
+}

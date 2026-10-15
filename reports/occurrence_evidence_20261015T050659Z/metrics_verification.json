@@ -1,0 +1,205 @@
+{
+  "kind": "DETERMINISTIC_RECOMPUTATION_FROM_RAW_CANDIDATES_AND_FROZEN_RULES",
+  "human_verified": false,
+  "all16_summaries_reproduced": true,
+  "selected_source_quotes_and_offsets_verified": true,
+  "same_scoped_scores_and_inputs_verified": true,
+  "thresholds_retuned": false,
+  "production_authorized": false,
+  "measured_pairs_total": 8832,
+  "summary": {
+    "lexical": {
+      "development": {
+        "target_full": {
+          "positive_cases": 240,
+          "exact_link_top1_count": 146,
+          "correct_proposals": 10,
+          "wrong_proposals": 6,
+          "wrong_positive_proposals": 3,
+          "wrong_negative_proposals": 3
+        },
+        "target_paragraph": {
+          "positive_cases": 240,
+          "exact_link_top1_count": 183,
+          "correct_proposals": 56,
+          "wrong_proposals": 30,
+          "wrong_positive_proposals": 6,
+          "wrong_negative_proposals": 24
+        },
+        "scoped_evidence": {
+          "positive_cases": 240,
+          "exact_link_top1_count": 216,
+          "correct_proposals": 58,
+          "wrong_proposals": 24,
+          "wrong_positive_proposals": 0,
+          "wrong_negative_proposals": 24
+        },
+        "scoped_asserted": {
+          "positive_cases": 240,
+          "exact_link_top1_count": 216,
+          "correct_proposals": 58,
+          "wrong_proposals": 0,
+          "wrong_positive_proposals": 0,
+          "wrong_negative_proposals": 0
+        }
+      },
+      "heldout": {
+        "target_full": {
+          "positive_cases": 120,
+          "exact_link_top1_count": 51,
+          "correct_proposals": 3,
+          "wrong_proposals": 9,
+          "wrong_positive_proposals": 6,
+          "wrong_negative_proposals": 3
+        },
+        "target_paragraph": {
+          "positive_cases": 120,
+          "exact_link_top1_count": 78,
+          "correct_proposals": 10,
+          "wrong_proposals": 12,
+          "wrong_positive_proposals": 1,
+          "wrong_negative_proposals": 11
+        },
+        "scoped_evidence": {
+          "positive_cases": 120,
+          "exact_link_top1_count": 86,
+          "correct_proposals": 9,
+          "wrong_proposals": 11,
+          "wrong_positive_proposals": 0,
+          "wrong_negative_proposals": 11
+        },
+        "scoped_asserted": {
+          "positive_cases": 120,
+          "exact_link_top1_count": 86,
+          "correct_proposals": 9,
+          "wrong_proposals": 0,
+          "wrong_positive_proposals": 0,
+          "wrong_negative_proposals": 0
+        }
+      }
+    },
+    "nano": {
+      "development": {
+        "target_full": {
+          "positive_cases": 240,
+          "exact_link_top1_count": 138,
+          "correct_proposals": 43,
+          "wrong_proposals": 72,
+          "wrong_positive_proposals": 47,
+          "wrong_negative_proposals": 25
+        },
+        "target_paragraph": {
+          "positive_cases": 240,
+          "exact_link_top1_count": 192,
+          "correct_proposals": 141,
+          "wrong_proposals": 25,
+          "wrong_positive_proposals": 0,
+          "wrong_negative_proposals": 25
+        },
+        "scoped_evidence": {
+          "positive_cases": 240,
+          "exact_link_top1_count": 240,
+          "correct_proposals": 211,
+          "wrong_proposals": 26,
+          "wrong_positive_proposals": 0,
+          "wrong_negative_proposals": 26
+        },
+        "scoped_asserted": {
+          "positive_cases": 240,
+          "exact_link_top1_count": 240,
+          "correct_proposals": 211,
+          "wrong_proposals": 0,
+          "wrong_positive_proposals": 0,
+          "wrong_negative_proposals": 0
+        }
+      },
+      "heldout": {
+        "target_full": {
+          "positive_cases": 120,
+          "exact_link_top1_count": 61,
+          "correct_proposals": 4,
+          "wrong_proposals": 21,
+          "wrong_positive_proposals": 7,
+          "wrong_negative_proposals": 14
+        },
+        "target_paragraph": {
+          "positive_cases": 120,
+          "exact_link_top1_count": 90,
+          "correct_proposals": 41,
+          "wrong_proposals": 12,
+          "wrong_positive_proposals": 0,
+          "wrong_negative_proposals": 12
+        },
+        "scoped_evidence": {
+          "positive_cases": 120,
+          "exact_link_top1_count": 109,
+          "correct_proposals": 48,
+          "wrong_proposals": 14,
+          "wrong_positive_proposals": 0,
+          "wrong_negative_proposals": 14
+        },
+        "scoped_asserted": {
+          "positive_cases": 120,
+          "exact_link_top1_count": 109,
+          "correct_proposals": 48,
+          "wrong_proposals": 2,
+          "wrong_positive_proposals": 0,
+          "wrong_negative_proposals": 2
+        }
+      }
+    }
+  },
+  "assertion_effects": {
+    "lexical": {
+      "development": {
+        "correct_proposals_lost": 0,
+        "wrong_proposals_removed": 24,
+        "all_positive_gate_vetoes": 0,
+        "all_negative_gate_vetoes": 132,
+        "same_candidate_scores_and_evidence": true
+      },
+      "heldout": {
+        "correct_proposals_lost": 0,
+        "wrong_proposals_removed": 11,
+        "all_positive_gate_vetoes": 0,
+        "all_negative_gate_vetoes": 36,
+        "same_candidate_scores_and_evidence": true
+      }
+    },
+    "nano": {
+      "development": {
+        "correct_proposals_lost": 0,
+        "wrong_proposals_removed": 26,
+        "all_positive_gate_vetoes": 0,
+        "all_negative_gate_vetoes": 132,
+        "same_candidate_scores_and_evidence": true
+      },
+      "heldout": {
+        "correct_proposals_lost": 0,
+        "wrong_proposals_removed": 12,
+        "all_positive_gate_vetoes": 0,
+        "all_negative_gate_vetoes": 36,
+        "same_candidate_scores_and_evidence": true
+      }
+    }
+  },
+  "development_baseline_controls": {
+    "lexical": {
+      "exact_score_reproduction": true,
+      "same_winners_and_proposals": true
+    },
+    "nano": {
+      "exact_score_reproduction": true,
+      "same_winners_and_proposals": true
+    }
+  },
+  "independent_AI_recomputation": {
+    "review_status": "PASSED",
+    "rows_recomputed_total": 4416,
+    "input_pairs_verified_total": 8832,
+    "all16_arms_match": true,
+    "production_guards_reconstructed_from_paths": true,
+    "family_bounds_recomputed_with_direct_binomial_bisection": true,
+    "no_model_scoring": true
+  }
+}

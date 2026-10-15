@@ -1,0 +1,170 @@
+{
+  "review_status": "AI_REVIEW_SOURCE_ONLY",
+  "human_verified": false,
+  "selector_source_sha256": "1bdaced2bad896ea61b649b4d464bf643cd03d0396f7e1f541e53635d4aa80f2",
+  "selector_changed": false,
+  "heldout_sources_inspected": false,
+  "interpretation": "Conservative lexical scope false vetoes; no execution guard bypass. These probes are explanatory review examples, not a measured heldout error rate.",
+  "probes": [
+    {
+      "issue_id": "SCOPE-001",
+      "source": "SOURCE_ONLY_AI_AUTHORED_REVIEW_PROBE_NOT_HELDOUT",
+      "text": "새길에 요청을 전달하고, 다른 팀에는 전달하지 않는다.",
+      "target_span": [
+        0,
+        2
+      ],
+      "mode": "scoped",
+      "max_chars": 1024,
+      "candidates": [
+        {
+          "canonical": "통신 장애 복구팀",
+          "aliases": [
+            "새길"
+          ],
+          "short_definition": "사내 통신 장애를 복구하고 접속 문의를 처리하는 팀"
+        },
+        {
+          "canonical": "생활 복지 상담팀",
+          "aliases": [
+            "새길"
+          ],
+          "short_definition": "임직원의 생활 지원과 복지 신청을 담당하는 팀"
+        }
+      ],
+      "expected_assertion_allowed": true,
+      "expected_judgment_origin": "AI_SEMANTIC_REVIEW_NOT_HUMAN_VERIFIED_NOT_GOLD",
+      "expected_judgment_rationale": "The target request is affirmed; only the different team is denied.",
+      "actual_assertion_allowed": false,
+      "actual_abstain_reason": "NEGATED_OR_REJECTED_TARGET",
+      "actual_assertion": {
+        "allowed": false,
+        "abstain_reason": "NEGATED_OR_REJECTED_TARGET",
+        "support_spans": [
+          {
+            "start": 0,
+            "end": 30,
+            "quote": "새길에 요청을 전달하고, 다른 팀에는 전달하지 않는다.",
+            "reason": "TARGET_ASSERTION"
+          }
+        ],
+        "status": "EXPERIMENTAL_HEURISTIC"
+      },
+      "actual_selection": {
+        "rendered_query": "[TARGET]새길[/TARGET]에 요청을 전달하고, 다른 팀에는 전달하지 않는다.",
+        "spans": [
+          {
+            "start": 0,
+            "end": 30,
+            "quote": "새길에 요청을 전달하고, 다른 팀에는 전달하지 않는다.",
+            "reason": "TARGET_PARAGRAPH"
+          }
+        ],
+        "gate_allowed": false,
+        "abstain_reason": "NEGATED_OR_REJECTED_TARGET",
+        "mode": "scoped",
+        "status": "EXPERIMENTAL_HEURISTIC",
+        "assertion": {
+          "allowed": false,
+          "abstain_reason": "NEGATED_OR_REJECTED_TARGET",
+          "support_spans": [
+            {
+              "start": 0,
+              "end": 30,
+              "quote": "새길에 요청을 전달하고, 다른 팀에는 전달하지 않는다.",
+              "reason": "TARGET_ASSERTION"
+            }
+          ],
+          "status": "EXPERIMENTAL_HEURISTIC"
+        }
+      },
+      "model_scoring_performed": false
+    },
+    {
+      "issue_id": "SCOPE-002",
+      "source": "SOURCE_ONLY_AI_AUTHORED_REVIEW_PROBE_NOT_HELDOUT",
+      "text": "새길에 요청을 보낸다. 접속 문의를 처리한다.\n\n이번 요청과 무관한 회의록의 예산 설명을 검토했다. 이 설명은 거짓이다.",
+      "target_span": [
+        0,
+        2
+      ],
+      "mode": "scoped",
+      "max_chars": 1024,
+      "candidates": [
+        {
+          "canonical": "통신 장애 복구팀",
+          "aliases": [
+            "새길"
+          ],
+          "short_definition": "사내 통신 장애를 복구하고 접속 문의를 처리하는 팀"
+        },
+        {
+          "canonical": "생활 복지 상담팀",
+          "aliases": [
+            "새길"
+          ],
+          "short_definition": "임직원의 생활 지원과 복지 신청을 담당하는 팀"
+        }
+      ],
+      "expected_assertion_allowed": true,
+      "expected_judgment_origin": "AI_SEMANTIC_REVIEW_NOT_HUMAN_VERIFIED_NOT_GOLD",
+      "expected_judgment_rationale": "The second paragraph explicitly concerns an unrelated meeting-record budget explanation; its denial does not retract the target request.",
+      "actual_assertion_allowed": false,
+      "actual_abstain_reason": "SCOPED_RETRACTION_OR_UNREGISTERED",
+      "actual_assertion": {
+        "allowed": false,
+        "abstain_reason": "SCOPED_RETRACTION_OR_UNREGISTERED",
+        "support_spans": [
+          {
+            "start": 0,
+            "end": 25,
+            "quote": "새길에 요청을 보낸다. 접속 문의를 처리한다.",
+            "reason": "TARGET_ASSERTION"
+          },
+          {
+            "start": 27,
+            "end": 67,
+            "quote": "이번 요청과 무관한 회의록의 예산 설명을 검토했다. 이 설명은 거짓이다.",
+            "reason": "SCOPED_VETO"
+          }
+        ],
+        "status": "EXPERIMENTAL_HEURISTIC"
+      },
+      "actual_selection": {
+        "rendered_query": "[TARGET]새길[/TARGET]에 요청을 보낸다. 접속 문의를 처리한다.",
+        "spans": [
+          {
+            "start": 0,
+            "end": 25,
+            "quote": "새길에 요청을 보낸다. 접속 문의를 처리한다.",
+            "reason": "TARGET_PARAGRAPH"
+          }
+        ],
+        "gate_allowed": false,
+        "abstain_reason": "SCOPED_RETRACTION_OR_UNREGISTERED",
+        "mode": "scoped",
+        "status": "EXPERIMENTAL_HEURISTIC",
+        "assertion": {
+          "allowed": false,
+          "abstain_reason": "SCOPED_RETRACTION_OR_UNREGISTERED",
+          "support_spans": [
+            {
+              "start": 0,
+              "end": 25,
+              "quote": "새길에 요청을 보낸다. 접속 문의를 처리한다.",
+              "reason": "TARGET_ASSERTION"
+            },
+            {
+              "start": 27,
+              "end": 67,
+              "quote": "이번 요청과 무관한 회의록의 예산 설명을 검토했다. 이 설명은 거짓이다.",
+              "reason": "SCOPED_VETO"
+            }
+          ],
+          "status": "EXPERIMENTAL_HEURISTIC"
+        }
+      },
+      "model_scoring_performed": false
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "run_id": "ktrf-occurrence-evidence-20261015T050659Z",
+  "source_revision": "eda4afd218c5c766a787dda903dbd7c02f5c5d10",
+  "exit_code": 0,
+  "target_events": 552,
+  "documents": 480,
+  "families": 36,
+  "pair_inputs_per_backend": 4416,
+  "measured_pairs_total": 8832,
+  "assertion_ablation_inputs_identical": true,
+  "backend_inputs_identical": true,
+  "role_guards_preserved": true,
+  "no_refitting_or_execution_authorization": true,
+  "output_artifact_hashes_verified": true
+}

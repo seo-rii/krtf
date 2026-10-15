@@ -1,0 +1,19 @@
+{
+  "python": "/home/one/experiments/krtf-one-server-20261013T003732Z/venv/bin/python",
+  "model_python": "/home/one/.venvs/vllm/bin/python",
+  "model_id": "nlpai-lab/KURE-Reranker-nano",
+  "model_revision": "f3b3eff2b5251f135b638891ebe7d6c5ae94cc3e",
+  "model_dir": "/data/one/mil_llm_refusal/ktrf/models/KURE-Reranker-nano-f3b3eff2b525",
+  "expected_model_sha256": "139bfeeeb05e6d36886461102645b7e987ff6ac042b935faf45cbde4bf5622f9",
+  "run_id": "ktrf-occurrence-evidence-20261015T050659Z",
+  "remote_root": "/data/one/mil_llm_refusal/ktrf/experiments/ktrf-occurrence-evidence-20261015T050659Z",
+  "source": "/data/one/mil_llm_refusal/ktrf/experiments/ktrf-occurrence-evidence-20261015T050659Z/source",
+  "local_root": "/tmp/ktrf-occurrence-evidence-20261015T050659Z",
+  "report_dir": "reports/occurrence_evidence_20261015T050659Z",
+  "log_dir": "/home/one/logs",
+  "status_path": "/home/one/logs/ktrf-occurrence-evidence-20261015T050659Z.status.json",
+  "log_path": "/home/one/logs/ktrf-occurrence-evidence-20261015T050659Z.log",
+  "source_revision": "eda4afd218c5c766a787dda903dbd7c02f5c5d10",
+  "archive_sha256": "77af710978ea37c78c07fdc86ed041c573db21434c74921fa026ef7c456da126",
+  "worker_pid": 360722
+}

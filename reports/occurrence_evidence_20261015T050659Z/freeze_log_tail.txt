@@ -1,0 +1,1 @@
+{"development_events": 384, "heldout_events": 168, "events": 552, "fixture_sha256": "ee2b5d87f2ce88b998edcd279d54d8ca0f4c50fe43f998da0c3fdf6bff02e715", "selector_sha256": "1bdaced2bad896ea61b649b4d464bf643cd03d0396f7e1f541e53635d4aa80f2", "model_sha256": "139bfeeeb05e6d36886461102645b7e987ff6ac042b935faf45cbde4bf5622f9"}
