@@ -298,6 +298,13 @@ document-context and held-out occurrence-evidence comparisons, explains their
 settings and separates experimental proposals from production commitments.
 Those cohorts and revisions are distinct from the historical reports below.
 
+The [external HF benchmark](docs/HF_BENCHMARK.md) adds a train-only KBMC
+lexical catalog for independent boundary-reference recovery and Korean TyDiQA
+full-document evidence retention, including matched retrieval with and without
+KTRF query expansion. These measure boundary/evidence recovery, rather than
+semantic linking precision or LLM answer accuracy. The
+[dataset review](docs/HF_DATASETS.md) records pinned sources and excluded mirrors.
+
 The unit most of these count is the *occurrence*, which the frequent terms
 decide. Two of them count the *registered term* instead — the question a
 glossary owner actually asks — and one grades labels a person wrote down

@@ -28,6 +28,8 @@ classifiers = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "build>=1.2"]
+# Optional external evaluation readers; not required by the resolver runtime.
+benchmark = ["pyarrow>=16"]
 # M4 neural runtime (bi-encoder/cross-encoder ONNX backends). Weights are
 # NOT installed by this extra - see docs/PACKAGING.md.
 neural = ["numpy", "onnxruntime>=1.24", "tokenizers", "huggingface_hub"]

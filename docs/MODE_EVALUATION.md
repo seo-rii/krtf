@@ -86,6 +86,12 @@ ID 두 건이 실행 검증을 통과했으므로, 무검토 자동 실행의 �
 결과: [문서 컨텍스트 분석](../reports/document_context_queue_20261014T024026Z/ANALYSIS.md).
 후속 형식 통제 설계: [DEFINITION_CONTROL.md](DEFINITION_CONTROL.md).
 
+추가 외부 자료 비교는 [HF_BENCHMARK.md](HF_BENCHMARK.md)에 있다. KBMC에서는
+외부 경계 정답을 대상으로 literal/fast/commit/aggressive를 비교하고, TyDiQA에서는
+전체 원문과 검색 구간에 정답 근거가 남는지 검사한다. 후자의 `ktrf_expanded`는
+질문의 확정 용어로 검색어를 보조하는 조건이며, 위 production context pack 조건과
+다르다. LLM 답변 정확도를 새로 측정한 것으로 합산하지 않는다.
+
 ## 4. 최근 후보 재순위화 실험의 입력 구성
 
 다음 값은 운영 API의 `mode`나 LLM 프로필이 아니다. 이미 주어진 대상 위치와
