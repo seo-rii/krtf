@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "protocol_id": "occurrence-evidence-v1",
+  "declared_at": "2026-10-15T05:06:59.021133+00:00",
+  "variants": [
+    "target_full",
+    "target_paragraph",
+    "scoped_evidence",
+    "scoped_asserted"
+  ],
+  "cohorts": {
+    "development": {
+      "families": 24,
+      "documents": 336,
+      "events": 384,
+      "source": "eval/fixtures/context_ranking_challenge/families.jsonl",
+      "status": "CONSUMED_PRIOR_TEST_USED_FOR_DEVELOPMENT"
+    },
+    "heldout": {
+      "families": 12,
+      "documents": 144,
+      "events": 168,
+      "source": "eval/fixtures/occurrence_evidence_holdout/families.jsonl",
+      "status": "NEW_SYNTHETIC_FAMILIES_NOT_USED_FOR_SELECTOR_DEVELOPMENT"
+    }
+  },
+  "candidate_budget": 2,
+  "maximum_pair_tokens": 1024,
+  "selection_max_chars": 1024,
+  "repeats": 1,
+  "backends": [
+    "lexical",
+    "nano"
+  ],
+  "frozen_rules": {
+    "lexical": {
+      "minimum_score": 0.7,
+      "minimum_margin": 0.1
+    },
+    "nano": {
+      "minimum_score": 0.0,
+      "minimum_margin": 2.0
+    }
+  },
+  "prior_report_dir": "reports/context_ranking_20261014T103421Z",
+  "prior_report_sha256": {
+    "lexical": "576719f319e2d9612d0558f2f9205ec998c88e21fc50d06722b22eb9f62aa015",
+    "nano": "de8278c3dcf223199e1c075241adcb7e286b089a5bb4cafd7510d65f55c4b713"
+  },
+  "model_id": "nlpai-lab/KURE-Reranker-nano",
+  "model_revision": "f3b3eff2b5251f135b638891ebe7d6c5ae94cc3e",
+  "expected_model_sha256": "139bfeeeb05e6d36886461102645b7e987ff6ac042b935faf45cbde4bf5622f9",
+  "familywise_alpha": 0.05,
+  "family_alpha_per_comparison": 0.003125,
+  "proposal_requirements": [
+    "positive_margin",
+    "frozen_score_and_margin",
+    "existing_structural_guard",
+    "scoped_asserted_requires_assertion_gate"
+  ],
+  "coverage_valid": false,
+  "production_authorized": false,
+  "bound_assumptions_met": false,
+  "data_origin": "AI_AUTHORED_SYNTHETIC_PLUS_BLIND_AI_REVIEW",
+  "human_verified": false,
+  "threshold_fitting_performed": false,
+  "selector_freeze_before_heldout_review": true
+}
