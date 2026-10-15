@@ -304,6 +304,7 @@ full-document evidence retention, including matched retrieval with and without
 KTRF query expansion. These measure boundary/evidence recovery, rather than
 semantic linking precision or LLM answer accuracy. The
 [dataset review](docs/HF_DATASETS.md) records pinned sources and excluded mirrors.
+See the [measured results and limitations](reports/HF_BENCHMARK.md).
 
 The unit most of these count is the *occurrence*, which the frequent terms
 decide. Two of them count the *registered term* instead — the question a
@@ -321,6 +322,7 @@ rather than counting what the resolver produced:
 | `python -m eval.run_llm_rag` | baseline comparison against open-weight LLMs with retrieval-augmented prompting (recall, grounding, hallucination, speed) | [LLM_RAG_COMPARE.md](reports/LLM_RAG_COMPARE.md) |
 | `python -m eval.run_ab_grounding` | downstream A/B: does KTRF context actually improve LLM answers? four paired conditions, Helpful/Harmful Flips, Gold Benefit Recovery | [AB_GROUNDING.md](reports/AB_GROUNDING.md) |
 | `python -m eval.run_segmentation_ab` | paired A/B for the shared segmenter, by variant formation: recall, exact-span rate, latency, structural false positives | [SEGMENTATION_AB.md](reports/SEGMENTATION_AB.md) |
+| `python -m eval.run_hf_benchmark` | pinned external KBMC boundary-reference recovery across modes and Korean TyDiQA answer-evidence retention with/without KTRF query expansion; no inferred semantic linking or LLM answer accuracy | [HF_BENCHMARK.md](reports/HF_BENCHMARK.md) |
 | `python -m eval.run_wild_regression` | fast paired regression check of a resolver change against the real-text suites (a sample, not a replacement for the full wild run) | — |
 
 Highlights from the current reports: zero conformance failures and zero
