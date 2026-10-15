@@ -27,13 +27,26 @@ def _plan(tmp_path, *, schema_version=1):
             'requests_file': str(requests), 'request_count': count,
             'requests_sha256': request_hash, 'envelope_sha256': queue.file_hash(requests)}
             for model in ('gemma12b', 'qwen27b'))
-    return {'schema_version': schema_version, 'stages': stages, 'port': 18104,
+    plan = {'schema_version': schema_version, 'stages': stages, 'port': 18104,
             'models': {key: {'gpu_memory_utilization': .5, 'path': str(tmp_path / key),
                              'served_name': key} for key in ('gemma12b', 'qwen27b')},
             'run_id': 'test-queue', 'run_root': str(tmp_path),
             'status_path': str(tmp_path / 'status.json'), 'code_revision': 'revision',
             'source_archive': str(source), 'archive_sha256': queue.file_hash(source),
             'unit_status': str(proof)}
+    if schema_version == 5:
+        plan['stages'] = stages[:2]
+        for stage in plan['stages']:
+            stage.update(id='hf_qa_' + stage['model_key'], track='hf_qa')
+        token_proof = tmp_path / 'tokens.json'
+        token_proof.write_text(json.dumps({
+            'exit_code': 0, 'code_revision': plan['code_revision'],
+            'models': {stage['model_key']: {
+                'requests_sha256': stage['requests_sha256'], 'request_count': stage['request_count'],
+                'model_path': plan['models'][stage['model_key']]['path'], 'max_prompt_tokens': 1024}
+                for stage in plan['stages']}}))
+        plan['token_status'] = str(token_proof)
+    return plan
 
 
 def test_queue_rejects_order_change_or_unpaired_request_sets(tmp_path):
@@ -77,10 +90,64 @@ def test_baseline_schema_keeps_fixed_counts_and_disallows_production_mix(tmp_pat
     with pytest.raises(ValueError, match='identical frozen requests'):
         queue.validate_plan(unmatched)
     with pytest.raises(ValueError, match='unknown queue schema'):
-        queue.report_module_for_plan({'schema_version': 5})
+        queue.report_module_for_plan({'schema_version': 6})
 
 
-@pytest.mark.parametrize('schema_version', [1, 2])
+def test_hf_schema_requires_two_models_same_requests_and_tokenizer_proof(tmp_path):
+    plan = _plan(tmp_path, schema_version=5)
+    assert queue.validate_plan(plan) is plan
+    assert queue.report_module_for_plan(plan) == 'eval.report_hf_qa'
+    assert [(stage['track'], stage['model_key']) for stage in plan['stages']] == [
+        ('hf_qa', 'gemma12b'), ('hf_qa', 'qwen27b')]
+    changed = deepcopy(plan)
+    changed['stages'].reverse()
+    with pytest.raises(ValueError, match='predeclared'):
+        queue.validate_plan(changed)
+    changed = deepcopy(plan)
+    changed['stages'][1]['track'] = 'definition_control'
+    with pytest.raises(ValueError, match='predeclared'):
+        queue.validate_plan(changed)
+    for field, value in [('requests_sha256', '0' * 64), ('envelope_sha256', '0' * 64),
+                         ('request_count', 2)]:
+        changed = deepcopy(plan)
+        changed['stages'][1][field] = value
+        with pytest.raises(ValueError, match='identical frozen requests'):
+            queue.validate_plan(changed)
+    changed = deepcopy(plan)
+    del changed['token_status']
+    with pytest.raises(ValueError, match='actual tokenizer preflight'):
+        queue.validate_plan(changed)
+
+
+@pytest.mark.parametrize('field,value', [
+    ('requests_sha256', '0' * 64), ('request_count', 2), ('model_path', 'other-model'),
+    ('max_prompt_tokens', 8065), ('max_prompt_tokens', 0), ('max_prompt_tokens', True),
+])
+def test_hf_tokenizer_mismatch_blocks_all_gpu_work(tmp_path, monkeypatch, field, value):
+    plan = _plan(tmp_path, schema_version=5)
+    proof = json.loads(Path(plan['token_status']).read_text())
+    proof['models']['gemma12b'][field] = value
+    Path(plan['token_status']).write_text(json.dumps(proof))
+    monkeypatch.setattr(queue.subprocess, 'Popen', lambda *args, **kwargs: pytest.fail('no GPU work before preflight'))
+    assert queue.run_queue(plan) == 1
+    state = json.loads(Path(plan['status_path']).read_text())
+    assert 'tokenizer preflight differs' in state['error']['message']
+    assert all(stage['status'] == 'PENDING' for stage in state['stages'])
+
+
+@pytest.mark.parametrize('field,value', [('exit_code', 1), ('code_revision', 'different')])
+def test_hf_failed_or_other_revision_token_proof_blocks_gpu_work(tmp_path, field, value):
+    plan = _plan(tmp_path, schema_version=5)
+    proof = json.loads(Path(plan['token_status']).read_text())
+    proof[field] = value
+    Path(plan['token_status']).write_text(json.dumps(proof))
+    assert queue.run_queue(plan) == 1
+    state = json.loads(Path(plan['status_path']).read_text())
+    assert 'successful tokenizer preflight' in state['error']['message']
+    assert all(stage['status'] == 'PENDING' for stage in state['stages'])
+
+
+@pytest.mark.parametrize('schema_version', [1, 2, 5])
 def test_request_envelope_is_sealed_before_runtime_work(tmp_path, schema_version):
     plan = _plan(tmp_path, schema_version=schema_version)
     stage = plan['stages'][0]
@@ -90,7 +157,7 @@ def test_request_envelope_is_sealed_before_runtime_work(tmp_path, schema_version
         queue.validate_requests(stage)
 
 
-@pytest.mark.parametrize('schema_version', [1, 2])
+@pytest.mark.parametrize('schema_version', [1, 2, 5])
 def test_setup_failure_records_each_stage_and_continues_in_declared_order(tmp_path, schema_version):
     plan = _plan(tmp_path, schema_version=schema_version)
     assert queue.run_queue(plan) == 1
@@ -104,7 +171,7 @@ def test_setup_failure_records_each_stage_and_continues_in_declared_order(tmp_pa
         queue.run_queue(plan)
 
 
-@pytest.mark.parametrize('schema_version', [1, 2])
+@pytest.mark.parametrize('schema_version', [1, 2, 5])
 def test_failed_test_proof_blocks_every_model_stage(tmp_path, schema_version):
     plan = _plan(tmp_path, schema_version=schema_version)
     Path(plan['unit_status']).write_text(json.dumps({'exit_code': 1, 'code_revision': 'revision'}))
@@ -135,7 +202,7 @@ def test_resource_wait_preserves_other_gpu_work(monkeypatch):
     assert all(command[0] == 'nvidia-smi' for command in commands)
 
 
-@pytest.mark.parametrize('schema_version', [1, 2])
+@pytest.mark.parametrize('schema_version', [1, 2, 5])
 def test_successful_stages_release_runtime_before_starting_next(tmp_path, monkeypatch, schema_version):
     from io import BytesIO
     from types import SimpleNamespace
@@ -188,14 +255,15 @@ def test_successful_stages_release_runtime_before_starting_next(tmp_path, monkey
         BytesIO(json.dumps({'data': [{'id': served['name']}]}).encode()))
     assert queue.run_queue(plan) == 0
     assert not live_servers
-    assert events == [(action, model) for model in ('gemma12b', 'qwen27b', 'gemma12b', 'qwen27b')
+    assert events == [(action, stage['model_key']) for stage in plan['stages']
                       for action in ('start', 'benchmark', 'stop')]
     status = json.loads(Path(plan['status_path']).read_text())
     assert all(s['status'] == 'COMPLETE' and s['received_count'] == stage['request_count']
                for s, stage in zip(status['stages'], plan['stages']))
     expected_module = {1: 'eval.report_production_grounding', 2: 'eval.report_production_baseline',
-                       3: 'eval.report_document_context', 4: 'eval.report_definition_control'}[schema_version]
-    assert len(reports) == 4 and all(command[2] == expected_module for command in reports)
+                       3: 'eval.report_document_context', 4: 'eval.report_definition_control',
+                       5: 'eval.report_hf_qa'}[schema_version]
+    assert len(reports) == len(plan['stages']) and all(command[2] == expected_module for command in reports)
     for stage, command in zip(plan['stages'], benchmarks):
         assert command[command.index('--track') + 1] == stage['track']
         assert command[command.index('--requests-file') + 1] == stage['requests_file']

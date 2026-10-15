@@ -49,6 +49,8 @@ def report_module_for_plan(plan):
         return "eval.report_document_context"
     if plan.get("schema_version") == 4:
         return "eval.report_definition_control"
+    if plan.get("schema_version") == 5:
+        return "eval.report_hf_qa"
     raise ValueError("unknown queue schema version")
 
 
@@ -59,12 +61,12 @@ def validate_plan(plan):
                 (prefix + "_synthetic", "qwen27b"),
                 (prefix + "_real", "gemma12b"),
                 (prefix + "_real", "qwen27b")]
-    if version in (3, 4):
-        track = "document_context" if version == 3 else "definition_control"
+    if version in (3, 4, 5):
+        track = {3: "document_context", 4: "definition_control", 5: "hf_qa"}[version]
         expected = [(track, "gemma12b"), (track, "qwen27b")]
-    if version not in (1, 2, 3, 4) or [
+    if version not in (1, 2, 3, 4, 5) or [
             (s["track"], s["model_key"]) for s in plan["stages"]] != expected:
-        raise ValueError("expected the four predeclared synthetic/real or two document context model stages")
+        raise ValueError("expected the four predeclared synthetic/real or two matched document/HF QA model stages")
     if len({s["id"] for s in plan["stages"]}) != len(expected):
         raise ValueError("stage IDs must be unique")
     for stage in plan["stages"]:
@@ -74,9 +76,9 @@ def validate_plan(plan):
             raise ValueError("frozen request and envelope hashes required")
         if version == 2 and stage["request_count"] != (874 if stage["track"] == "baseline_synthetic" else 120):
             raise ValueError("baseline queue requires 874 synthetic and 120 real requests per model")
-    tracks = (track,) if version in (3, 4) else (prefix + "_synthetic", prefix + "_real")
-    if version in (3, 4) and not plan.get("token_status"):
-        raise ValueError("document context queue requires actual tokenizer preflight")
+    tracks = (track,) if version in (3, 4, 5) else (prefix + "_synthetic", prefix + "_real")
+    if version in (3, 4, 5) and not plan.get("token_status"):
+        raise ValueError("document/HF QA queue requires actual tokenizer preflight")
     for track in tracks:
         stages = [s for s in plan["stages"] if s["track"] == track]
         for field in ("requests_sha256", "envelope_sha256", "request_count"):
@@ -189,7 +191,7 @@ def run_queue(plan):
             raise ValueError("successful tests at the frozen revision are required")
         for stage in plan["stages"]:
             validate_requests(stage)
-        if plan.get("schema_version") in (3, 4):
+        if plan.get("schema_version") in (3, 4, 5):
             token_proof = json.loads(Path(plan["token_status"]).read_text())
             if token_proof.get("exit_code") != 0 or token_proof.get("code_revision") != plan["code_revision"]:
                 raise ValueError("successful tokenizer preflight at the frozen revision is required")

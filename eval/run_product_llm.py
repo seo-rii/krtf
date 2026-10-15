@@ -65,9 +65,10 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
     baseline = track in {"baseline_synthetic", "baseline_real"}
     document_context = track == "document_context"
     definition_control = track == "definition_control"
-    strict_tasks = production or baseline or document_context or definition_control
+    hf_qa = track == "hf_qa"
+    strict_tasks = production or baseline or document_context or definition_control or hf_qa
     if requests_file is not None and not strict_tasks:
-        raise ValueError("frozen request files are supported only for production, baseline, document context and definition control tracks")
+        raise ValueError("frozen request files require a production, baseline, document context, definition control or HF QA track")
     request_provenance = None
     if track == "factorial":
         request_builder, grader = build_requests, grade_outputs
@@ -91,6 +92,14 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
         from eval.qa_policy_probe import PROTOCOL, build_policy_requests, grade_policy_outputs
         request_builder, grader = build_policy_requests, grade_policy_outputs
         protocol_id, declared_protocol = "qa_policy_separation_v1", PROTOCOL
+    elif hf_qa:
+        from eval.hf_qa import load_request_file, grade_outputs as grade_hf_outputs
+        from eval.hf_qa import response_error as production_response_error
+        if requests_file is None:
+            raise ValueError("HF QA requires a frozen --requests-file")
+        frozen_requests, declared_protocol, request_provenance = load_request_file(requests_file)
+        request_builder, grader = lambda: frozen_requests, grade_hf_outputs
+        protocol_id = declared_protocol["kind"]
     elif definition_control:
         from eval.definition_control import load_request_file, grade_outputs as grade_definition_outputs
         from eval.production_grounding import production_response_error
@@ -226,6 +235,9 @@ def run_benchmark(*, endpoint, model, out_dir, code_revision, max_tokens=128,
     if baseline:
         local_checks.update(ktrf_resolver_used=False, ktrf_guard_used=False,
                             execution_validation="schema and provided glossary ID membership only")
+    if hf_qa:
+        local_checks = {"request_contract_validated": True, "execution_evaluated": False,
+                        "original_documents_preserved": True, "only_prompt_fields_sent": True}
     if document_context or definition_control:
         local_checks.update(execution_validation="condition-specific; KTRF guard only for KTRF knowledge",
                             original_documents_preserved=True)
@@ -269,7 +281,7 @@ def main():
     parser.add_argument("--track", choices=("factorial", "contract_probe", "synthetic_expansion",
                                            "synthetic_expansion_v2", "qa_policy_probe",
                                            "production_synthetic", "production_real",
-                                           "baseline_synthetic", "baseline_real", "document_context", "definition_control"), default="factorial")
+                                           "baseline_synthetic", "baseline_real", "document_context", "definition_control", "hf_qa"), default="factorial")
     parser.add_argument("--requests-file", type=Path,
                         help="Frozen production, baseline, document context or definition control envelope with protocol, provenance and requests")
     args = parser.parse_args()
