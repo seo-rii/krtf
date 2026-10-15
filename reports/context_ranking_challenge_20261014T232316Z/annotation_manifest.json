@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "review_status": "ADJUDICATED_BEFORE_INFERENCE",
+  "review_completed_at": "2026-10-14T23:34:16.110547+00:00",
+  "reviewer_type": "INDEPENDENT_BLIND_AI_PASS",
+  "human_verified": false,
+  "annotation_origin": "AI_AUTHORED_SYNTHETIC_PLUS_BLIND_AI_REVIEW",
+  "authored_fixture_sha256": "caa4d62c60135bfa7d0adf8b2685104f5b135bf0e6809e77179b2a8356981ea0",
+  "final_fixture_sha256": "caa4d62c60135bfa7d0adf8b2685104f5b135bf0e6809e77179b2a8356981ea0",
+  "reviewed_targets": 384,
+  "reviewed_documents": 336,
+  "reviewed_families": 24,
+  "agreement_count": 384,
+  "disagreement_count": 0,
+  "scores_seen_during_review": false,
+  "blinding": {
+    "source": true,
+    "catalog": true,
+    "target": true,
+    "authored_gold": false,
+    "authored_rationale": false,
+    "authored_evidence": false,
+    "titles": false,
+    "strata": false,
+    "generator_order": false
+  },
+  "artifact_sha256": {
+    "blind_inputs.jsonl": "cebcf5d1cfad77e0651daef7d8cc5ee7eb3be0f4c0d79207024e590eea2c8076",
+    "blind_binding.json": "652bbe3236ccb9c909f6fd5915dd9a7e7f34fe5e29d4e282ac5a522acf6c8394",
+    "blind_review.jsonl": "6569107253b54c20ef42ddffa67ca030f94744c912525a1b4da45a365338d59e",
+    "annotation_adjudication.json": "49d4c92e3701b47e32c36c67efa0b97d51620550fcd7e2283b166e0f20eceda9"
+  },
+  "limitations": [
+    "Agreement between related AI annotation passes is not a human accuracy estimate.",
+    "New synthetic families do not constitute a deployment-distribution audit."
+  ]
+}

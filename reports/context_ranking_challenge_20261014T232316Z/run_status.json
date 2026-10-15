@@ -1,0 +1,107 @@
+{
+  "run_id": "ktrf-ranking-challenge-20261014T232316Z",
+  "state": "COMPLETED",
+  "pid": 342964,
+  "started_at": 1792020914.8112469,
+  "source_revision": "2155db117e1df72a13e2d7b4e1ea47b6736ca9ae",
+  "archive_sha256": "cae0cddb8e87bed294341b45d200aaf88a73197bc728733fd2f7b68ac6c2a443",
+  "stages": [
+    {
+      "name": "validation",
+      "state": "COMPLETED",
+      "command": [
+        "/home/one/experiments/krtf-one-server-20261013T003732Z/venv/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ],
+      "log_path": "/home/one/logs/ktrf-ranking-challenge-20261014T232316Z-validation.log",
+      "started_at": 1792020914.8271937,
+      "exit_code": 0,
+      "finished_at": 1792020991.415545
+    },
+    {
+      "name": "freeze",
+      "state": "COMPLETED",
+      "command": [
+        "/home/one/.venvs/vllm/bin/python",
+        "/data/one/mil_llm_refusal/ktrf/experiments/ktrf-ranking-challenge-20261014T232316Z/freeze.py",
+        "/data/one/mil_llm_refusal/ktrf/experiments/ktrf-ranking-challenge-20261014T232316Z/metadata.json"
+      ],
+      "log_path": "/home/one/logs/ktrf-ranking-challenge-20261014T232316Z-freeze.log",
+      "started_at": 1792020991.4162216,
+      "exit_code": 0,
+      "finished_at": 1792020992.3822207
+    },
+    {
+      "name": "lexical",
+      "state": "COMPLETED",
+      "command": [
+        "/home/one/experiments/krtf-one-server-20261013T003732Z/venv/bin/python",
+        "-m",
+        "eval.run_context_ranking_challenge",
+        "--cases",
+        "/data/one/mil_llm_refusal/ktrf/experiments/ktrf-ranking-challenge-20261014T232316Z/results/cases.jsonl",
+        "--repeats",
+        "1",
+        "--source-revision",
+        "2155db117e1df72a13e2d7b4e1ea47b6736ca9ae",
+        "--backend",
+        "lexical",
+        "--out",
+        "/data/one/mil_llm_refusal/ktrf/experiments/ktrf-ranking-challenge-20261014T232316Z/results/lexical.json"
+      ],
+      "log_path": "/home/one/logs/ktrf-ranking-challenge-20261014T232316Z-lexical.log",
+      "started_at": 1792020992.3829718,
+      "exit_code": 0,
+      "finished_at": 1792020994.250238
+    },
+    {
+      "name": "nano",
+      "state": "COMPLETED",
+      "command": [
+        "/home/one/.venvs/vllm/bin/python",
+        "-m",
+        "eval.run_context_ranking_challenge",
+        "--cases",
+        "/data/one/mil_llm_refusal/ktrf/experiments/ktrf-ranking-challenge-20261014T232316Z/results/cases.jsonl",
+        "--repeats",
+        "1",
+        "--source-revision",
+        "2155db117e1df72a13e2d7b4e1ea47b6736ca9ae",
+        "--backend",
+        "scalar",
+        "--model-dir",
+        "/data/one/mil_llm_refusal/ktrf/models/KURE-Reranker-nano-f3b3eff2b525",
+        "--model-id",
+        "nlpai-lab/KURE-Reranker-nano",
+        "--model-revision",
+        "f3b3eff2b5251f135b638891ebe7d6c5ae94cc3e",
+        "--device",
+        "cuda",
+        "--max-length",
+        "1024",
+        "--out",
+        "/data/one/mil_llm_refusal/ktrf/experiments/ktrf-ranking-challenge-20261014T232316Z/results/nano.json"
+      ],
+      "log_path": "/home/one/logs/ktrf-ranking-challenge-20261014T232316Z-nano.log",
+      "started_at": 1792020994.2512155,
+      "exit_code": 0,
+      "finished_at": 1792021057.8614926
+    }
+  ],
+  "exit_code": 0,
+  "finished_at": 1792021057.9035368,
+  "output_manifest": {
+    "annotation_adjudication.json": "49d4c92e3701b47e32c36c67efa0b97d51620550fcd7e2283b166e0f20eceda9",
+    "annotation_manifest.json": "6b1d2bd10508892dd3a39775cef54c0c48da529123de9cb2239fcede275835ea",
+    "blind_review.jsonl": "6569107253b54c20ef42ddffa67ca030f94744c912525a1b4da45a365338d59e",
+    "cases.jsonl": "ced7b6b15d5580733d947739ea0371f7ebf64874f5a29cbb5ee358ae787c36b0",
+    "checkpoint.json": "875679c6e16e414862018f09d5d9ca4c6d62713a279bbee241ed599f90fb7931",
+    "lexical.json": "50e9757e5dc3c9757f56cab586704321d94614be07601840a6031aa9aa2a05d7",
+    "lexical.md": "0886bb8fac6bf590b33fcf94cf83b049da8c6434dd9455e259546b382e13f848",
+    "nano.json": "ff65ed0b4efc4138018bac4437480be0544fcc193149dd70ab397d09448e14a4",
+    "nano.md": "66e8e6d38565719d96dba771a0fc2cf51b10ff4b8bb5bfaf6b398843a388eeee",
+    "protocol.json": "e2eed86f4c932644bc443bf98bf6a72e2c813acb475efe291687d27806fb1b64"
+  }
+}

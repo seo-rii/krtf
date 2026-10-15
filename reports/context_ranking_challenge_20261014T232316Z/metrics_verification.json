@@ -1,0 +1,87 @@
+{
+  "kind": "ROOT_DETERMINISTIC_RECOMPUTATION_FROM_CANDIDATE_SCORES_AND_GOLD",
+  "human_verified": false,
+  "candidate_scores_and_frozen_rules_recomputed": true,
+  "all8_summaries_match": true,
+  "all_input_pairs_reconstructed": true,
+  "backend_input_pairs_identical": true,
+  "risk_family_ucbs_recomputed": true,
+  "targets": 384,
+  "documents": 336,
+  "families": 24,
+  "measured_pair_calls_total": 6144,
+  "untimed_warmup_pair_calls_total": 16,
+  "thresholds_retuned": false,
+  "no_production_authorization": true,
+  "summaries": {
+    "lexical": {
+      "surface": {
+        "positive_cases": 240,
+        "exact_link_top1_count": 120,
+        "correct_proposals": 0,
+        "wrong_proposals": 0,
+        "wrong_positive_proposals": 0,
+        "wrong_negative_proposals": 0
+      },
+      "target_local": {
+        "positive_cases": 240,
+        "exact_link_top1_count": 174,
+        "correct_proposals": 26,
+        "wrong_proposals": 28,
+        "wrong_positive_proposals": 3,
+        "wrong_negative_proposals": 25
+      },
+      "context_full": {
+        "positive_cases": 240,
+        "exact_link_top1_count": 147,
+        "correct_proposals": 10,
+        "wrong_proposals": 6,
+        "wrong_positive_proposals": 3,
+        "wrong_negative_proposals": 3
+      },
+      "target_full": {
+        "positive_cases": 240,
+        "exact_link_top1_count": 146,
+        "correct_proposals": 10,
+        "wrong_proposals": 6,
+        "wrong_positive_proposals": 3,
+        "wrong_negative_proposals": 3
+      }
+    },
+    "nano": {
+      "surface": {
+        "positive_cases": 240,
+        "exact_link_top1_count": 120,
+        "correct_proposals": 0,
+        "wrong_proposals": 0,
+        "wrong_positive_proposals": 0,
+        "wrong_negative_proposals": 0
+      },
+      "target_local": {
+        "positive_cases": 240,
+        "exact_link_top1_count": 187,
+        "correct_proposals": 105,
+        "wrong_proposals": 35,
+        "wrong_positive_proposals": 10,
+        "wrong_negative_proposals": 25
+      },
+      "context_full": {
+        "positive_cases": 240,
+        "exact_link_top1_count": 143,
+        "correct_proposals": 37,
+        "wrong_proposals": 70,
+        "wrong_positive_proposals": 47,
+        "wrong_negative_proposals": 23
+      },
+      "target_full": {
+        "positive_cases": 240,
+        "exact_link_top1_count": 138,
+        "correct_proposals": 43,
+        "wrong_proposals": 72,
+        "wrong_positive_proposals": 47,
+        "wrong_negative_proposals": 25
+      }
+    }
+  },
+  "independent_AI_score_recomputation": "Separate reviewer independently reproduced every decision and all eight summaries, strata, paired-target controls and paired-input identities; no discrepancies."
+}

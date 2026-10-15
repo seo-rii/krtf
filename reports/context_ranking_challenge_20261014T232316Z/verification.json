@@ -1,0 +1,19 @@
+{
+  "source_revision": "2155db117e1df72a13e2d7b4e1ea47b6736ca9ae",
+  "run_id": "ktrf-ranking-challenge-20261014T232316Z",
+  "exit_code": 0,
+  "target_events": 384,
+  "documents": 336,
+  "families": 24,
+  "cases_sha256": "ced7b6b15d5580733d947739ea0371f7ebf64874f5a29cbb5ee358ae787c36b0",
+  "backends": [
+    "lexical",
+    "nano"
+  ],
+  "variants_per_backend": 4,
+  "pair_inputs_per_backend": 3072,
+  "identical_candidate_and_input_pairs": true,
+  "role_guard_preserved_every_variant": true,
+  "output_manifest_verified": true,
+  "no_production_authorization": true
+}

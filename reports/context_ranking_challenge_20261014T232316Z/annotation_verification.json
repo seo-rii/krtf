@@ -1,0 +1,23 @@
+{
+  "verification_kind": "deterministic_recompute_with_separate_AI_review",
+  "human_verified": false,
+  "events": 384,
+  "documents": 336,
+  "families": 24,
+  "evidence_quotes": 552,
+  "all_evidence_verbatim": true,
+  "all_link_ids_in_catalog": true,
+  "all_negative_ids_null": true,
+  "source_unaltered": true,
+  "manifest_artifact_hashes_verified": true,
+  "authored_fields_excluded_from_projection": true,
+  "agreement": 384,
+  "disagreements": 0,
+  "labels": {
+    "LINK": 240,
+    "AMBIGUOUS": 24,
+    "NIL": 48,
+    "NON_MENTION": 48,
+    "COMPOSITIONAL": 24
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "protocol_id": "context-ranking-challenge-v1",
+  "declared_at": "2026-10-14T23:22:36.104176+00:00",
+  "data_origin": "AI_AUTHORED_SYNTHETIC_NEW_FAMILIES",
+  "human_verified": false,
+  "case_inventory": {
+    "families": 24,
+    "documents_per_family": 14,
+    "events_per_family": 16,
+    "documents": 336,
+    "events": 384,
+    "positive_events": 240,
+    "negative_events": 144
+  },
+  "variants": [
+    "surface",
+    "target_local",
+    "context_full",
+    "target_full"
+  ],
+  "candidate_budget": 2,
+  "local_radius": 60,
+  "maximum_pair_tokens": 1024,
+  "repeats": 1,
+  "backends": [
+    "lexical",
+    "nano"
+  ],
+  "prior_report_dir": "reports/context_ranking_20261014T103421Z",
+  "prior_report_sha256": {
+    "lexical": "576719f319e2d9612d0558f2f9205ec998c88e21fc50d06722b22eb9f62aa015",
+    "nano": "de8278c3dcf223199e1c075241adcb7e286b089a5bb4cafd7510d65f55c4b713"
+  },
+  "frozen_rules": {
+    "lexical": {
+      "minimum_score": 0.7,
+      "minimum_margin": 0.1
+    },
+    "nano": {
+      "minimum_score": 0.0,
+      "minimum_margin": 2.0
+    }
+  },
+  "rule_origin": "Tune-only exploratory rules of prior marked full-document comparison; no refitting or threshold selection on the new corpus. Same rules transferred to all input variants for diagnostic comparison.",
+  "proposal_requirements": [
+    "strictly_positive_margin",
+    "frozen_minimum_score",
+    "frozen_minimum_margin",
+    "existing_structural_guard"
+  ],
+  "model_id": "nlpai-lab/KURE-Reranker-nano",
+  "model_revision": "f3b3eff2b5251f135b638891ebe7d6c5ae94cc3e",
+  "expected_model_sha256": "139bfeeeb05e6d36886461102645b7e987ff6ac042b935faf45cbde4bf5622f9",
+  "familywise_alpha": 0.05,
+  "family_alpha_per_comparison": 0.00625,
+  "risk_unit": "family_has_any_wrong_proposal_given_at_least_one_proposal",
+  "target_error_diagnostic": 0.05,
+  "bound_assumptions_met": false,
+  "coverage_valid": false,
+  "production_authorized": false,
+  "annotation_protocol": "Source/catalog/target-only blind AI second pass before inference; authored and reviewed labels hashed, disagreements adjudicated without scores. Synthetic source and AI annotation remain disclosed.",
+  "limitations": [
+    "New family synthetic stress test, not independent deployment-distribution audit.",
+    "Correlated targets, documents and shared templates are not independent binomial trials.",
+    "Fixed complete two-candidate catalog does not evaluate production retrieval or mention detection.",
+    "One scoring repeat measures throughput, not determinism.",
+    "Structural paths stay separate from semantic abstention evidence."
+  ]
+}
