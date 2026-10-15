@@ -90,7 +90,7 @@ _REJECTED_EXAMPLE = re.compile(
 _NONMENTION_DENIAL = re.compile(
     r"(?:(?:틀린|가짜|허위|잘못된)\s*)?"
     r"(?:예문|예시|정의|주장|문장|상표|상품명|작품\s*이름|영화\s*제목|"
-    r"문자열\s*예시|입력\s*견본)(?:이|가)?\s*아니[^,;\n.!?。？！]*"
+    r"문자열\s*예시|입력\s*견본)(?:이|가)?\s*아니"
 )
 _WORDS = re.compile(r"[0-9A-Za-z가-힣]+")
 
