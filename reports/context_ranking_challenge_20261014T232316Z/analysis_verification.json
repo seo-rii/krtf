@@ -1,0 +1,15 @@
+{
+  "review_kind": "Independent_AI_numerical_and_interpretation_review_plus_root_recomputation",
+  "human_verified": false,
+  "review_status": "PASSED_AFTER_DISTINCT_PAIR_WORDING_CORRECTION",
+  "all8_metric_summaries_reproduced": true,
+  "event_candidate_inputs_per_backend": 3072,
+  "distinct_query_profile_contents_per_backend": 2208,
+  "measured_pair_calls_total": 6144,
+  "test_count": 1079,
+  "test_seconds": 76.05,
+  "worker_exit_code": 0,
+  "production_authorization": false,
+  "held_out_synthetic_not_deployment_audit": true,
+  "analysis_sha256": "c360bc65efaf52513b60638c453cca54f5d56e352ab9e542b8694c69d5b7c9ea"
+}
