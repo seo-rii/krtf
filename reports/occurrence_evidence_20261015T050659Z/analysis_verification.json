@@ -1,0 +1,18 @@
+{
+  "review_kind": "Independent_AI_raw_score_recomputation_and_analysis_review",
+  "human_verified": false,
+  "review_status": "PASSED",
+  "all16_metric_arms_verified": true,
+  "measured_pairs_total": 8832,
+  "measured_pairs_per_backend": 4416,
+  "distinct_query_profile_contents_per_backend": 2616,
+  "untimed_warmup_calls_total": 16,
+  "development_positive_events": 240,
+  "heldout_positive_events": 120,
+  "role_guards_verified_events": 36,
+  "test_count": 1158,
+  "test_seconds": 78.14,
+  "worker_exit_code": 0,
+  "production_authorized": false,
+  "analysis_sha256": "5a6ca67d2a0db6af99013ada51dc0a5b9d43457df9d89a5c53b6633e3c8bad88"
+}
