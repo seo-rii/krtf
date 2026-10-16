@@ -2,6 +2,7 @@
 import copy
 import hashlib
 import json
+import math
 import sys
 from types import SimpleNamespace
 
@@ -101,3 +102,48 @@ def test_hf_runner_requires_final_frozen_request_file(tmp_path):
     with pytest.raises(ValueError, match="frozen"):
         run_product_llm.run_benchmark(endpoint="http://localhost:1234/v1", model="model",
                                      out_dir=tmp_path / "unused", code_revision="revision", track="hf_qa")
+
+
+@pytest.mark.parametrize("change,accepted", [
+    ("one_ulp_sum", True), ("changed_sum", False),
+    ("case_score", False), ("exact_count", False), ("nan_sum", False),
+])
+def test_regrading_allows_only_machine_rounding_of_float_totals(
+        tmp_path, monkeypatch, frozen_envelope, change, accepted):
+    path = tmp_path / "frozen.json"
+    path.write_bytes(canonical(frozen_envelope))
+
+    def fake_api(url, *, payload=None, timeout):
+        if url.endswith("/models"):
+            return {"data": [{"id": "authored-model"}]}
+        return {"choices": [{"message": {"content": '{"answer":"푸"}'}, "finish_reason": "stop"}]}
+
+    monkeypatch.setattr(run_product_llm, "_request_json", fake_api)
+    out = tmp_path / "result"
+    run_product_llm.run_benchmark(endpoint="http://localhost:1234/v1", model="authored-model",
+        out_dir=out, code_revision="authored-revision", track="hf_qa", requests_file=path)
+    graded = json.loads((out / "graded.json").read_text())
+    result = graded["model_results"]
+    values = result["by_condition"]["full"]
+    if change == "one_ulp_sum":
+        values["positive_character_f1_sum"] = math.nextafter(values["positive_character_f1_sum"], math.inf)
+    elif change == "changed_sum":
+        values["positive_character_f1_sum"] += 1e-8
+    elif change == "case_score":
+        result["cases"][0]["character_f1"] = math.nextafter(result["cases"][0]["character_f1"], math.inf)
+    elif change == "exact_count":
+        values["positive_exact"] += 1
+    else:
+        values["positive_character_f1_sum"] = float("nan")
+    (out / "graded.json").write_bytes(canonical(graded))
+    manifest = json.loads((out / "run_manifest.json").read_text())
+    manifest["artifact_sha256"]["graded.json"] = hashlib.sha256((out / "graded.json").read_bytes()).hexdigest()
+    manifest.pop("seal_sha256")
+    manifest["seal_sha256"] = hashlib.sha256(canonical(manifest)).hexdigest()
+    (out / "run_manifest.json").write_bytes(canonical(manifest))
+    if accepted:
+        summary = prepare_report(out)
+        assert summary["by_condition"]["full"]["positive_character_f1_sum"] == values["positive_character_f1_sum"]
+    else:
+        with pytest.raises(ValueError, match="grades differ"):
+            prepare_report(out)

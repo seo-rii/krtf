@@ -5,6 +5,7 @@ import argparse
 from collections import Counter
 import hashlib
 import json
+import math
 from pathlib import Path
 
 from .hf_qa import CONDITIONS, PROTOCOL_ID, canonical, grade_outputs, response_error, validate_requests
@@ -54,7 +55,17 @@ def read_run(run_dir):
     outputs = [record for record in records if "response" in record]
     graded = grade_outputs(requests, outputs)
     graded["limitations"] = list(manifest["declared_protocol"]["limitations"])
-    if json.loads(data["graded.json"])["model_results"] != graded:
+    sealed_grades = json.loads(data["graded.json"])["model_results"]
+    # Python 3.12 changed sum(float) to compensated summation. Permit only a
+    # two-ULP aggregate difference; every individual score, label and count must
+    # still match exactly. Keep the verified sealed totals for reproducible reports.
+    for condition in CONDITIONS:
+        expected = sealed_grades["by_condition"][condition]["positive_character_f1_sum"]
+        actual = graded["by_condition"][condition]["positive_character_f1_sum"]
+        if (type(expected) is float and math.isfinite(expected)
+                and abs(expected - actual) <= 2 * math.ulp(actual)):
+            graded["by_condition"][condition]["positive_character_f1_sum"] = expected
+    if sealed_grades != graded:
         raise ValueError("HF grades differ from sealed local regrading")
     counts = {"request_count": len(requests), "received_count": len(outputs),
               "missing_count": graded["missing_outputs"],
@@ -100,13 +111,16 @@ def prepare_report(run_dir, *, compare=None):
             usage_values = [r["usage"].get(name) for r in calls if isinstance(r.get("usage"), dict)]
             usage_values = [value for value in usage_values if type(value) is int and value >= 0]
             usage[name], observed_usage[name] = sum(usage_values), len(usage_values)
+        latencies = [r["latency_ms"] for r in calls]
+        latency_summary = _distribution(latencies)
+        latency_summary["total"] = math.fsum(latencies)
         metrics[condition] = {**values,
             "positive_exact_rate": values["positive_exact"] / values["positive_planned"] if values["positive_planned"] else None,
             "positive_character_f1_mean": values["positive_character_f1_sum"] / values["positive_planned"] if values["positive_planned"] else None,
             "source_no_answer_null_rate": (values["article_no_answer_null"] / values["no_answer_planned"]
                                            if values["no_answer_planned"] and condition != "none_knowledge" else None),
             "usage": usage, "usage_observed_responses": observed_usage,
-            "latency_ms": _distribution([r["latency_ms"] for r in calls])}
+            "latency_ms": latency_summary}
     return {"protocol": PROTOCOL_ID, "comparison": False, "model": manifest["requested_model"],
             "code_revision": manifest["code_revision"], "request_corpus_sha256": manifest["request_corpus_sha256"],
             "status": manifest["status"], "counts": counts, "decoding": manifest["decoding"],
