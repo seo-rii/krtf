@@ -95,5 +95,13 @@ python -m eval.run_production_queue --plan QUEUE_PLAN
 python -m eval.collect_hf_qa_queue --config LOCAL_COLLECTOR_CONFIG
 ```
 
-실험 상태는 queue status가 terminal인지로 확인하고, 성능은 두 모델의 최종 집계가
-검증된 뒤 보고한다. 이 평가는 entity ID 자동 실행이나 운영 위험 보장을 부여하지 않는다.
+실험 상태는 queue status가 terminal인지로 확인한다. 한 모델이 추론 전에 실패하면
+실패 증빙과 출력 디렉터리 부재를 확인한 뒤, 완료 모델의 집계를 별도로 검증해
+게시한다. 누락된 모델은 0점으로 취급하지 않으며 두 모델 비교를 생성하지 않는다.
+같은 고정 추론 입력을 유지한 재실행은 원본 계획·종료 상태 해시와 완료 모델의
+봉인된 산출물을 확인해 실패 모델만 다시 실행한다. 새 실행기 코드와 테스트 증빙은
+추론 코드 revision과 별도로 기록한다. 이 평가는 entity ID 자동 실행이나 운영 위험
+보장을 부여하지 않는다.
+
+[Qwen의 검증된 결과와 제한](../reports/hf_qa_queue_20261016/ANALYSIS.md)을 먼저
+보고하며, 두 모델의 최종 집계가 검증되면 같은 질문의 모델 비교를 게시한다.
