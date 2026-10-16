@@ -7,12 +7,25 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import signal
 import socket
 import subprocess
 import sys
+import tarfile
 import time
 from urllib.request import urlopen
+
+
+RETRY_FROZEN_FIELDS = (
+    "schema_version", "code_revision", "source", "source_archive", "archive_sha256",
+    "unit_status", "token_status", "python", "model_python", "hf_home", "models", "stages",
+)
+_STARTUP_MEMORY_ERROR = re.compile(
+    r"ValueError: Free memory on device cuda:0 \([0-9.]+/[0-9.]+ GiB\) on startup "
+    r"is less than desired GPU memory utilization \([0-9.]+, [0-9.]+ GiB\)\. "
+    r"Decrease GPU memory utilization or reduce GPU memory used by other processes\."
+)
 
 
 def canonical(value):
@@ -91,7 +104,123 @@ def validate_plan(plan):
             raise ValueError("invalid GPU fraction")
         if model.get("repo_id") and len(model.get("revision", "")) != 40:
             raise ValueError("downloaded checkpoint needs an immutable revision")
+    if "retry_from" in plan or "orchestrator" in plan:
+        if version != 5 or not all(key in plan for key in ("retry_from", "orchestrator")):
+            raise ValueError("explicit retry provenance is supported only for HF QA")
+        retry = plan["retry_from"]
+        if (not isinstance(retry, dict) or set(retry) != {
+                "plan_path", "plan_sha256", "status_path", "status_sha256"} or
+                any(not isinstance(retry[key], str) or not retry[key]
+                    for key in retry) or
+                any(not re.fullmatch(r"[0-9a-f]{64}", retry[key])
+                    for key in ("plan_sha256", "status_sha256"))):
+            raise ValueError("retry requires pinned original plan and terminal status")
+        orchestration = plan["orchestrator"]
+        if (not isinstance(orchestration, dict) or set(orchestration) != {
+                "code_revision", "source", "source_archive", "archive_sha256", "unit_status"} or
+                any(not isinstance(value, str) or not value for value in orchestration.values()) or
+                not re.fullmatch(r"[0-9a-f]{40}", orchestration["code_revision"]) or
+                not re.fullmatch(r"[0-9a-f]{64}", orchestration["archive_sha256"])):
+            raise ValueError("retry requires frozen orchestration source and test proof")
     return plan
+
+
+def validate_retry_origin(plan, original, terminal):
+    """Check the only supported retry: no Gemma requests and a completed Qwen run."""
+    if any(plan.get(key) != original.get(key) for key in RETRY_FROZEN_FIELDS):
+        raise ValueError("retry must preserve every frozen inference input")
+    validate_plan(plan)
+    validate_plan(original)
+    if "retry_from" in original or "orchestrator" in original:
+        raise ValueError("retry chains are unsupported")
+    retry = plan["retry_from"]
+    if (retry["status_path"] != original["status_path"] or
+            plan["run_id"] == original["run_id"] or
+            Path(plan["run_root"]).resolve() == Path(original["run_root"]).resolve() or
+            plan["status_path"] == original["status_path"]):
+        raise ValueError("retry must use a new run identity and output root")
+    expected = {"run_id": original["run_id"], "code_revision": original["code_revision"],
+                "plan_sha256": hashlib.sha256(canonical(original)).hexdigest(),
+                "phase": "FINISHED", "status": "FAILED", "exit_code": 1}
+    if (any(terminal.get(key) != value for key, value in expected.items()) or
+            type(terminal.get("exit_code")) is not int or "error" in terminal):
+        raise ValueError("retry origin must be the pinned terminal failed queue")
+    results = terminal.get("stages", [])
+    if ([row.get("id") for row in results] != [stage["id"] for stage in original["stages"]] or
+            any(row.get("request_count") != stage["request_count"]
+                for row, stage in zip(results, original["stages"]))):
+        raise ValueError("retry origin stage identities differ")
+    failed, completed = results
+    if (failed.get("status") != "FAILED" or type(failed.get("exit_code")) is not int or
+            failed["exit_code"] == 0 or type(failed.get("server_pid")) is not int or
+            failed["server_pid"] < 1 or type(failed.get("server_exit_code")) is not int or
+            failed["server_exit_code"] == 0 or failed.get("model") != original["models"]["gemma12b"]["served_name"] or
+            failed.get("error") != {"type": "RuntimeError", "message":
+                f"owned model server exited during startup: {failed.get('server_exit_code')}"} or
+            any(key in failed for key in ("benchmark_exit_code", "received_count", "missing_count",
+                                          "error_count", "malformed_count"))):
+        raise ValueError("only a Gemma failure before benchmark startup can be retried")
+    if (completed.get("status") != "COMPLETE" or type(completed.get("exit_code")) is not int or
+            completed["exit_code"] != 0 or completed.get("benchmark_exit_code") != 0 or
+            completed.get("received_count") != original["stages"][1]["request_count"] or
+            completed.get("missing_count") != 0 or completed.get("error_count") != 0 or
+            completed.get("model") != original["models"]["qwen27b"]["served_name"]):
+        raise ValueError("retry requires the original completed Qwen stage")
+    return failed, completed
+
+
+def prepare_retry(plan):
+    """Verify provenance and sealed reusable artifacts before acquiring any GPU."""
+    retry = plan["retry_from"]
+    if any(file_hash(retry[key + "_path"]) != retry[key + "_sha256"]
+           for key in ("plan", "status")):
+        raise ValueError("pinned retry origin files changed")
+    original = json.loads(Path(retry["plan_path"]).read_text())
+    terminal = json.loads(Path(retry["status_path"]).read_text())
+    failed, completed = validate_retry_origin(plan, original, terminal)
+    failed_out = Path(original["run_root"]) / "results" / original["stages"][0]["id"]
+    if failed_out.exists() or failed_out.is_symlink():
+        raise ValueError("original Gemma output exists; refusing a benchmark retry")
+    if not is_startup_memory_failure(failed["server_log"]):
+        raise ValueError("original startup failure is not the known GPU memory race")
+    orchestration = plan["orchestrator"]
+    if file_hash(orchestration["source_archive"]) != orchestration["archive_sha256"]:
+        raise ValueError("orchestration archive hash mismatch")
+    proof = json.loads(Path(orchestration["unit_status"]).read_text())
+    if proof.get("exit_code") != 0 or proof.get("code_revision") != orchestration["code_revision"]:
+        raise ValueError("successful tests at frozen orchestration revision are required")
+    module = Path(__file__).resolve()
+    if module != (Path(orchestration["source"]) / "eval/run_production_queue.py").resolve():
+        raise ValueError("worker is not running from frozen orchestration source")
+    with tarfile.open(orchestration["source_archive"], "r:*") as archive:
+        member = archive.extractfile("eval/run_production_queue.py")
+        if member is None or member.read() != module.read_bytes():
+            raise ValueError("running worker differs from orchestration archive")
+    stage = original["stages"][1]
+    out = Path(original["run_root"]) / "results" / stage["id"]
+    manifest = json.loads((out / "run_manifest.json").read_text())
+    unsealed = dict(manifest)
+    seal = unsealed.pop("seal_sha256", None)
+    hashes = {name: file_hash(out / name) for name in ("requests.jsonl", "responses.jsonl", "graded.json")}
+    expected = {"code_revision": original["code_revision"], "track": "hf_qa",
+                "protocol": "hf_qa_generation_v1", "requested_model": completed["model"],
+                "request_count": stage["request_count"], "received_count": stage["request_count"],
+                "missing_count": 0, "error_count": 0,
+                "request_corpus_sha256": stage["requests_sha256"],
+                "frozen_request_file_sha256": stage["envelope_sha256"], "status": "COMPLETE"}
+    if (seal != hashlib.sha256(canonical(unsealed)).hexdigest() or
+            manifest.get("artifact_sha256") != hashes or hashes["requests.jsonl"] != stage["requests_sha256"] or
+            any(manifest.get(key) != value for key, value in expected.items()) or
+            any(completed.get(key) != manifest.get(key) for key in
+                ("request_count", "received_count", "missing_count", "error_count", "malformed_count"))):
+        raise ValueError("original Qwen artifacts or manifest differ from pinned completed run")
+    environment = json.loads((out / "environment.json").read_text())
+    if any(environment.get(key) != value for key, value in {
+            "code_revision": original["code_revision"], "source_archive_sha256": original["archive_sha256"],
+            "queue_plan_sha256": hashlib.sha256(canonical(original)).hexdigest()}.items()):
+        raise ValueError("original Qwen environment differs from pinned queue")
+    return {**completed, "reused_from": {**retry, "run_id": original["run_id"],
+            "result_path": str(out), "code_revision": original["code_revision"]}}
 
 
 def wait_for_predecessors(plan, update):
@@ -142,8 +271,9 @@ def stop_owned(process):
         process.wait(timeout=15)
 
 
-def wait_for_resources(plan, model, update):
-    deadline = time.monotonic() + plan.get("resource_wait_seconds", 86400)
+def wait_for_resources(plan, model, update, *, deadline=None):
+    if deadline is None:
+        deadline = time.monotonic() + plan.get("resource_wait_seconds", 86400)
     while True:
         output = subprocess.check_output([
             "nvidia-smi", "--id=0", "--query-gpu=memory.total,memory.free",
@@ -164,6 +294,66 @@ def wait_for_resources(plan, model, update):
         if time.monotonic() >= deadline:
             raise RuntimeError("GPU or port remained unavailable; no other process was modified")
         time.sleep(60)
+
+
+def is_startup_memory_failure(path):
+    """Recognize only vLLM's explicit free-memory startup race, from a bounded tail."""
+    with Path(path).open("rb") as stream:
+        stream.seek(0, os.SEEK_END)
+        stream.seek(max(0, stream.tell() - 256 * 1024))
+        return bool(_STARTUP_MEMORY_ERROR.search(stream.read().decode("utf-8", errors="replace")))
+
+
+def start_model_runtime(plan, model, stage, command, env, current, update):
+    """Retry at most three owned startups, never an already-started benchmark."""
+    resource_deadline = time.monotonic() + plan.get("resource_wait_seconds", 86400)
+    max_attempts = 3 if plan.get("schema_version") == 5 else 1
+    endpoint = f"http://127.0.0.1:{plan['port']}/v1"
+    attempts = current.setdefault("startup_attempts", [])
+    for attempt in range(1, max_attempts + 1):
+        free = wait_for_resources(plan, model, update, deadline=resource_deadline)
+        suffix = "" if attempt == 1 else "-attempt" + str(attempt)
+        server_log = Path(plan["log_dir"]) / (
+            plan["run_id"] + "-" + stage["id"] + suffix + "-vllm.log")
+        server = None
+        observation = {"attempt": attempt, "server_log": str(server_log), "started_at": now()}
+        attempts.append(observation)
+        try:
+            with server_log.open("xb") as stream:
+                server = subprocess.Popen(command, cwd=plan["source"], stdout=stream,
+                    stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True, env=env)
+            current.update(server_pid=server.pid, server_log=str(server_log),
+                           checkpoint_revision=model.get("revision", "NOT_VERIFIED"))
+            observation["server_pid"] = server.pid
+            update(phase="MODEL_STARTING", startup_attempt=attempt)
+            startup_deadline = min(resource_deadline, time.monotonic() + 1800)
+            while True:
+                if server.poll() is not None:
+                    raise RuntimeError(f"owned model server exited during startup: {server.returncode}")
+                try:
+                    with urlopen(endpoint + "/models", timeout=5) as response:
+                        models = json.load(response)
+                    if model["served_name"] in {m["id"] for m in models.get("data", [])}:
+                        observation.update(status="READY", ready_at=now())
+                        return server, free, endpoint
+                except (OSError, ValueError):
+                    pass
+                if time.monotonic() > startup_deadline:
+                    raise RuntimeError("model startup timeout")
+                time.sleep(5)
+        except BaseException as error:
+            exited = server is not None and server.poll() is not None
+            retryable = (exited and isinstance(error, RuntimeError) and
+                         is_startup_memory_failure(server_log))
+            stop_owned(server)
+            current["server_exit_code"] = None if server is None else server.returncode
+            observation.update(status="FAILED", finished_at=now(),
+                               server_exit_code=None if server is None else server.returncode,
+                               retryable_memory_race=retryable)
+            if not retryable or attempt == max_attempts or time.monotonic() >= resource_deadline:
+                raise
+            update(phase="RETRYING_STARTUP_MEMORY_RACE", startup_attempt=attempt)
+    raise AssertionError("startup attempts exhausted without a terminal outcome")
 
 
 def run_queue(plan):
@@ -203,9 +393,18 @@ def run_queue(plan):
                         type(observed.get("max_prompt_tokens")) is not int or
                         not 0 < observed["max_prompt_tokens"] <= 8192 - 128):
                     raise ValueError("tokenizer preflight differs from frozen requests or context capacity")
+        reused = prepare_retry(plan) if "retry_from" in plan else None
+        if reused is not None:
+            state["orchestrator_revision"] = plan["orchestrator"]["code_revision"]
+            state["retry_from"] = plan["retry_from"]
         wait_for_predecessors(plan, update)
         for index, stage in enumerate(plan["stages"]):
             current = state["stages"][index]
+            if reused is not None and index == 1:
+                current.update(reused)
+                update(active_stage=stage["id"], phase="REUSING_VERIFIED_STAGE",
+                       responses_completed=current["received_count"])
+                continue
             model = plan["models"][stage["model_key"]]
             out = root / "results" / stage["id"]
             server = benchmark = None
@@ -227,7 +426,6 @@ def run_queue(plan):
                                    env={**os.environ, "HF_HOME": plan["hf_home"], "HF_HUB_DISABLE_PROGRESS_BARS": "1"})
                 if not (model_path / "config.json").is_file():
                     raise ValueError("model config is unavailable")
-                free = wait_for_resources(plan, model, update)
                 command = [plan["model_python"], "-m", "vllm.entrypoints.openai.api_server",
                     "--model", str(model_path), "--served-model-name", model["served_name"],
                     "--host", "127.0.0.1", "--port", str(plan["port"]), "--dtype", "bfloat16",
@@ -235,31 +433,11 @@ def run_queue(plan):
                     "--gpu-memory-utilization", str(model["gpu_memory_utilization"]),
                     "--enforce-eager", "--generation-config", "vllm", "--language-model-only",
                     "--no-enable-log-requests"]
-                server_log = Path(plan["log_dir"]) / (plan["run_id"] + "-" + stage["id"] + "-vllm.log")
                 env = {**os.environ, "CUDA_VISIBLE_DEVICES": "0", "HF_HOME": plan["hf_home"],
                        "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1",
                        "VLLM_CACHE_ROOT": str(root / "runtime_cache"), "OMP_NUM_THREADS": "8"}
-                with server_log.open("xb") as stream:
-                    server = subprocess.Popen(command, cwd=plan["source"], stdout=stream,
-                        stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True, env=env)
-                current.update(server_pid=server.pid, server_log=str(server_log),
-                               checkpoint_revision=model.get("revision", "NOT_VERIFIED"))
-                update(phase="MODEL_STARTING")
-                endpoint = f"http://127.0.0.1:{plan['port']}/v1"
-                deadline = time.monotonic() + 1800
-                while True:
-                    if server.poll() is not None:
-                        raise RuntimeError(f"owned model server exited during startup: {server.returncode}")
-                    try:
-                        with urlopen(endpoint + "/models", timeout=5) as response:
-                            models = json.load(response)
-                        if model["served_name"] in {m["id"] for m in models.get("data", [])}:
-                            break
-                    except (OSError, ValueError):
-                        pass
-                    if time.monotonic() > deadline:
-                        raise RuntimeError("model startup timeout")
-                    time.sleep(5)
+                server, free, endpoint = start_model_runtime(
+                    plan, model, stage, command, env, current, update)
                 update(phase="MODEL_REQUESTS")
                 run_command = [plan["python"], "-m", "eval.run_product_llm", "--track", stage["track"],
                     "--requests-file", stage["requests_file"], "--endpoint", endpoint,
@@ -310,7 +488,8 @@ def run_queue(plan):
                     stop_owned(server)
                 if current["status"] == "RUNNING":
                     current.update(status="FAILED", exit_code=130, error={"type": "Interrupted", "message": "queue interrupted"})
-                current.update(finished_at=now(), server_exit_code=None if server is None else server.returncode)
+                current.update(finished_at=now(), server_exit_code=(current.get("server_exit_code")
+                               if server is None else server.returncode))
                 update()
         exit_code = int(any(s["exit_code"] != 0 for s in state["stages"]))
     except (Exception, KeyboardInterrupt) as error:
