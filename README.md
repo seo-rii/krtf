@@ -315,6 +315,12 @@ the full article, 32/64 and 31/64 with retrieved passages, and 33/64 for both wi
 KTRF pack. Pack improvements are small and Qwen also loses four correct no-answer
 responses to malformed outputs. The completed comparison does not establish a
 consistent KTRF advantage or a general advantage from the larger model.
+The [followup protocol](docs/FOLLOWUP_EXPERIMENTS.md) freezes independent-article
+retrieval, repeated free/schema-constrained QA, and a separately annotated AI
+paragraph audit. Preparation and queue launch are distinct from completed model
+results; repeated generations do not increase the independent sample size.
+The [frozen followup queue plan](reports/FOLLOWUP_PLAN_20261018.md) records 4,096
+planned calls, actual-tokenizer proofs and the completed CPU diagnostics.
 
 The unit most of these count is the *occurrence*, which the frequent terms
 decide. Two of them count the *registered term* instead — the question a
