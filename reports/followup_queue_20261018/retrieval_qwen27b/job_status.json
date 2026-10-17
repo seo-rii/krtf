@@ -1,0 +1,1 @@
+{"benchmark_exit_code": 0, "benchmark_started": true, "error_count": 0, "exit_code": 0, "experiment": "retrieval", "finished_at": "2026-10-17T18:22:12.684025+00:00", "id": "retrieval_qwen27b", "malformed_count": 0, "missing_count": 0, "received_count": 512, "report_exit_code": 0, "request_count": 512, "started_at": "2026-10-17T18:14:57.198692+00:00", "status": "COMPLETE"}
