@@ -204,6 +204,27 @@ def test_default_old_sample_count_is_enforced(prepared_inputs):
         prepare.prepare_from_records(**prepared_inputs)
 
 
+def test_default_fixed_quota_amendment_keeps_128_independent_articles_and_all_exclusions(prepared_inputs):
+    prepared_inputs.pop("retrieval_quotas")
+    for kind, quota in prepare.RETRIEVAL_QUOTAS.items():
+        prepared_inputs["records"].extend(_record(f"new-{kind}-{index}", kind)
+                                          for index in range(4, quota))
+    envelopes, diagnostics, manifest = prepare.prepare_from_records(**prepared_inputs)
+    retrieval = manifest["experiments"]["retrieval"]
+    assert retrieval["question_count"] == retrieval["parent_articles"] == 128
+    assert retrieval["request_count"] == 512
+    assert retrieval["strata"] == {"SPAN": 40, "YES_NO": 8, "NO_ANSWER": 80}
+    assert retrieval["strata"]["SPAN"] + retrieval["strata"]["YES_NO"] == 48
+    amendment = manifest["retrieval_quota_amendment"]
+    assert amendment["initial_target"] == {"SPAN": 56, "YES_NO": 8, "NO_ANSWER": 64}
+    assert amendment["final_target"] == prepare.RETRIEVAL_QUOTAS
+    assert amendment["before_any_followup_generation"] is True
+    assert amendment["prior_article_exclusions_relaxed"] is False
+    assert amendment == diagnostics["quota_amendment"]
+    assert amendment == envelopes["retrieval"]["provenance"]["quota_amendment"]
+    assert manifest["retrieval_selection"]["exclusions"]["prior_parent_or_content_overlap"] == 7
+
+
 def test_insufficient_independent_sample_is_reported_without_silent_relaxation(prepared_inputs):
     prepared_inputs["retrieval_quotas"] = {"SPAN": 99}
     with pytest.raises(ValueError, match="INSUFFICIENT_DATA") as caught:

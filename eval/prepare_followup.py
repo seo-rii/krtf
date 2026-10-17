@@ -26,6 +26,12 @@ from .run_hf_benchmark import digest
 SOURCE_TOKEN_CAP = 1536
 MAX_MODEL_LEN = 8192
 RESERVED_OUTPUT_TOKENS = 128
+# Amended before any follow-up generation: strict prior-article exclusions
+# leave only 46 distinct SPAN articles after reserving eight YES_NO articles.
+# Preserve all exclusions and the planned 128 questions; report the resulting
+# 48-positive/80-negative strata separately instead of weakening independence.
+INITIAL_RETRIEVAL_QUOTAS = {"SPAN": 56, "YES_NO": 8, "NO_ANSWER": 64}
+RETRIEVAL_QUOTAS = {"SPAN": 40, "YES_NO": 8, "NO_ANSWER": 80}
 
 
 def _sha_file(path):
@@ -218,8 +224,16 @@ def prepare_from_records(records, old, pool, blind_rows, *, tokenizers, models,
         # stratum. It is checked before any held-out generation or threshold use.
         return not classify_gold(record)["positive"] or variants(record)[-1]["oracle_budget_fit"] is True
 
+    declared_quotas = dict(RETRIEVAL_QUOTAS if retrieval_quotas is None else retrieval_quotas)
+    quota_amendment = {"initial_target": INITIAL_RETRIEVAL_QUOTAS,
+        "final_target": declared_quotas, "before_any_followup_generation": True,
+        "prior_article_exclusions_relaxed": False,
+        "reason": ("Strict prior-article exclusions left insufficient distinct SPAN articles for the initial target; "
+                   "a fixed 40 SPAN / 8 YES_NO / 80 NO_ANSWER target was declared before generation."
+                   if retrieval_quotas is None else "Explicit caller-declared stratum quotas."),
+        "positive_and_negative_results_require_separate_denominators": True}
     heldout, inventory = choose_heldout(records, excluded_parents=parents, excluded_hashes=hashes,
-                                       quotas=retrieval_quotas, eligible=eligible)
+                                       quotas=declared_quotas, eligible=eligible)
     retrieval = _ordered_rows([row for record in heldout for row in variants(record)], "retrieval")
     stability = build_stability(old["requests"])
     diagnostics = {"protocol": PROTOCOL_ID, "phase": "BEFORE_GENERATION",
@@ -228,6 +242,7 @@ def prepare_from_records(records, old, pool, blind_rows, *, tokenizers, models,
         "development_is_reused_old_generation_sample": True,
         "development_winner_is_descriptive_all_three_rankers_remain_in_heldout": True,
         "heldout_selection": inventory, "prior_exclusions": exclusions,
+        "quota_amendment": quota_amendment,
         "oracle_positive_requires_complete_original_annotated_passage": True,
         "source_only_token_cap_per_model": SOURCE_TOKEN_CAP,
         "no_generation_outputs_used": True, "raw_text_or_individual_answers_published": False}
@@ -240,6 +255,7 @@ def prepare_from_records(records, old, pool, blind_rows, *, tokenizers, models,
             "Retrieval sampling excludes all declared prior article parents and content hashes; near duplicates are not detected.",
             "Retrieval sample is conditional on a complete original oracle passage fitting both tokenizers and the character budget.",
             "Stability reuses the original questions and exact prompts; repeats are not independent validation samples.",
+            "The initial retrieval target was amended before generation due to distinct-article scarcity; positive and negative denominators differ.",
             "Retrieval has a common source-token cap; stability intentionally preserves the older source lengths unchanged.",
             "Deterministic decoding can still vary with inference scheduling and hardware; repeats diagnose this variation."]
         protocol = {"kind": PROTOCOL_ID, "phase": "FINAL_FROZEN", "experiment": name,
@@ -252,6 +268,7 @@ def prepare_from_records(records, old, pool, blind_rows, *, tokenizers, models,
             "independent_from_prior_declared_articles": name == "retrieval"}
         provenance = {"code_revision": code_revision, "source": source_identity,
             "exclusion_input_sha256": input_hashes, "prior_exclusions": exclusions,
+            "quota_amendment": quota_amendment if name == "retrieval" else None,
             "selection": inventory if name == "retrieval" else {
                 "reused_original_questions": len(old_ids), "independent_validation": False,
                 "original_prompts_preserved_exactly": True}}
@@ -267,7 +284,8 @@ def prepare_from_records(records, old, pool, blind_rows, *, tokenizers, models,
     manifest = {"schema_version": 1, "protocol": PROTOCOL_ID, "phase": "FINAL_FROZEN",
         "code_revision": code_revision, "source": source_identity,
         "exclusion_input_sha256": input_hashes, "prior_exclusions": exclusions,
-        "retrieval_selection": inventory, "experiments": experiment_manifests,
+        "retrieval_selection": inventory, "retrieval_quota_amendment": quota_amendment,
+        "experiments": experiment_manifests,
         "retrieval_diagnostics_sha256": hashlib.sha256(canonical(diagnostics)).hexdigest(),
         "source_token_cap_per_model_retrieval_only": SOURCE_TOKEN_CAP,
         "max_model_len": MAX_MODEL_LEN, "reserved_output_tokens": RESERVED_OUTPUT_TOKENS,
