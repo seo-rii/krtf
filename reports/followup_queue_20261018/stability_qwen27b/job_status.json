@@ -1,0 +1,1 @@
+{"benchmark_exit_code": 0, "benchmark_started": true, "error_count": 0, "exit_code": 0, "experiment": "stability", "finished_at": "2026-10-17T18:41:58.562311+00:00", "id": "stability_qwen27b", "malformed_count": 12, "missing_count": 0, "received_count": 1536, "report_exit_code": 0, "request_count": 1536, "started_at": "2026-10-17T18:22:12.684679+00:00", "status": "COMPLETE"}
