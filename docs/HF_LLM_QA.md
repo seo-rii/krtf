@@ -103,5 +103,7 @@ python -m eval.collect_hf_qa_queue --config LOCAL_COLLECTOR_CONFIG
 추론 코드 revision과 별도로 기록한다. 이 평가는 entity ID 자동 실행이나 운영 위험
 보장을 부여하지 않는다.
 
-[Qwen의 검증된 결과와 제한](../reports/hf_qa_queue_20261016/ANALYSIS.md)을 먼저
-보고하며, 두 모델의 최종 집계가 검증되면 같은 질문의 모델 비교를 게시한다.
+[두 모델의 최종 결과와 제한](../reports/hf_qa_retry_20261017/ANALYSIS.md)은 총
+1,536회 완료 후 검증됐다. Gemma는 고정 재실행 계획에 따라 복구했고, Qwen은
+앞서 완료한 봉인된 결과를 재사용했다. [동일 질문 모델 비교](../reports/hf_qa_retry_20261017/comparison.md)와
+[최종 큐 상태](../reports/hf_qa_retry_20261017/RESULTS.md)를 함께 게시했다.

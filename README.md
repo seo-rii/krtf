@@ -309,13 +309,12 @@ The [HF LLM QA protocol](docs/HF_LLM_QA.md) separately specifies actual answer
 generation with six context/policy conditions and matched 12B/27B model runs.
 The [frozen generation plan](reports/HF_LLM_QA_PLAN.md) records the selected
 128 articles, identical 768 requests per model and verified tokenizer budgets.
-The [verified Qwen generation results](reports/hf_qa_queue_20261016/ANALYSIS.md)
-show positive exact match of 45/64 with the full article, 31/64 with retrieved
-passages and 33/64 with KTRF pack. The pack gains are two yes/no answers and come
-with four malformed no-answer responses. Gemma failed before inference in this
-queue; this report contains no 12B/27B comparison. Its
-[separate frozen retry](reports/hf_qa_queue_20261016/GEMMA_RETRY_PLAN.json) reuses
-the completed Qwen outputs.
+The [completed matched generation results](reports/hf_qa_retry_20261017/ANALYSIS.md)
+cover all 1,536 calls. Positive exact match for Gemma/Qwen is 43/64 and 45/64 with
+the full article, 32/64 and 31/64 with retrieved passages, and 33/64 for both with
+KTRF pack. Pack improvements are small and Qwen also loses four correct no-answer
+responses to malformed outputs. The completed comparison does not establish a
+consistent KTRF advantage or a general advantage from the larger model.
 
 The unit most of these count is the *occurrence*, which the frequent terms
 decide. Two of them count the *registered term* instead — the question a
