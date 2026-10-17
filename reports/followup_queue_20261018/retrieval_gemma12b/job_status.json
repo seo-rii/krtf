@@ -1,0 +1,1 @@
+{"benchmark_exit_code": 0, "benchmark_started": true, "error_count": 0, "exit_code": 0, "experiment": "retrieval", "finished_at": "2026-10-17T17:51:15.137528+00:00", "id": "retrieval_gemma12b", "malformed_count": 0, "missing_count": 0, "received_count": 512, "report_exit_code": 0, "request_count": 512, "started_at": "2026-10-17T17:47:14.658766+00:00", "status": "COMPLETE"}
