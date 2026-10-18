@@ -28,7 +28,8 @@ ANSWER_SCHEMA = {"type": "object", "properties": {"answer": {
     "anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]}},
     "required": ["answer"], "additionalProperties": False}
 CONTEXTS = {"retrieval": ("lexical", "bm25", "adjacent", "oracle"),
-            "stability": ("retrieved", "ktrf_pack")}
+            "stability": ("retrieved", "ktrf_pack"),
+            "combined": ("lexical", "lexical_pack", "bm25", "bm25_pack")}
 
 
 def _hash(data):
@@ -37,8 +38,9 @@ def _hash(data):
 
 def _matrix(experiment):
     return {(context, decoding, repeat) for context in CONTEXTS[experiment]
-            for decoding in (("free", "json_schema") if experiment == "stability" else ("free",))
-            for repeat in (range(3) if experiment == "stability" else (0,))}
+            for decoding in (("free", "json_schema") if experiment == "stability" else
+                             ("json_schema",) if experiment == "combined" else ("free",))
+            for repeat in (range(3) if experiment in {"stability", "combined"} else (0,))}
 
 
 def validate_requests(rows, experiment=None):
@@ -101,7 +103,8 @@ def validate_requests(rows, experiment=None):
         if type(row.get("pack_injected", False)) is not bool:
             raise ValueError("pack injection state must be boolean")
         if row.get("pack_injected", False):
-            if (triple[0] != "ktrf_pack" or not isinstance(row.get("pack_policy"), str)
+            pack_contexts = {"ktrf_pack"} if experiment == "stability" else {"lexical_pack", "bm25_pack"} if experiment == "combined" else set()
+            if (triple[0] not in pack_contexts or not isinstance(row.get("pack_policy"), str)
                     or not row["pack_policy"] or not isinstance(row.get("pack_prompt"), str)
                     or not row["pack_prompt"]):
                 raise ValueError("injected pack requires frozen pack fragments")
@@ -127,6 +130,16 @@ def validate_requests(rows, experiment=None):
                              for context in CONTEXTS[experiment])
             if first["source_spans"] != second["source_spans"]:
                 raise ValueError("stability pack must retain matched retrieved source")
+        if experiment == "combined":
+            for ranker in ("lexical", "bm25"):
+                plain, packed = (next(r for r in case if r["context_condition"] == context)
+                                 for context in (ranker, ranker + "_pack"))
+                if (plain["source_spans"] != packed["source_spans"]
+                        or plain["source_gold_visible"] != packed["source_gold_visible"]):
+                    raise ValueError("combined pack must retain matched ranker source")
+                if not packed.get("pack_injected", False) and (
+                        plain["system"], plain["user"]) != (packed["system"], packed["user"]):
+                    raise ValueError("non-injected combined pack must keep identical prompt")
     return rows
 
 
@@ -171,7 +184,11 @@ def _metrics(cases):
         "by_stratum": {kind: {"planned": sum(r["stratum"] == kind for r in cases),
             "exact": sum(r["exact_match"] for r in cases if r["stratum"] == kind)}
             for kind in ("SPAN", "YES_NO", "NO_ANSWER")},
-        "repeat_inference_unit": "question; repeats are descriptive measurements, not independent samples"}
+        "repeat_inference_unit": "question; repeats are descriptive measurements, not independent samples",
+        **({"pack_injected_requests": sum(r["pack_injected"] for r in cases),
+            "pack_injected_questions": sum(any(r["pack_injected"] for r in group)
+                                            for group in per_question.values())}
+           if cases and "pack_injected" in cases[0] else {})}
 
 
 def grade_outputs(rows, outputs):
@@ -204,6 +221,8 @@ def grade_outputs(rows, outputs):
             "missing": missing, "error": bool(error), "malformed": bool(malformed), "valid": valid,
             "exact_match": bool(exact), "character_f1": f1,
             "null": bool(valid and value is None), "nonnull": bool(valid and value is not None)})
+        if row["experiment"] == "combined":
+            cases[-1]["pack_injected"] = row.get("pack_injected", False)
         if valid:
             predictions[key] = None if value is None else normalize_answer(value, yes_no=yes_no)
     by_variant, by_repeat = {}, {}
@@ -219,6 +238,10 @@ def grade_outputs(rows, outputs):
     comparisons = []
     if rows[0]["experiment"] == "retrieval":
         comparisons = [("lexical", "free", context, "free") for context in ("bm25", "adjacent", "oracle")]
+    elif rows[0]["experiment"] == "combined":
+        comparisons = [(left, "json_schema", right, "json_schema") for left, right in (
+            ("lexical", "bm25"), ("lexical", "lexical_pack"), ("bm25", "bm25_pack"),
+            ("lexical_pack", "bm25_pack"), ("lexical", "bm25_pack"))]
     else:
         comparisons = [("retrieved", mode, "ktrf_pack", mode) for mode in ("free", "json_schema")]
         comparisons += [(context, "free", context, "json_schema") for context in CONTEXTS["stability"]]

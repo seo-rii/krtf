@@ -184,7 +184,7 @@ def prompt_proof(rows, tokenizers, models, experiment, budget):
                     enable_thinking=False, return_dict=False)
                 cache[key] = len(_token_ids(ids))
             lengths.append(cache[key])
-            if experiment == "retrieval":
+            if experiment in {"retrieval", "combined"}:
                 source = {"text": row["source_text"], "document_sha256": row["document_sha256"]}
                 source_lengths.append(budget.lengths(source, row["source_spans"])[model_key])
         overflow = sum(length + RESERVED_OUTPUT_TOKENS > MAX_MODEL_LEN for length in lengths)
@@ -193,7 +193,7 @@ def prompt_proof(rows, tokenizers, models, experiment, budget):
         proofs[model_key] = {"path": models[model_key]["path"], "request_count": len(rows),
             "max_prompt_tokens": max(lengths), "overflow_count": overflow,
             "max_source_tokens": max(source_lengths) if source_lengths else None,
-            "source_token_cap": SOURCE_TOKEN_CAP if experiment == "retrieval" else None,
+            "source_token_cap": SOURCE_TOKEN_CAP if experiment in {"retrieval", "combined"} else None,
             "tokenizer_local_files_only": True, "apply_chat_template": True,
             "enable_thinking": False, "reserved_output_tokens": RESERVED_OUTPUT_TOKENS}
     return proofs
