@@ -89,6 +89,16 @@ def collect(config):
             or status_path.is_relative_to(public) or status_path.is_relative_to(private)
             or any(p.exists() for p in (public, private, status_path))):
         raise ValueError("new public report, private ignored output and status paths required")
+    ignore_path = config["private_dir"]
+    if "private_storage_root" in config:
+        ancestor = repo
+        for part in logical_private.relative_to(repo).parts:
+            ancestor = ancestor / part
+            if ancestor.is_symlink():
+                # Git refuses descendants of a symlink; its ignored ancestor
+                # protects the entire explicitly approved external subtree.
+                ignore_path = str(ancestor.relative_to(repo))
+                break
     state = {"run_id": plan["run_id"], "pid": os.getpid(), "status": "RUNNING", "phase": "WAITING_FOR_QUEUE",
              "exit_code": None, "started_at": datetime.now(timezone.utc).isoformat(), "pushed_commits": []}
 
@@ -126,7 +136,7 @@ def collect(config):
     exit_code = 1
     try:
         update()
-        subprocess.run(["git", "check-ignore", "-q", "--", config["private_dir"]], cwd=repo, check=True)
+        subprocess.run(["git", "check-ignore", "-q", "--", ignore_path], cwd=repo, check=True)
         deadline, failures = time.monotonic() + 7 * 86400, 0
         while True:
             try:

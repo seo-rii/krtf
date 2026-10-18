@@ -357,6 +357,9 @@ def test_combined_startup_failure_still_runs_second_model(combined_plan, monkeyp
 def test_combined_collector_publishes_only_verified_aggregates(
         collect_config, combined_plan, monkeypatch, tmp_path, external_storage):
     config = {**collect_config, "plan": combined_plan}
+    real_run = collector.subprocess.run
+    real_run(["git", "init", "-q", config["repo"]], check=True)
+    (Path(config["repo"]) / ".gitignore").write_text("eval/out/\n")
     if external_storage:
         storage = tmp_path / "external-private"
         storage.mkdir(mode=0o700)
@@ -364,6 +367,15 @@ def test_combined_collector_publishes_only_verified_aggregates(
         logical_run.symlink_to(storage, target_is_directory=True)
         config.update(private_storage_root=str(storage), private_dir="eval/out/external-run/collected")
     actions = mock_collect_io(config, monkeypatch)
+    mocked_run = collector.subprocess.run
+
+    def run(command, **kwargs):
+        if command[:2] == ["git", "check-ignore"]:
+            actions.append(command)
+            return real_run(command, **kwargs)
+        return mocked_run(command, **kwargs)
+
+    monkeypatch.setattr(collector.subprocess, "run", run)
     terminal = terminal_state(combined_plan)
 
     def check_output(command, **kwargs):
@@ -398,6 +410,9 @@ def test_combined_collector_publishes_only_verified_aggregates(
     markdown = (public / "RESULTS.md").read_text()
     assert "combined BM25, pack and JSON" in markdown and "blind-document evaluation" not in markdown
     assert sum(command[:2] == ["git", "push"] for command in actions) == 3
+    ignored = [command for command in actions if command[:2] == ["git", "check-ignore"]]
+    assert ignored == [["git", "check-ignore", "-q", "--",
+                        "eval/out/external-run" if external_storage else config["private_dir"]]]
     state = json.loads(Path(config["local_status"]).read_text())
     assert state["publication_complete"] and state["exit_code"] == 0
     if external_storage:
