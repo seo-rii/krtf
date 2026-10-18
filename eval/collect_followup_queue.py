@@ -15,7 +15,7 @@ from .collect_hf_qa_queue import validate_public_json
 from .hf_qa import canonical
 from .report_followup_llm import prepare_report, render_markdown
 from .run_followup_llm import ARTIFACTS
-from .run_followup_queue import KIND, validate_plan
+from .run_followup_queue import COMBINED_KIND, KIND, validate_plan
 from .run_production_queue import save_json
 
 
@@ -46,7 +46,7 @@ def verify_stage(root, stage, plan):
 
 def compare_models(summaries, plan):
     result = {}
-    for experiment in ("retrieval", "stability"):
+    for experiment in dict.fromkeys(s["experiment"] for s in plan["stages"]):
         stages = [s for s in plan["stages"] if s["experiment"] == experiment]
         if not all(s["id"] in summaries for s in stages):
             continue
@@ -73,10 +73,19 @@ def collect(config):
     validate_public_json(plan)
     repo = Path(config["repo"]).resolve(strict=True)
     public = (repo / config["report_dir"]).resolve()
-    private = (repo / config["private_dir"]).resolve()
+    logical_private = Path(os.path.abspath(repo / config["private_dir"]))
+    private = logical_private.resolve()
+    private_parent = repo / "eval/out"
+    if "private_storage_root" in config:
+        storage = Path(config["private_storage_root"])
+        if plan["kind"] != COMBINED_KIND or not storage.is_absolute() or not storage.is_dir():
+            raise ValueError("explicit absolute private storage root is supported only for combined queues")
+        private_parent = storage.resolve(strict=True)
     status_path = Path(config["local_status"]).resolve()
     if (not public.is_relative_to(repo / "reports") or public == repo / "reports"
-            or not private.is_relative_to(repo / "eval/out") or private == repo / "eval/out"
+            or not logical_private.is_relative_to(repo / "eval/out") or logical_private == repo / "eval/out"
+            or not private.is_relative_to(private_parent) or private == private_parent
+            or private.is_relative_to(public) or public.is_relative_to(private)
             or status_path.is_relative_to(public) or status_path.is_relative_to(private)
             or any(p.exists() for p in (public, private, status_path))):
         raise ValueError("new public report, private ignored output and status paths required")
@@ -134,7 +143,7 @@ def collect(config):
             if time.monotonic() > deadline:
                 raise RuntimeError("collector deadline exceeded")
             time.sleep(60)
-        expected = {"kind": KIND, "run_id": plan["run_id"], "code_revision": plan["code_revision"],
+        expected = {"kind": plan["kind"], "run_id": plan["run_id"], "code_revision": plan["code_revision"],
                     "plan_sha256": hashlib.sha256(canonical(plan)).hexdigest(), "phase": "FINISHED"}
         if (any(terminal.get(key) != value for key, value in expected.items())
                 or type(terminal.get("exit_code")) is not int or terminal.get("status") not in {"COMPLETE", "FAILED"}
@@ -151,7 +160,7 @@ def collect(config):
                 raise ValueError("copied proof differs from frozen hash")
             proofs[name] = validate_public_json(json.loads(target.read_text()))
         if (proofs["unit"].get("exit_code") != 0 or proofs["unit"].get("code_revision") != plan["code_revision"]
-                or proofs["blind_document"].get("exit_code") != 0
+                or (plan["kind"] == KIND and proofs["blind_document"].get("exit_code") != 0)
                 or proofs["preparation"].get("code_revision") != plan["code_revision"]):
             raise ValueError("successful frozen CPU/test/preparation proofs required")
         artifacts, summaries, missing = {}, {}, []
@@ -190,12 +199,22 @@ def collect(config):
         if not summaries:
             raise ValueError("no verified generation runs available")
         comparison = compare_models(summaries, plan)
-        overview = {"kind": KIND, "run_id": plan["run_id"], "status": terminal["status"],
+        combined = plan["kind"] == COMBINED_KIND
+        limitations = ([
+            "Previously inspected frozen retrieval questions are reused for this adaptive combined followup; no independent holdout claim.",
+            "Repeats are descriptive measurements and do not increase the number of independent questions.",
+            "Search is within known source articles; corpus-level document retrieval is not evaluated.",
+            "The KTRF pack and its policy form one intervention; pack source matches each retrieval arm.",
+            "Common source-token caps do not imply equal actual prompt-token cost.",
+            "Model family and size change together; timing on a shared host is descriptive."] if combined else [
+            "Blind document gold is AI authored and adjudicated; no human verification or deployment guarantee.",
+            "Oracle uses gold and is diagnostic only.", "Stability uses previously inspected questions; repeats are not independent samples.",
+            "Model family and size change together; timing on a shared host is descriptive."])
+        overview = {"kind": plan["kind"], "run_id": plan["run_id"], "status": terminal["status"],
             "exit_code": terminal["exit_code"], "verified_reports": sorted(summaries), "missing_stages": missing,
-            "raw_artifacts_published": False, "planned_generation_requests": 4096,
-            "limitations": ["Blind document gold is AI authored and adjudicated; no human verification or deployment guarantee.",
-                "Oracle uses gold and is diagnostic only.", "Stability uses previously inspected questions; repeats are not independent samples.",
-                "Model family and size change together; timing on a shared host is descriptive."]}
+            "raw_artifacts_published": False,
+            "planned_generation_requests": sum(stage["request_count"] for stage in plan["stages"]),
+            "limitations": limitations}
         public_objects = {"summary.json": overview, "queue_plan.json": plan, "queue_status.json": terminal,
                           "model_comparison.json": comparison, **{name + "_proof.json": value for name, value in proofs.items()}}
         for value in public_objects.values():
@@ -212,8 +231,11 @@ def collect(config):
             (target / "RESULTS.md").write_text(render_markdown(summaries[stage["id"]]))
         for name, value in public_objects.items():
             save_json(public / name, value)
-        lines = ["# KTRF followup queue", "", f"Status: **{terminal['status']}**, exit code `{terminal['exit_code']}`.", "",
-                 "CPU preparation and AI blind-document evaluation completed before GPU generation.", "",
+        heading = "# KTRF combined BM25, pack and JSON queue" if combined else "# KTRF followup queue"
+        preparation = ("Frozen unit tests and actual-tokenizer preparation completed before GPU generation." if combined else
+                       "CPU preparation and AI blind-document evaluation completed before GPU generation.")
+        lines = [heading, "", f"Status: **{terminal['status']}**, exit code `{terminal['exit_code']}`.", "",
+                 preparation, "",
                  "| Stage | Status | Received/planned |", "|---|---|---:|"]
         for stage, result in zip(plan["stages"], terminal["stages"], strict=True):
             label = f"[{stage['id']}]({stage['id']}/RESULTS.md)" if stage["id"] in summaries else stage["id"]
@@ -225,7 +247,9 @@ def collect(config):
             if stage["id"] in summaries:
                 paths = [public / stage["id"] / name for name in (*artifacts[stage["id"]], "RESULTS.md")]
                 publish(paths, "test: report followup " + stage["id"])
-        publish([public / name for name in (*public_objects, "RESULTS.md")], "test: summarize queued retrieval and stability experiments")
+        publish([public / name for name in (*public_objects, "RESULTS.md")],
+                "test: summarize queued combined retrieval experiments" if combined else
+                "test: summarize queued retrieval and stability experiments")
         update(publication_complete=True, verified_reports=sorted(summaries), missing_stages=missing)
         exit_code = terminal["exit_code"]
         if exit_code == 0:

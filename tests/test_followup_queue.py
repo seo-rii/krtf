@@ -242,7 +242,7 @@ def test_collector_rejects_unsafe_paths_before_network(collect_config, monkeypat
 
 
 def terminal_state(plan):
-    return {"kind": queue.KIND, "run_id": plan["run_id"], "code_revision": plan["code_revision"],
+    return {"kind": plan["kind"], "run_id": plan["run_id"], "code_revision": plan["code_revision"],
         "plan_sha256": hashlib.sha256(canonical(plan)).hexdigest(), "phase": "FINISHED", "status": "COMPLETE", "exit_code": 0,
         "stages": [{"id": s["id"], "experiment": s["experiment"], "request_count": s["request_count"],
             "status": "COMPLETE", "exit_code": 0, "benchmark_started": True,
@@ -291,3 +291,145 @@ def test_comparison_rejects_different_frozen_corpora(frozen_plan):
                  for index, s in enumerate(stages)}
     with pytest.raises(ValueError, match="identical inputs"):
         collector.compare_models(summaries, frozen_plan)
+
+
+@pytest.fixture
+def combined_plan(frozen_plan, monkeypatch):
+    plan = copy.deepcopy(frozen_plan)
+    plan["kind"] = queue.COMBINED_KIND
+    plan["run_id"] = "authored_combined_queue"
+    plan["stages"] = [stage for stage in plan["stages"] if stage["experiment"] == "stability"]
+    for stage in plan["stages"]:
+        stage.update(id="combined_" + stage["model_key"], experiment="combined")
+    del plan["proofs"]["blind_document"]
+    rewrite_proof(plan, "preparation", lambda proof: proof.update(
+        experiments={"combined": proof["experiments"]["stability"]}))
+    rows = [{"authored_index": i} for i in range(1536)]
+    monkeypatch.setattr(queue, "load_request_file", lambda path: (
+        rows, {"experiment": "combined"}, {"authored": True}))
+    return plan
+
+
+def test_combined_precheck_verifies_matched_matrix_without_blind_proof(combined_plan):
+    assert queue.verify_inputs(combined_plan)["unit"]["exit_code"] == 0
+
+
+@pytest.mark.parametrize("mutation,message", [
+    (lambda plan: plan["stages"].reverse(), "expected matched combined"),
+    (lambda plan: plan["stages"][0].update(request_count=512), "128-question matrix"),
+    (lambda plan: plan["stages"][1].update(envelope_sha256="0" * 64), "identical frozen"),
+    (lambda plan: plan["stages"][0].update(experiment="stability"), "expected matched combined"),
+    (lambda plan: plan.update(kind=queue.KIND), "expected matched retrieval/stability"),
+    (lambda plan: plan["proofs"].pop("preparation"), "tokenizer preparation proofs"),
+])
+def test_combined_plan_rejects_matrix_or_protocol_drift(combined_plan, mutation, message):
+    mutation(combined_plan)
+    with pytest.raises(ValueError, match=message):
+        queue.validate_plan(combined_plan)
+
+
+def test_combined_precheck_rejects_different_preparation_corpus(combined_plan):
+    rewrite_proof(combined_plan, "preparation", lambda proof:
+                  proof["experiments"]["combined"].update(requests_sha256="0" * 64))
+    with pytest.raises(ValueError, match="exact frozen corpus"):
+        queue.verify_inputs(combined_plan)
+
+
+def test_combined_queue_runs_two_serial_owned_model_stages(combined_plan, monkeypatch):
+    calls, stopped, servers = mock_runtime(monkeypatch, combined_plan)
+    assert queue.run_queue(combined_plan) == 0
+    assert calls == [stage["id"] for stage in combined_plan["stages"]]
+    assert len(servers) == 2 and all(server in stopped for server in servers)
+    state = json.loads(Path(combined_plan["status_path"]).read_text())
+    assert state["kind"] == queue.COMBINED_KIND and state["status"] == "COMPLETE"
+    assert state["responses_completed"] == 1536
+
+
+def test_combined_startup_failure_still_runs_second_model(combined_plan, monkeypatch):
+    calls, _, _ = mock_runtime(monkeypatch, combined_plan, startup_failure=True)
+    assert queue.run_queue(combined_plan) == 1
+    assert calls == [combined_plan["stages"][1]["id"]]
+    state = json.loads(Path(combined_plan["status_path"]).read_text())
+    assert [stage["status"] for stage in state["stages"]] == ["FAILED", "COMPLETE"]
+
+
+@pytest.mark.parametrize("external_storage", [False, True])
+def test_combined_collector_publishes_only_verified_aggregates(
+        collect_config, combined_plan, monkeypatch, tmp_path, external_storage):
+    config = {**collect_config, "plan": combined_plan}
+    if external_storage:
+        storage = tmp_path / "external-private"
+        storage.mkdir(mode=0o700)
+        logical_run = Path(config["repo"]) / "eval/out/external-run"
+        logical_run.symlink_to(storage, target_is_directory=True)
+        config.update(private_storage_root=str(storage), private_dir="eval/out/external-run/collected")
+    actions = mock_collect_io(config, monkeypatch)
+    terminal = terminal_state(combined_plan)
+
+    def check_output(command, **kwargs):
+        if command[0] == "ssh":
+            return json.dumps(terminal)
+        if command[:3] == ["git", "branch", "--show-current"]:
+            return "main\n"
+        assert command[:2] == ["git", "rev-parse"]
+        return combined_plan["code_revision"] + "\n"
+
+    monkeypatch.setattr(collector.subprocess, "check_output", check_output)
+
+    def verify(root, stage, plan):
+        summary = {"request_corpus_sha256": stage["requests_sha256"],
+            "code_revision": plan["code_revision"], "decoding": {"seed": 0},
+            "model": plan["models"][stage["model_key"]]["served_name"], "questions": 128,
+            "status": "COMPLETE", "by_variant": {"bm25_pack__json_schema": {
+                "positive_exact_rate": 0.5, "article_no_answer_null_rate": 0.9, "malformed": 0}},
+            "counts": {"received_count": 1536, "missing_count": 0, "error_count": 0, "malformed_count": 0}}
+        return summary, {"verified": True}, {"authored": True}
+
+    monkeypatch.setattr(collector, "verify_stage", verify)
+    monkeypatch.setattr(collector, "render_markdown", lambda summary: "# Verified aggregate\n")
+    assert collector.collect(config) == 0
+    public = Path(config["repo"]) / config["report_dir"]
+    summary = json.loads((public / "summary.json").read_text())
+    assert summary["kind"] == queue.COMBINED_KIND
+    assert summary["planned_generation_requests"] == 3072
+    assert set(json.loads((public / "model_comparison.json").read_text())) == {"combined"}
+    assert "adaptive combined followup" in " ".join(summary["limitations"])
+    assert not (public / "blind_document_proof.json").exists()
+    markdown = (public / "RESULTS.md").read_text()
+    assert "combined BM25, pack and JSON" in markdown and "blind-document evaluation" not in markdown
+    assert sum(command[:2] == ["git", "push"] for command in actions) == 3
+    state = json.loads(Path(config["local_status"]).read_text())
+    assert state["publication_complete"] and state["exit_code"] == 0
+    if external_storage:
+        assert (storage / "collected/unit_proof.json").is_file()
+        assert not (public / "requests.jsonl").exists()
+
+
+@pytest.mark.parametrize("failure", [
+    "implicit_redirect", "old_queue", "outside_storage", "logical_escape", "storage_root_output", "existing_output",
+])
+def test_external_private_storage_rejects_unauthorized_or_existing_paths(
+        collect_config, combined_plan, monkeypatch, tmp_path, failure):
+    config = {**collect_config, "plan": combined_plan}
+    storage = tmp_path / "external-private"
+    storage.mkdir(mode=0o700)
+    logical_run = Path(config["repo"]) / "eval/out/external-run"
+    logical_run.symlink_to(storage, target_is_directory=True)
+    config.update(private_storage_root=str(storage), private_dir="eval/out/external-run/collected")
+    if failure == "implicit_redirect":
+        del config["private_storage_root"]
+    elif failure == "old_queue":
+        config["plan"] = collect_config["plan"]
+    elif failure == "outside_storage":
+        other_storage = tmp_path / "other-private"
+        other_storage.mkdir()
+        config["private_storage_root"] = str(other_storage)
+    elif failure == "logical_escape":
+        config["private_dir"] = str(storage / "collected")
+    elif failure == "storage_root_output":
+        config["private_dir"] = "eval/out/external-run"
+    else:
+        (storage / "collected").mkdir()
+    monkeypatch.setattr(collector.subprocess, "check_output", lambda *a, **k: pytest.fail("network not allowed"))
+    with pytest.raises(ValueError, match="paths required|only for combined"):
+        collector.collect(config)

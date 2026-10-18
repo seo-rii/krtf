@@ -18,8 +18,10 @@ from .run_followup_llm import load_request_file
 from .run_production_queue import file_hash, save_json, start_model_runtime, stop_owned
 
 KIND = "ktrf_followup_queue_v1"
+COMBINED_KIND = "ktrf_combined_queue_v1"
 ORDER = [(experiment, model) for model in ("gemma12b", "qwen27b")
          for experiment in ("retrieval", "stability")]
+COMBINED_ORDER = [("combined", model) for model in ("gemma12b", "qwen27b")]
 
 
 def now():
@@ -27,8 +29,9 @@ def now():
 
 
 def validate_plan(plan):
-    if not isinstance(plan, dict) or plan.get("kind") != KIND:
+    if not isinstance(plan, dict) or plan.get("kind") not in {KIND, COMBINED_KIND}:
         raise ValueError("frozen followup queue required")
+    combined = plan["kind"] == COMBINED_KIND
     if not re.fullmatch(r"[a-zA-Z0-9_-]+", plan.get("run_id", "")):
         raise ValueError("invalid run identity")
     if not re.fullmatch(r"[0-9a-f]{40}", plan.get("code_revision", "")):
@@ -36,10 +39,12 @@ def validate_plan(plan):
     if not re.fullmatch(r"[0-9a-f]{64}", plan.get("archive_sha256", "")):
         raise ValueError("source archive hash required")
     stages = plan.get("stages", [])
-    if [(s.get("experiment"), s.get("model_key")) for s in stages] != ORDER:
-        raise ValueError("expected matched retrieval/stability for Gemma then Qwen")
-    if len({s.get("id") for s in stages}) != 4:
-        raise ValueError("four unique stage IDs required")
+    order = COMBINED_ORDER if combined else ORDER
+    if [(s.get("experiment"), s.get("model_key")) for s in stages] != order:
+        raise ValueError("expected matched combined stages for Gemma then Qwen" if combined else
+                         "expected matched retrieval/stability for Gemma then Qwen")
+    if len({s.get("id") for s in stages}) != len(order):
+        raise ValueError("unique stage IDs required")
     for stage in stages:
         if (not re.fullmatch(r"[a-zA-Z0-9_]+", stage.get("id", ""))
                 or stage.get("request_count") != (512 if stage["experiment"] == "retrieval" else 1536)):
@@ -47,7 +52,7 @@ def validate_plan(plan):
         for key in ("requests_sha256", "envelope_sha256"):
             if not re.fullmatch(r"[0-9a-f]{64}", stage.get(key, "")):
                 raise ValueError("frozen stage hashes required")
-    for experiment in ("retrieval", "stability"):
+    for experiment in dict.fromkeys(experiment for experiment, _ in order):
         pair = [s for s in stages if s["experiment"] == experiment]
         for key in ("requests_file", "request_count", "requests_sha256", "envelope_sha256"):
             if pair[0][key] != pair[1][key]:
@@ -63,8 +68,10 @@ def validate_plan(plan):
             raise ValueError("local checkpoint and served identity required")
     if not 0 < plan.get("resource_wait_seconds", 0) <= 2 * 86400:
         raise ValueError("bounded resource deadline required")
-    if set(plan.get("proofs", {})) != {"unit", "preparation", "blind_document"}:
-        raise ValueError("unit, tokenizer preparation and blind-document proofs required")
+    expected_proofs = {"unit", "preparation"} if combined else {"unit", "preparation", "blind_document"}
+    if set(plan.get("proofs", {})) != expected_proofs:
+        raise ValueError("unit and tokenizer preparation proofs required" if combined else
+                         "unit, tokenizer preparation and blind-document proofs required")
     for proof in plan["proofs"].values():
         if not proof.get("path") or not re.fullmatch(r"[0-9a-f]{64}", proof.get("sha256", "")):
             raise ValueError("pinned proof file hashes required")
@@ -100,7 +107,7 @@ def verify_inputs(plan):
     if (proofs["unit"].get("exit_code") != 0
             or proofs["unit"].get("code_revision") != plan["code_revision"]):
         raise ValueError("successful tests at frozen revision required")
-    if proofs["blind_document"].get("exit_code") != 0:
+    if plan["kind"] == KIND and proofs["blind_document"].get("exit_code") != 0:
         raise ValueError("completed sealed blind-document CPU evaluation required")
     prepared = proofs["preparation"]
     if prepared.get("code_revision") != plan["code_revision"]:
@@ -131,7 +138,7 @@ def run_queue(plan):
     status_path = Path(plan["status_path"])
     if status_path.exists():
         raise ValueError("exclusive queue status already exists")
-    state = {"kind": KIND, "run_id": plan["run_id"], "pid": os.getpid(),
+    state = {"kind": plan["kind"], "run_id": plan["run_id"], "pid": os.getpid(),
              "code_revision": plan["code_revision"], "plan_sha256": hashlib.sha256(canonical(plan)).hexdigest(),
              "status": "RUNNING", "phase": "PRECHECK", "exit_code": None, "started_at": now(),
              "stages": [{"id": s["id"], "experiment": s["experiment"], "status": "PENDING",
@@ -216,6 +223,7 @@ def run_queue(plan):
                             exit_code=result_code, benchmark_exit_code=benchmark.returncode,
                             report_exit_code=report.returncode, finished_at=now(),
                             **{key: manifest[key] for key in ("received_count", "missing_count", "error_count", "malformed_count")})
+                        update(responses_completed=manifest["received_count"])
                     except Exception as error:
                         current.update(status="FAILED", exit_code=1, finished_at=now(), error_type=type(error).__name__)
                     finally:
