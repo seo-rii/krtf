@@ -2,6 +2,8 @@
 
 Status: **COMPLETE**, exit code `0`.
 
+[Final interpretation and limitations](ANALYSIS.md)
+
 CPU preparation and AI blind-document evaluation completed before GPU generation.
 
 | Stage | Status | Received/planned |

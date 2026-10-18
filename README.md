@@ -321,6 +321,12 @@ paragraph audit. Preparation and queue launch are distinct from completed model
 results; repeated generations do not increase the independent sample size.
 The [frozen followup queue plan](reports/FOLLOWUP_PLAN_20261018.md) records 4,096
 planned calls, actual-tokenizer proofs and the completed CPU diagnostics.
+The [completed followup results](reports/followup_queue_20261018/ANALYSIS.md)
+verify all 4,096 calls. On 48 new answerable questions, BM25 raises Gemma exact
+match from 22 to 25 and Qwen from 25 to 29, while using about 22% more prompt
+tokens. Schema-constrained generation removes the 12 repeated Qwen pack format
+errors and preserves answerable exact match. These are experimental comparisons;
+the combined BM25 + pack + schema configuration has not been evaluated.
 
 The unit most of these count is the *occurrence*, which the frequent terms
 decide. Two of them count the *registered term* instead — the question a
