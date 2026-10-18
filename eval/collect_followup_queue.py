@@ -210,6 +210,7 @@ def collect(config):
             raise ValueError("no verified generation runs available")
         comparison = compare_models(summaries, plan)
         combined = plan["kind"] == COMBINED_KIND
+        fresh = combined and plan.get("sample_design", {}).get("kind") == "fresh_document_holdout"
         limitations = ([
             "Previously inspected frozen retrieval questions are reused for this adaptive combined followup; no independent holdout claim.",
             "Repeats are descriptive measurements and do not increase the number of independent questions.",
@@ -220,11 +221,18 @@ def collect(config):
             "Blind document gold is AI authored and adjudicated; no human verification or deployment guarantee.",
             "Oracle uses gold and is diagnostic only.", "Stability uses previously inspected questions; repeats are not independent samples.",
             "Model family and size change together; timing on a shared host is descriptive."])
+        if fresh:
+            limitations[0:1] = [
+                "Fresh article split excludes declared prior articles by identity and content hash; this is a same-corpus holdout, not external independent validation.",
+                "Exact article exclusion does not establish absence of near-duplicate documents or pretrained-model contamination.",
+                "Earlier results informed the methods; this sample was frozen before its generation outputs."]
         overview = {"kind": plan["kind"], "run_id": plan["run_id"], "status": terminal["status"],
             "exit_code": terminal["exit_code"], "verified_reports": sorted(summaries), "missing_stages": missing,
             "raw_artifacts_published": False,
             "planned_generation_requests": sum(stage["request_count"] for stage in plan["stages"]),
             "limitations": limitations}
+        if fresh:
+            overview["sample_design"] = plan["sample_design"]
         public_objects = {"summary.json": overview, "queue_plan.json": plan, "queue_status.json": terminal,
                           "model_comparison.json": comparison, **{name + "_proof.json": value for name, value in proofs.items()}}
         for value in public_objects.values():
@@ -242,6 +250,8 @@ def collect(config):
         for name, value in public_objects.items():
             save_json(public / name, value)
         heading = "# KTRF combined BM25, pack and JSON queue" if combined else "# KTRF followup queue"
+        if fresh:
+            heading = "# KTRF fresh-document combined BM25, pack and JSON queue"
         preparation = ("Frozen unit tests and actual-tokenizer preparation completed before GPU generation." if combined else
                        "CPU preparation and AI blind-document evaluation completed before GPU generation.")
         lines = [heading, "", f"Status: **{terminal['status']}**, exit code `{terminal['exit_code']}`.", "",

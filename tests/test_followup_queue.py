@@ -335,6 +335,129 @@ def test_combined_precheck_rejects_different_preparation_corpus(combined_plan):
         queue.verify_inputs(combined_plan)
 
 
+@pytest.fixture
+def fresh_combined_plan(combined_plan, monkeypatch):
+    plan = copy.deepcopy(combined_plan)
+    plan["sample_design"] = {"kind": "fresh_document_holdout", "question_count": 2,
+        "strata": {"SPAN": 1, "YES_NO": 0, "NO_ANSWER": 1}, "repeat_count": 3,
+        "independent_from_prior_declared_articles": True}
+    rows = [{"case_id": f"fresh-{index}", "stratum": kind,
+             "parent_document_id": f"article-{index}",
+             "document_sha256": hashlib.sha256(f"article-{index}".encode()).hexdigest(),
+             "authored_repeat": repeat}
+            for index, kind in enumerate(("SPAN", "NO_ANSWER")) for repeat in range(12)]
+    envelope = Path(plan["stages"][0]["requests_file"])
+    write_json(envelope, {"requests": rows, "protocol": {
+        "experiment": "combined", "sample_design": plan["sample_design"]}})
+    for stage in plan["stages"]:
+        stage.update(request_count=len(rows), envelope_sha256=queue.file_hash(envelope),
+                     requests_sha256=hashlib.sha256(b"".join(canonical(row) for row in rows)).hexdigest())
+    def update_proof(proof):
+        proof["sample_design"] = plan["sample_design"]
+        preparation = proof["experiments"]["combined"]
+        preparation.update({key: plan["stages"][0][key] for key in (
+            "request_count", "requests_sha256", "envelope_sha256")})
+        preparation.update(question_count=2, parent_articles=2, strata=plan["sample_design"]["strata"])
+        for token in preparation["models"].values():
+            token["request_count"] = len(rows)
+    rewrite_proof(plan, "preparation", update_proof)
+    def load(path):
+        value = json.loads(Path(path).read_text())
+        return value["requests"], value["protocol"], {"authored": True}
+    monkeypatch.setattr(queue, "load_request_file", load)
+    return plan
+
+
+def rewrite_fresh_envelope(plan, mutation):
+    path = Path(plan["stages"][0]["requests_file"])
+    value = json.loads(path.read_text())
+    mutation(value)
+    write_json(path, value)
+    for stage in plan["stages"]:
+        stage.update(envelope_sha256=queue.file_hash(path),
+            requests_sha256=hashlib.sha256(b"".join(canonical(row) for row in value["requests"])).hexdigest())
+    rewrite_proof(plan, "preparation", lambda proof: proof["experiments"]["combined"].update(
+        {key: plan["stages"][0][key] for key in ("envelope_sha256", "requests_sha256")}))
+
+
+def test_fresh_combined_precheck_accepts_smaller_article_disjoint_matrix(fresh_combined_plan):
+    assert queue.verify_inputs(fresh_combined_plan)["unit"]["exit_code"] == 0
+    assert all(stage["request_count"] == 24 for stage in fresh_combined_plan["stages"])
+
+
+@pytest.mark.parametrize("mutation", [
+    lambda design: design.update(kind="reused_questions"),
+    lambda design: design.update(question_count=0),
+    lambda design: design.update(question_count=129),
+    lambda design: design.update(question_count=True),
+    lambda design: design.update(question_count=3),
+    lambda design: design.update(strata={"SPAN": 2, "NO_ANSWER": 0}),
+    lambda design: design.update(strata={"SPAN": 2, "YES_NO": 0, "NO_ANSWER": 0}),
+    lambda design: design.update(strata={"SPAN": 0, "YES_NO": 0, "NO_ANSWER": 2}),
+    lambda design: design.update(strata={"SPAN": -1, "YES_NO": 1, "NO_ANSWER": 2}),
+    lambda design: design.update(strata={"SPAN": True, "YES_NO": 0, "NO_ANSWER": 1}),
+    lambda design: design.update(repeat_count=2),
+    lambda design: design.update(repeat_count=3.0),
+    lambda design: design.update(independent_from_prior_declared_articles=False),
+    lambda design: design.update(independent_from_prior_declared_articles=1),
+])
+def test_fresh_combined_plan_rejects_unbound_sample_design(fresh_combined_plan, mutation):
+    mutation(fresh_combined_plan["sample_design"])
+    with pytest.raises(ValueError, match="fresh document sample"):
+        queue.validate_plan(fresh_combined_plan)
+
+
+def test_fresh_sample_design_is_not_allowed_on_legacy_queue(frozen_plan, fresh_combined_plan):
+    frozen_plan["sample_design"] = fresh_combined_plan["sample_design"]
+    with pytest.raises(ValueError, match="only for combined"):
+        queue.validate_plan(frozen_plan)
+
+
+def test_fresh_combined_plan_rejects_old_fixed_matrix_size(fresh_combined_plan):
+    for stage in fresh_combined_plan["stages"]:
+        stage["request_count"] = 1536
+    with pytest.raises(ValueError, match="fresh-document matrix"):
+        queue.validate_plan(fresh_combined_plan)
+
+
+@pytest.mark.parametrize("mutation,message", [
+    (lambda proof: proof.pop("sample_design"), "preparation sample design"),
+    (lambda proof: proof["sample_design"].update(question_count=3), "preparation sample design"),
+    (lambda proof: proof["experiments"]["combined"].update(question_count=3), "question count or strata"),
+    (lambda proof: proof["experiments"]["combined"].update(strata={"SPAN": 0, "YES_NO": 1, "NO_ANSWER": 1}), "question count or strata"),
+    (lambda proof: proof["experiments"]["combined"].update(parent_articles=3), "distinct parent article"),
+])
+def test_fresh_precheck_binds_preparation_design_and_counts(fresh_combined_plan, mutation, message):
+    rewrite_proof(fresh_combined_plan, "preparation", mutation)
+    with pytest.raises(ValueError, match=message):
+        queue.verify_inputs(fresh_combined_plan)
+
+
+@pytest.mark.parametrize("failure,message", [
+    ("protocol", "protocol sample design"),
+    ("question_identity", "question count or strata"),
+    ("stratum", "question count or strata"),
+    ("parent_identity", "distinct parent article"),
+    ("duplicate_content", "distinct parent article"),
+])
+def test_fresh_precheck_counts_actual_questions_and_parent_hashes(fresh_combined_plan, failure, message):
+    def mutate(value):
+        if failure == "protocol":
+            value["protocol"]["sample_design"]["question_count"] = 3
+            return
+        key, replacement = {
+            "question_identity": ("case_id", "fresh-0"),
+            "stratum": ("stratum", "SPAN"),
+            "parent_identity": ("parent_document_id", "article-0"),
+            "duplicate_content": ("document_sha256", value["requests"][0]["document_sha256"]),
+        }[failure]
+        for row in value["requests"][12:]:
+            row[key] = replacement
+    rewrite_fresh_envelope(fresh_combined_plan, mutate)
+    with pytest.raises(ValueError, match=message):
+        queue.verify_inputs(fresh_combined_plan)
+
+
 def test_combined_queue_runs_two_serial_owned_model_stages(combined_plan, monkeypatch):
     calls, stopped, servers = mock_runtime(monkeypatch, combined_plan)
     assert queue.run_queue(combined_plan) == 0
@@ -354,8 +477,11 @@ def test_combined_startup_failure_still_runs_second_model(combined_plan, monkeyp
 
 
 @pytest.mark.parametrize("external_storage", [False, True])
+@pytest.mark.parametrize("fresh_sample", [False, True])
 def test_combined_collector_publishes_only_verified_aggregates(
-        collect_config, combined_plan, monkeypatch, tmp_path, external_storage):
+        collect_config, combined_plan, monkeypatch, tmp_path, external_storage, fresh_sample, request):
+    if fresh_sample:
+        combined_plan = request.getfixturevalue("fresh_combined_plan")
     config = {**collect_config, "plan": combined_plan}
     real_run = collector.subprocess.run
     real_run(["git", "init", "-q", config["repo"]], check=True)
@@ -391,10 +517,11 @@ def test_combined_collector_publishes_only_verified_aggregates(
     def verify(root, stage, plan):
         summary = {"request_corpus_sha256": stage["requests_sha256"],
             "code_revision": plan["code_revision"], "decoding": {"seed": 0},
-            "model": plan["models"][stage["model_key"]]["served_name"], "questions": 128,
+            "model": plan["models"][stage["model_key"]]["served_name"],
+            "questions": plan.get("sample_design", {}).get("question_count", 128),
             "status": "COMPLETE", "by_variant": {"bm25_pack__json_schema": {
                 "positive_exact_rate": 0.5, "article_no_answer_null_rate": 0.9, "malformed": 0}},
-            "counts": {"received_count": 1536, "missing_count": 0, "error_count": 0, "malformed_count": 0}}
+            "counts": {"received_count": stage["request_count"], "missing_count": 0, "error_count": 0, "malformed_count": 0}}
         return summary, {"verified": True}, {"authored": True}
 
     monkeypatch.setattr(collector, "verify_stage", verify)
@@ -403,12 +530,19 @@ def test_combined_collector_publishes_only_verified_aggregates(
     public = Path(config["repo"]) / config["report_dir"]
     summary = json.loads((public / "summary.json").read_text())
     assert summary["kind"] == queue.COMBINED_KIND
-    assert summary["planned_generation_requests"] == 3072
+    assert summary["planned_generation_requests"] == (48 if fresh_sample else 3072)
     assert set(json.loads((public / "model_comparison.json").read_text())) == {"combined"}
-    assert "adaptive combined followup" in " ".join(summary["limitations"])
+    if fresh_sample:
+        assert summary["sample_design"] == combined_plan["sample_design"]
+        assert "same-corpus holdout" in " ".join(summary["limitations"])
+        assert "near-duplicate" in " ".join(summary["limitations"])
+        assert "adaptive combined followup" not in " ".join(summary["limitations"])
+    else:
+        assert "adaptive combined followup" in " ".join(summary["limitations"])
     assert not (public / "blind_document_proof.json").exists()
     markdown = (public / "RESULTS.md").read_text()
     assert "combined BM25, pack and JSON" in markdown and "blind-document evaluation" not in markdown
+    assert ("fresh-document combined" in markdown) == fresh_sample
     assert sum(command[:2] == ["git", "push"] for command in actions) == 3
     ignored = [command for command in actions if command[:2] == ["git", "check-ignore"]]
     assert ignored == [["git", "check-ignore", "-q", "--",

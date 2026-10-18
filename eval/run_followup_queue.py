@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -32,6 +33,22 @@ def validate_plan(plan):
     if not isinstance(plan, dict) or plan.get("kind") not in {KIND, COMBINED_KIND}:
         raise ValueError("frozen followup queue required")
     combined = plan["kind"] == COMBINED_KIND
+    sample_design = plan.get("sample_design")
+    if "sample_design" in plan:
+        if (not combined or not isinstance(sample_design, dict)
+                or sample_design.get("kind") != "fresh_document_holdout"):
+            raise ValueError("fresh document sample design is supported only for combined queues")
+        question_count = sample_design.get("question_count")
+        strata = sample_design.get("strata")
+        if (type(question_count) is not int or not 0 < question_count <= 128
+                or not isinstance(strata, dict) or set(strata) != {"SPAN", "YES_NO", "NO_ANSWER"}
+                or any(type(count) is not int or count < 0 for count in strata.values())
+                or sum(strata.values()) != question_count
+                or strata["SPAN"] + strata["YES_NO"] == 0 or strata["NO_ANSWER"] == 0
+                or type(sample_design.get("repeat_count")) is not int
+                or sample_design["repeat_count"] != 3
+                or sample_design.get("independent_from_prior_declared_articles") is not True):
+            raise ValueError("fresh document sample requires bounded questions, positive/negative strata and three repeats")
     if not re.fullmatch(r"[a-zA-Z0-9_-]+", plan.get("run_id", "")):
         raise ValueError("invalid run identity")
     if not re.fullmatch(r"[0-9a-f]{40}", plan.get("code_revision", "")):
@@ -46,9 +63,12 @@ def validate_plan(plan):
     if len({s.get("id") for s in stages}) != len(order):
         raise ValueError("unique stage IDs required")
     for stage in stages:
+        request_count = (sample_design["question_count"] * 12 if sample_design else
+                         512 if stage["experiment"] == "retrieval" else 1536)
         if (not re.fullmatch(r"[a-zA-Z0-9_]+", stage.get("id", ""))
-                or stage.get("request_count") != (512 if stage["experiment"] == "retrieval" else 1536)):
-            raise ValueError("invalid stage identity or predeclared 128-question matrix")
+                or stage.get("request_count") != request_count):
+            raise ValueError("invalid stage identity or predeclared fresh-document matrix" if sample_design else
+                             "invalid stage identity or predeclared 128-question matrix")
         for key in ("requests_sha256", "envelope_sha256"):
             if not re.fullmatch(r"[0-9a-f]{64}", stage.get(key, "")):
                 raise ValueError("frozen stage hashes required")
@@ -112,6 +132,9 @@ def verify_inputs(plan):
     prepared = proofs["preparation"]
     if prepared.get("code_revision") != plan["code_revision"]:
         raise ValueError("preparation must use frozen code revision")
+    sample_design = plan.get("sample_design")
+    if sample_design is not None and prepared.get("sample_design") != sample_design:
+        raise ValueError("preparation sample design differs from frozen plan")
     for stage in plan["stages"]:
         path = Path(stage["requests_file"])
         if file_hash(path) != stage["envelope_sha256"]:
@@ -125,6 +148,23 @@ def verify_inputs(plan):
         if any(preparation.get(key) != stage[key] for key in (
                 "request_count", "requests_sha256", "envelope_sha256")):
             raise ValueError("tokenizer preparation must bind the exact frozen corpus")
+        if sample_design is not None:
+            if protocol.get("sample_design") != sample_design:
+                raise ValueError("request protocol sample design differs from frozen plan")
+            base = {row["case_id"]: row for row in rows}
+            question_count = sample_design["question_count"]
+            strata = Counter(row["stratum"] for row in base.values())
+            actual_strata = {kind: strata[kind] for kind in ("SPAN", "YES_NO", "NO_ANSWER")}
+            if (len(base) != question_count or actual_strata != sample_design["strata"]
+                    or preparation.get("question_count") != question_count
+                    or preparation.get("strata") != actual_strata):
+                raise ValueError("fresh document question count or strata differ from frozen sample")
+            parent_ids = {row["parent_document_id"] for row in base.values()}
+            document_hashes = {row["document_sha256"] for row in base.values()}
+            if (len(parent_ids) != question_count or len(document_hashes) != question_count
+                    or any(not re.fullmatch(r"[0-9a-f]{64}", value) for value in document_hashes)
+                    or preparation.get("parent_articles") != question_count):
+                raise ValueError("fresh document sample requires one distinct parent article and content hash per question")
         token = preparation["models"][stage["model_key"]]
         if (token["request_count"] != stage["request_count"] or token["overflow_count"] != 0
                 or not 0 < token["max_prompt_tokens"] <= 8192 - 128
