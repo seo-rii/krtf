@@ -1,0 +1,2139 @@
+{
+  "schema_version": 1,
+  "annotation_origin": "AI_AUTHORED",
+  "human_verified": false,
+  "authored_by": "codex-extended-execution-safety",
+  "gold_source": "Explicit authored document semantics and authored glossary definitions, fixed before any resolver invocation.",
+  "limitations": [
+    "Diagnostic authored cases, not a deployment sample or independent risk estimate.",
+    "Each family shares terminology; case counts do not represent 96 independent families.",
+    "All organization histories except the existing Gangwon glossary reference are fictional."
+  ],
+  "families": [
+    {
+      "family_id": "geo-gangwon",
+      "stratum": "homonym_geography",
+      "domain": "real_glossary_diagnostic",
+      "glossary_mode": "realorg",
+      "terms": [],
+      "source_facts": [
+        "고정 realorg_glossary의 ORG_GANGWON은 영동·영서 광역자치단체다.",
+        "각 문서가 남한 또는 북한 관할을 명시하며, 역사·현재 법정명 변경에 대한 사실 주장은 하지 않는다."
+      ],
+      "cases": [
+        {
+          "case_id": "geo-gangwon:1",
+          "text": "자료의 지역 키는 대한민국 관할만 사용한다. 강원도 항목은 영동·영서의 광역자치단체를 뜻하며 이번 국내 행정구역 묶음에 속한다.",
+          "target_surface": "강원도",
+          "target_span": [
+            25,
+            28
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "ORG_GANGWON",
+            "full_identity": "SAME"
+          },
+          "rationale": "대한민국 영동·영서라는 원문 한정과 고정 사전 항목의 정의가 일치한다."
+        },
+        {
+          "case_id": "geo-gangwon:2",
+          "text": "국내 지역별 양식을 합쳤다. 이 표에서 강원도는 남한의 도 단위 행정구역이고, 다른 나라의 동명 지역은 표에 넣지 않았다.",
+          "target_surface": "강원도",
+          "target_span": [
+            22,
+            25
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "ORG_GANGWON",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문이 남한의 도 단위 지역으로 범위를 명시한다."
+        },
+        {
+          "case_id": "geo-gangwon:3",
+          "text": "이 보고서의 강원도는 북한 관할 지역을 가리킨다. 남한의 영동·영서 광역자치단체에 대한 내용은 이 문서의 대상이 아니다.",
+          "target_surface": "강원도",
+          "target_span": [
+            7,
+            10
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "대상이 북한 관할로 명시되어 대한민국 사전 ID와 다르며 북한 대상은 이 사전에 없다."
+        },
+        {
+          "case_id": "geo-gangwon:4",
+          "text": "필자의 지명 사용 기준은 북한 행정구역이다. 조사 지역 강원도에는 남한 지역 자료를 합산하지 않았으며, 이름이 같다는 이유로 국내 지역 코드를 붙이지 말라고 명시했다.",
+          "target_surface": "강원도",
+          "target_span": [
+            31,
+            34
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "동명 남북 지역을 원문이 분리한다. 현재 사전의 대한민국 지역 ID로 대체할 수 없다."
+        }
+      ]
+    },
+    {
+      "family_id": "geo-haeon",
+      "stratum": "homonym_geography",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "haeon",
+          "canonical": "해온시",
+          "short_definition": "가상 연우국 동부의 항만 도시",
+          "surfaces": [],
+          "type": "place",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "연우국·다울국과 해당 도시는 이 평가에서 창작한 설정이다.",
+        "사전에는 연우국 동부 항만 도시만 등록한다."
+      ],
+      "cases": [
+        {
+          "case_id": "geo-haeon:1",
+          "text": "가상 연우국의 동부 항만 구역에서 해온시가 새 부두 사용표를 배포했다. 지역 키는 연우국 행정 사전을 따른다.",
+          "target_surface": "해온시",
+          "target_span": [
+            19,
+            22
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:haeon",
+            "full_identity": "SAME"
+          },
+          "rationale": "연우국 항만 도시라는 등록 의미가 원문에 명시된다."
+        },
+        {
+          "case_id": "geo-haeon:2",
+          "text": "국가란에는 연우국, 지역란에는 해온시를 적었다. 담당자는 동부 항만 도시를 선택했는지 다시 확인했다.",
+          "target_surface": "해온시",
+          "target_span": [
+            17,
+            20
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:haeon",
+            "full_identity": "SAME"
+          },
+          "rationale": "국가와 지역 역할이 등록 도시와 일치한다."
+        },
+        {
+          "case_id": "geo-haeon:3",
+          "text": "가상 다울국에서 온 배송장이다. 목적지 해온시는 이 나라 내륙의 동명 도시이며 연우국 항만 도시와 우편 체계가 다르다.",
+          "target_surface": "해온시",
+          "target_span": [
+            22,
+            25
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "등록되지 않은 타국의 동명 도시다."
+        },
+        {
+          "case_id": "geo-haeon:4",
+          "text": "게임 대본은 현실 설정의 연우국을 쓰지 않는다. 주인공이 도착한 해온시는 달 뒷면에 세운 가상 정거장의 이름이다.",
+          "target_surface": "해온시",
+          "target_span": [
+            36,
+            39
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "동일 문자열이 별도 가상 정거장을 지칭한다."
+        }
+      ]
+    },
+    {
+      "family_id": "geo-dasol",
+      "stratum": "homonym_geography",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "dasol",
+          "canonical": "다솔군",
+          "short_definition": "가상 라은도의 농업 행정 군",
+          "surfaces": [],
+          "type": "place",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "라은도 다솔군은 창작한 농업 행정구역이다.",
+        "동음의 군대 명칭과 인명 호칭은 사전에 없다."
+      ],
+      "cases": [
+        {
+          "case_id": "geo-dasol:1",
+          "text": "라은도 농업 행정 보고에서 다솔군은 관개로 정비 예산을 제출했다. 이 문서의 군은 행정구역 단위다.",
+          "target_surface": "다솔군",
+          "target_span": [
+            15,
+            18
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:dasol",
+            "full_identity": "SAME"
+          },
+          "rationale": "라은도의 농업 행정 군과 일치한다."
+        },
+        {
+          "case_id": "geo-dasol:2",
+          "text": "협약서의 소재지는 가상 라은도 다솔군이다. 두 면의 공동 농기계 관리 업무를 이 행정구역에 맡긴다.",
+          "target_surface": "다솔군",
+          "target_span": [
+            17,
+            20
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:dasol",
+            "full_identity": "SAME"
+          },
+          "rationale": "행정 군이라는 원문 근거가 있다."
+        },
+        {
+          "case_id": "geo-dasol:3",
+          "text": "세계관 설정집의 다솔군은 북쪽 왕국이 파견한 군대 명칭이다. 행정 군 단위가 아니라 부대 편제를 적은 대목이다.",
+          "target_surface": "다솔군",
+          "target_span": [
+            9,
+            12
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "군대와 행정구역은 같은 개체가 아니다."
+        },
+        {
+          "case_id": "geo-dasol:4",
+          "text": "학생 명단에서 다솔군은 이름이 다솔인 남학생을 부르는 호칭이다. 주소나 행정구역을 적는 칸은 아니다.",
+          "target_surface": "다솔군",
+          "target_span": [
+            8,
+            11
+          ],
+          "gold": {
+            "label": "NON_MENTION",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "인명에 붙인 호칭이며 지명 언급이 아니다."
+        }
+      ]
+    },
+    {
+      "family_id": "geo-saebit",
+      "stratum": "homonym_geography",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "saebit",
+          "canonical": "새빛동",
+          "short_definition": "가상 누리시의 주거 행정 동",
+          "surfaces": [],
+          "type": "place",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "누리시 새빛동은 창작한 주거 행정구역이다.",
+        "건물과 소은시 공장 지구는 동명 별도 대상이다."
+      ],
+      "cases": [
+        {
+          "case_id": "geo-saebit:1",
+          "text": "누리시 주민등록 업무에서 새빛동은 주거 지역을 담당하는 행정 동이다. 이 동의 주소 정비 신청을 한 묶음으로 접수한다.",
+          "target_surface": "새빛동",
+          "target_span": [
+            14,
+            17
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:saebit",
+            "full_identity": "SAME"
+          },
+          "rationale": "등록된 누리시의 행정 동이다."
+        },
+        {
+          "case_id": "geo-saebit:2",
+          "text": "가상 누리시가 동별 주민 회의 순서를 발표했다. 새빛동 차례에는 해당 행정구역의 주소 표기만 확인한다.",
+          "target_surface": "새빛동",
+          "target_span": [
+            27,
+            30
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:saebit",
+            "full_identity": "SAME"
+          },
+          "rationale": "누리시 동별 업무라는 문맥이 등록 지명을 고정한다."
+        },
+        {
+          "case_id": "geo-saebit:3",
+          "text": "요양원 내부 배치도에서 새빛동은 2층 치료실이 있는 건물 이름이다. 누리시의 행정 동을 뜻하지 않는다.",
+          "target_surface": "새빛동",
+          "target_span": [
+            13,
+            16
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "행정구역이 아니라 사전 미등록 건물이다."
+        },
+        {
+          "case_id": "geo-saebit:4",
+          "text": "소설의 배경은 가상 소은시다. 새빛동은 그 도시의 공장 지구이고 누리시 주거 지역과 무관하다고 설정표에 적혀 있다.",
+          "target_surface": "새빛동",
+          "target_span": [
+            17,
+            20
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "다른 도시의 동명 구역은 미등록 별도 대상이다."
+        }
+      ]
+    },
+    {
+      "family_id": "geo-miru",
+      "stratum": "homonym_geography",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "miru",
+          "canonical": "미루항",
+          "short_definition": "가상 다현섬 서안의 화물 항구",
+          "surfaces": [],
+          "type": "place",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "다현섬과 미루항은 창작 설정이며 등록 대상은 서안 화물 항구다.",
+        "연극 제목과 다른 지도 속 선착장은 등록하지 않는다."
+      ],
+      "cases": [
+        {
+          "case_id": "geo-miru:1",
+          "text": "다현섬 서안 화물 항구인 미루항에서 하역 일정 조정안을 냈다. 섬의 여객 선착장 일정은 별도 표로 관리한다.",
+          "target_surface": "미루항",
+          "target_span": [
+            14,
+            17
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:miru",
+            "full_identity": "SAME"
+          },
+          "rationale": "등록 화물 항구의 섬과 방향이 명시된다."
+        },
+        {
+          "case_id": "geo-miru:2",
+          "text": "접안 신청서에는 다현섬 서안이라고 기재되어 있다. 도착지는 미루항이며 화물선 한 척의 하역 시간을 요청한다.",
+          "target_surface": "미루항",
+          "target_span": [
+            33,
+            36
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:miru",
+            "full_identity": "SAME"
+          },
+          "rationale": "서안 화물 항구를 지칭한다."
+        },
+        {
+          "case_id": "geo-miru:3",
+          "text": "연극 제목 미루항은 가상의 이별 이야기를 뜻한다. 무대 안내에는 실제 항만이나 지도 좌표를 연결하지 않도록 했다.",
+          "target_surface": "미루항",
+          "target_span": [
+            6,
+            9
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "작품 제목은 항구와 별도 대상이며 미등록이다."
+        },
+        {
+          "case_id": "geo-miru:4",
+          "text": "가상 서윤대륙 지도는 다현섬과 별개다. 그 지도에서 미루항은 강 상류의 여객 선착장으로 설정되어 있다.",
+          "target_surface": "미루항",
+          "target_span": [
+            29,
+            32
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "다른 세계관의 동명 선착장이다."
+        }
+      ]
+    },
+    {
+      "family_id": "geo-noeul",
+      "stratum": "homonym_geography",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "noeul",
+          "canonical": "노을구",
+          "short_definition": "가상 서담시의 서쪽 자치구",
+          "surfaces": [],
+          "type": "place",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "서담시 노을구는 창작한 자치구다.",
+        "동명 상품과 예온시 상업구는 별개 설정이다."
+      ],
+      "cases": [
+        {
+          "case_id": "geo-noeul:1",
+          "text": "서담시의 서쪽 자치구 노을구가 생활 폐기물 회수 시간을 조정했다. 다른 시의 지역 자료는 이 공문에 포함하지 않는다.",
+          "target_surface": "노을구",
+          "target_span": [
+            12,
+            15
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:noeul",
+            "full_identity": "SAME"
+          },
+          "rationale": "서담시 서쪽 자치구로 명시된다."
+        },
+        {
+          "case_id": "geo-noeul:2",
+          "text": "관할 선택표에서 광역 표시는 서담시다. 노을구는 그 서쪽 자치구를 가리키며 구청 민원 창구 번호를 기록한다.",
+          "target_surface": "노을구",
+          "target_span": [
+            22,
+            25
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:noeul",
+            "full_identity": "SAME"
+          },
+          "rationale": "사전의 자치구와 일치한다."
+        },
+        {
+          "case_id": "geo-noeul:3",
+          "text": "장난감 설계서에는 둥근 발광 부품의 상품명으로 노을구를 쓴다. 여기서 구는 구체 모양을 뜻하며 주소와 관계없다.",
+          "target_surface": "노을구",
+          "target_span": [
+            26,
+            29
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "상품 부품명은 행정구역과 별개다."
+        },
+        {
+          "case_id": "geo-noeul:4",
+          "text": "이번 소설의 도시는 가상 예온시다. 노을구는 그 도시 동쪽 상업구이며 서담시의 동명 자치구와는 다른 장소다.",
+          "target_surface": "노을구",
+          "target_span": [
+            20,
+            23
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "다른 도시의 동명 구역은 등록 ID가 없다."
+        }
+      ]
+    },
+    {
+      "family_id": "role-onbit",
+      "stratum": "organization_role",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "role-onbit",
+          "canonical": "온빛기록원",
+          "short_definition": "지역 기록물 보존을 맡는 가상 기관",
+          "surfaces": [
+            "온기원"
+          ],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "지역 기록물 보존을 맡는 가상 기관이며 온기원은 같은 기관의 약칭이다.",
+        "기관에 딸린 직위·사람·산출물의 별도 항목은 사전에 없다."
+      ],
+      "cases": [
+        {
+          "case_id": "role-onbit:1",
+          "text": "분류 기준 개정은 온빛기록원에서 맡았다. 보존 기관 자체를 협약 당사자로 기재하며 담당 직원 개인은 계약 당사자가 아니다.",
+          "target_surface": "온빛기록원",
+          "target_span": [
+            10,
+            15
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:role-onbit",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문이 등록된 기관 자체를 명시한다."
+        },
+        {
+          "case_id": "role-onbit:2",
+          "text": "지역 기록물 보존 기관을 내부 문서에서 온기원이라 부른다. 새 보관 상자의 검수 책임은 이 기관에 있다.",
+          "target_surface": "온기원",
+          "target_span": [
+            22,
+            25
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:role-onbit",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문이 등록된 기관 자체를 명시한다."
+        },
+        {
+          "case_id": "role-onbit:3",
+          "text": "면담 대상 온빛기록원장은 기록 보존 기관의 책임자 개인이다. 이번 표는 기관 주소가 아닌 참석자 직위를 적는다.",
+          "target_surface": "온빛기록원장",
+          "target_span": [
+            6,
+            12
+          ],
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT",
+            "core_surface": "온빛기록원",
+            "core_entity_ref": "global:role-onbit"
+          },
+          "rationale": "전체 표현은 기관과 다른 역할·사람·산출물이다. 내부 core만 등록 기관을 지칭한다."
+        },
+        {
+          "case_id": "role-onbit:4",
+          "text": "새 서가의 분류 근거로 온기원보고서를 읽었다. 이는 기관이 발행한 문서 한 권이며 기관 자체의 명칭이 아니다.",
+          "target_surface": "온기원보고서",
+          "target_span": [
+            13,
+            19
+          ],
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT",
+            "core_surface": "온기원",
+            "core_entity_ref": "global:role-onbit"
+          },
+          "rationale": "전체 표현은 기관과 다른 역할·사람·산출물이다. 내부 core만 등록 기관을 지칭한다."
+        }
+      ]
+    },
+    {
+      "family_id": "role-haneul",
+      "stratum": "organization_role",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "role-haneul",
+          "canonical": "하늘검증센터",
+          "short_definition": "센서 품질 시험을 수행하는 가상 센터",
+          "surfaces": [
+            "하검센터"
+          ],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "센서 품질 시험을 수행하는 가상 센터이며 하검센터은 같은 기관의 약칭이다.",
+        "기관에 딸린 직위·사람·산출물의 별도 항목은 사전에 없다."
+      ],
+      "cases": [
+        {
+          "case_id": "role-haneul:1",
+          "text": "센서 시험의 위탁 당사자는 하늘검증센터다. 협약서에는 직원 이름 대신 이 검증 기관을 적는다.",
+          "target_surface": "하늘검증센터",
+          "target_span": [
+            15,
+            21
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:role-haneul",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문이 등록된 기관 자체를 명시한다."
+        },
+        {
+          "case_id": "role-haneul:2",
+          "text": "장비 점검 일정은 하검센터가 승인했다. 이 약칭은 센서 품질 시험 기관을 뜻한다.",
+          "target_surface": "하검센터",
+          "target_span": [
+            10,
+            14
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:role-haneul",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문이 등록된 기관 자체를 명시한다."
+        },
+        {
+          "case_id": "role-haneul:3",
+          "text": "하늘검증센터장은 오늘 시험 결과를 설명한 책임자다. 발표자 칸에는 기관이 아니라 해당 직위를 넣는다.",
+          "target_surface": "하늘검증센터장",
+          "target_span": [
+            0,
+            7
+          ],
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT",
+            "core_surface": "하늘검증센터",
+            "core_entity_ref": "global:role-haneul"
+          },
+          "rationale": "전체 표현은 기관과 다른 역할·사람·산출물이다. 내부 core만 등록 기관을 지칭한다."
+        },
+        {
+          "case_id": "role-haneul:4",
+          "text": "품질 검토에서 하검센터직원은 측정 장치를 조작한 사람을 뜻한다. 조직 자체를 작업자로 입력하지 않는다.",
+          "target_surface": "하검센터직원",
+          "target_span": [
+            8,
+            14
+          ],
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT",
+            "core_surface": "하검센터",
+            "core_entity_ref": "global:role-haneul"
+          },
+          "rationale": "전체 표현은 기관과 다른 역할·사람·산출물이다. 내부 core만 등록 기관을 지칭한다."
+        }
+      ]
+    },
+    {
+      "family_id": "role-damun",
+      "stratum": "organization_role",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "role-damun",
+          "canonical": "다문교류재단",
+          "short_definition": "지역 언어 교류 사업을 운영하는 가상 재단",
+          "surfaces": [
+            "다문재단"
+          ],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "지역 언어 교류 사업을 운영하는 가상 재단이며 다문재단은 같은 기관의 약칭이다.",
+        "기관에 딸린 직위·사람·산출물의 별도 항목은 사전에 없다."
+      ],
+      "cases": [
+        {
+          "case_id": "role-damun:1",
+          "text": "후원금의 수령 법인은 다문교류재단이다. 지역 언어 교류 사업의 정산 의무도 이 재단이 맡는다.",
+          "target_surface": "다문교류재단",
+          "target_span": [
+            12,
+            18
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:role-damun",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문이 등록된 기관 자체를 명시한다."
+        },
+        {
+          "case_id": "role-damun:2",
+          "text": "언어 교류 사업 지원서에서 다문재단은 운영 재단의 약칭이다. 담당자의 개인 계좌로는 지원금을 보내지 않는다.",
+          "target_surface": "다문재단",
+          "target_span": [
+            15,
+            19
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:role-damun",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문이 등록된 기관 자체를 명시한다."
+        },
+        {
+          "case_id": "role-damun:3",
+          "text": "다문교류재단이사장은 면담에 참석한 한 사람의 직책이다. 그가 소속한 법인을 대신 선택하라는 요청은 아니다.",
+          "target_surface": "다문교류재단이사장",
+          "target_span": [
+            0,
+            9
+          ],
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT",
+            "core_surface": "다문교류재단",
+            "core_entity_ref": "global:role-damun"
+          },
+          "rationale": "전체 표현은 기관과 다른 역할·사람·산출물이다. 내부 core만 등록 기관을 지칭한다."
+        },
+        {
+          "case_id": "role-damun:4",
+          "text": "배포 목록의 다문재단소식지는 행사 소식을 담은 정기 간행물이다. 발행 기관과 간행물의 식별자를 섞지 않는다.",
+          "target_surface": "다문재단소식지",
+          "target_span": [
+            7,
+            14
+          ],
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT",
+            "core_surface": "다문재단",
+            "core_entity_ref": "global:role-damun"
+          },
+          "rationale": "전체 표현은 기관과 다른 역할·사람·산출물이다. 내부 core만 등록 기관을 지칭한다."
+        }
+      ]
+    },
+    {
+      "family_id": "role-garam",
+      "stratum": "organization_role",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "role-garam",
+          "canonical": "가람안전청",
+          "short_definition": "가상 수로의 시설 안전을 점검하는 기관",
+          "surfaces": [
+            "가안청"
+          ],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "가상 수로의 시설 안전을 점검하는 기관이며 가안청은 같은 기관의 약칭이다.",
+        "기관에 딸린 직위·사람·산출물의 별도 항목은 사전에 없다."
+      ],
+      "cases": [
+        {
+          "case_id": "role-garam:1",
+          "text": "수문 안전 점검의 관할 기관은 가람안전청이다. 현장 작업자의 이름은 별도 칸에서 관리한다.",
+          "target_surface": "가람안전청",
+          "target_span": [
+            17,
+            22
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:role-garam",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문이 등록된 기관 자체를 명시한다."
+        },
+        {
+          "case_id": "role-garam:2",
+          "text": "가상 수로 안전 점검 기관의 내부 약칭은 가안청이다. 시설 점검 요청을 이 기관의 공용 접수함으로 보낸다.",
+          "target_surface": "가안청",
+          "target_span": [
+            23,
+            26
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:role-garam",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문이 등록된 기관 자체를 명시한다."
+        },
+        {
+          "case_id": "role-garam:3",
+          "text": "인사 기사에서 가람안전청장은 수로 안전 기관을 이끄는 직위를 가리킨다. 대상은 관청 건물이나 기관이 아니다.",
+          "target_surface": "가람안전청장",
+          "target_span": [
+            8,
+            14
+          ],
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT",
+            "core_surface": "가람안전청",
+            "core_entity_ref": "global:role-garam"
+          },
+          "rationale": "전체 표현은 기관과 다른 역할·사람·산출물이다. 내부 core만 등록 기관을 지칭한다."
+        },
+        {
+          "case_id": "role-garam:4",
+          "text": "공사 계획에 첨부한 가안청권고문은 점검 기관의 권고를 적은 문서다. 이 자료의 발행기관 ID를 문서 ID로 쓰면 안 된다.",
+          "target_surface": "가안청권고문",
+          "target_span": [
+            11,
+            17
+          ],
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT",
+            "core_surface": "가안청",
+            "core_entity_ref": "global:role-garam"
+          },
+          "rationale": "전체 표현은 기관과 다른 역할·사람·산출물이다. 내부 core만 등록 기관을 지칭한다."
+        }
+      ]
+    },
+    {
+      "family_id": "role-sodam",
+      "stratum": "organization_role",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "role-sodam",
+          "canonical": "소담자료원",
+          "short_definition": "지역 조사 자료를 정리하는 가상 기관",
+          "surfaces": [
+            "소자료원"
+          ],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "지역 조사 자료를 정리하는 가상 기관이며 소자료원은 같은 기관의 약칭이다.",
+        "기관에 딸린 직위·사람·산출물의 별도 항목은 사전에 없다."
+      ],
+      "cases": [
+        {
+          "case_id": "role-sodam:1",
+          "text": "공동 연구 협약에서 소담자료원은 지역 조사 자료를 제공하는 기관이다. 소속 연구자의 개인 활동과 구별해 적었다.",
+          "target_surface": "소담자료원",
+          "target_span": [
+            11,
+            16
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:role-sodam",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문이 등록된 기관 자체를 명시한다."
+        },
+        {
+          "case_id": "role-sodam:2",
+          "text": "자료 요청 목록의 소자료원은 지역 조사 자료 정리 기관의 약칭이다. 이 기관의 공개 목록을 신청한다.",
+          "target_surface": "소자료원",
+          "target_span": [
+            10,
+            14
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:role-sodam",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문이 등록된 기관 자체를 명시한다."
+        },
+        {
+          "case_id": "role-sodam:3",
+          "text": "소담자료원연구원은 설문을 설계한 연구직 직원을 뜻한다. 표의 대상은 기관 자체가 아니라 사람의 역할이다.",
+          "target_surface": "소담자료원연구원",
+          "target_span": [
+            0,
+            8
+          ],
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT",
+            "core_surface": "소담자료원",
+            "core_entity_ref": "global:role-sodam"
+          },
+          "rationale": "전체 표현은 기관과 다른 역할·사람·산출물이다. 내부 core만 등록 기관을 지칭한다."
+        },
+        {
+          "case_id": "role-sodam:4",
+          "text": "소자료원장에게 개인 발표 시간을 배정했다. 이 표현 전체는 기관의 책임자 직위를 가리킨다.",
+          "target_surface": "소자료원장",
+          "target_span": [
+            0,
+            5
+          ],
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT",
+            "core_surface": "소자료원",
+            "core_entity_ref": "global:role-sodam"
+          },
+          "rationale": "전체 표현은 기관과 다른 역할·사람·산출물이다. 내부 core만 등록 기관을 지칭한다."
+        }
+      ]
+    },
+    {
+      "family_id": "role-yunseul",
+      "stratum": "organization_role",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "role-yunseul",
+          "canonical": "윤슬운영공단",
+          "short_definition": "가상 공연장 대관을 운영하는 공단",
+          "surfaces": [
+            "윤슬공단"
+          ],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "가상 공연장 대관을 운영하는 공단이며 윤슬공단은 같은 기관의 약칭이다.",
+        "기관에 딸린 직위·사람·산출물의 별도 항목은 사전에 없다."
+      ],
+      "cases": [
+        {
+          "case_id": "role-yunseul:1",
+          "text": "대관 계약의 운영 주체는 윤슬운영공단이다. 공연장 이용료도 이 공단 명의로 정산한다.",
+          "target_surface": "윤슬운영공단",
+          "target_span": [
+            14,
+            20
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:role-yunseul",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문이 등록된 기관 자체를 명시한다."
+        },
+        {
+          "case_id": "role-yunseul:2",
+          "text": "이번 안내의 윤슬공단은 공연장 대관 운영 공단을 줄여 쓴 말이다. 시설 이용 신청을 접수하는 조직을 지칭한다.",
+          "target_surface": "윤슬공단",
+          "target_span": [
+            7,
+            11
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:role-yunseul",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문이 등록된 기관 자체를 명시한다."
+        },
+        {
+          "case_id": "role-yunseul:3",
+          "text": "윤슬운영공단이사장은 심사 회의를 주재한 직위다. 조직 운영 주체와 회의 참석자를 같은 ID로 기록하지 않는다.",
+          "target_surface": "윤슬운영공단이사장",
+          "target_span": [
+            0,
+            9
+          ],
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT",
+            "core_surface": "윤슬운영공단",
+            "core_entity_ref": "global:role-yunseul"
+          },
+          "rationale": "전체 표현은 기관과 다른 역할·사람·산출물이다. 내부 core만 등록 기관을 지칭한다."
+        },
+        {
+          "case_id": "role-yunseul:4",
+          "text": "윤슬공단직원에게 유실물을 전달했다. 전체 표현은 공단에 소속된 사람을 가리키므로 조직 자체가 아니다.",
+          "target_surface": "윤슬공단직원",
+          "target_span": [
+            0,
+            6
+          ],
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT",
+            "core_surface": "윤슬공단",
+            "core_entity_ref": "global:role-yunseul"
+          },
+          "rationale": "전체 표현은 기관과 다른 역할·사람·산출물이다. 내부 core만 등록 기관을 지칭한다."
+        }
+      ]
+    },
+    {
+      "family_id": "hist-mirae",
+      "stratum": "historical_current",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "hist-mirae",
+          "canonical": "미래기록재단",
+          "short_definition": "2024년 신설되어 전자 기록 보존을 맡는 가상 법인. 2012년 해산한 동명 종이자료 재단과 별개다.",
+          "surfaces": [],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "2024년 신설되어 전자 기록 보존을 맡는 가상 법인. 2012년 해산한 동명 종이자료 재단과 별개다.",
+        "날짜와 조직 관계는 전부 평가용 창작이며 실제 기관 역사 주장이 아니다."
+      ],
+      "cases": [
+        {
+          "case_id": "hist-mirae:1",
+          "text": "2025년 계약의 미래기록재단은 2024년에 새로 설립한 전자 기록 보존 법인이다. 옛 재단의 법인 번호를 승계하지 않았다.",
+          "target_surface": "미래기록재단",
+          "target_span": [
+            10,
+            16
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:hist-mirae",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문에 명시된 설립 시점과 활동이 등록된 현재 조직과 일치한다."
+        },
+        {
+          "case_id": "hist-mirae:2",
+          "text": "현재 사업자는 미래기록재단으로 기재한다. 설립 연도는 2024년이며 전자 기록 보존을 맡는 새 법인이다.",
+          "target_surface": "미래기록재단",
+          "target_span": [
+            8,
+            14
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:hist-mirae",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문에 명시된 설립 시점과 활동이 등록된 현재 조직과 일치한다."
+        },
+        {
+          "case_id": "hist-mirae:3",
+          "text": "2010년 회의록의 미래기록재단은 종이자료 수집을 맡다가 2012년에 해산한 옛 법인이다. 현재 전자 기록 재단과 법적 동일성이 없다.",
+          "target_surface": "미래기록재단",
+          "target_span": [
+            11,
+            17
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문이 현재 조직과 법적·의미적으로 다른 옛 대상을 명시하며 옛 대상은 사전에 없다."
+        },
+        {
+          "case_id": "hist-mirae:4",
+          "text": "구 기증 계약에 나온 미래기록재단은 2012년에 소멸한 종이자료 재단이다. 2024년의 동명 법인은 이 계약의 당사자가 아니다.",
+          "target_surface": "미래기록재단",
+          "target_span": [
+            12,
+            18
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문이 현재 조직과 법적·의미적으로 다른 옛 대상을 명시하며 옛 대상은 사전에 없다."
+        }
+      ]
+    },
+    {
+      "family_id": "hist-areum",
+      "stratum": "historical_current",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "hist-areum",
+          "canonical": "아름측정원",
+          "short_definition": "2025년 설립된 가상 민간 계측 기관. 2019년 폐지된 동명 교내 실습실과 별개다.",
+          "surfaces": [],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "2025년 설립된 가상 민간 계측 기관. 2019년 폐지된 동명 교내 실습실과 별개다.",
+        "날짜와 조직 관계는 전부 평가용 창작이며 실제 기관 역사 주장이 아니다."
+      ],
+      "cases": [
+        {
+          "case_id": "hist-areum:1",
+          "text": "사업자 확인서의 아름측정원은 2025년에 설립된 민간 계측 기관이다. 학교 실습실의 장비 번호를 사용하지 않는다.",
+          "target_surface": "아름측정원",
+          "target_span": [
+            9,
+            14
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:hist-areum",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문에 명시된 설립 시점과 활동이 등록된 현재 조직과 일치한다."
+        },
+        {
+          "case_id": "hist-areum:2",
+          "text": "현행 민간 계측 계약의 수행자는 아름측정원이다. 법인 등록란에는 2025년 신설 기관이라고 명시했다.",
+          "target_surface": "아름측정원",
+          "target_span": [
+            18,
+            23
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:hist-areum",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문에 명시된 설립 시점과 활동이 등록된 현재 조직과 일치한다."
+        },
+        {
+          "case_id": "hist-areum:3",
+          "text": "2018년 수업 계획에서 아름측정원은 학생용 교내 실습실을 말한다. 이 공간은 2019년에 폐지됐고 민간 기관과 별개다.",
+          "target_surface": "아름측정원",
+          "target_span": [
+            14,
+            19
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문이 현재 조직과 법적·의미적으로 다른 옛 대상을 명시하며 옛 대상은 사전에 없다."
+        },
+        {
+          "case_id": "hist-areum:4",
+          "text": "보존 중인 교내 장비 대장의 아름측정원은 2019년 폐지된 실습실이다. 2025년 민간 계측 기관을 가리키는 명칭이 아니다.",
+          "target_surface": "아름측정원",
+          "target_span": [
+            16,
+            21
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문이 현재 조직과 법적·의미적으로 다른 옛 대상을 명시하며 옛 대상은 사전에 없다."
+        }
+      ]
+    },
+    {
+      "family_id": "hist-dabom",
+      "stratum": "historical_current",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "hist-dabom",
+          "canonical": "다봄지원단",
+          "short_definition": "2023년 신설된 가상 상시 지역지원 조직. 2020년에 종료된 동명 축제 임시단과 별개다.",
+          "surfaces": [],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "2023년 신설된 가상 상시 지역지원 조직. 2020년에 종료된 동명 축제 임시단과 별개다.",
+        "날짜와 조직 관계는 전부 평가용 창작이며 실제 기관 역사 주장이 아니다."
+      ],
+      "cases": [
+        {
+          "case_id": "hist-dabom:1",
+          "text": "상시 민원 지원을 맡은 다봄지원단은 2023년에 새로 설치됐다. 올해 업무도 지역지원 조직의 계속 사업이다.",
+          "target_surface": "다봄지원단",
+          "target_span": [
+            13,
+            18
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:hist-dabom",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문에 명시된 설립 시점과 활동이 등록된 현재 조직과 일치한다."
+        },
+        {
+          "case_id": "hist-dabom:2",
+          "text": "지역지원 인력의 소속은 다봄지원단이다. 상시 조직 설치 문서에 2023년 신설이라고 적혀 있다.",
+          "target_surface": "다봄지원단",
+          "target_span": [
+            13,
+            18
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:hist-dabom",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문에 명시된 설립 시점과 활동이 등록된 현재 조직과 일치한다."
+        },
+        {
+          "case_id": "hist-dabom:3",
+          "text": "2020년 축제 결산서의 다봄지원단은 행사 후 해산한 임시 조직이다. 2023년의 상시 조직을 소급해 지칭하지 않는다.",
+          "target_surface": "다봄지원단",
+          "target_span": [
+            14,
+            19
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문이 현재 조직과 법적·의미적으로 다른 옛 대상을 명시하며 옛 대상은 사전에 없다."
+        },
+        {
+          "case_id": "hist-dabom:4",
+          "text": "폐기 대상 배지에 적힌 다봄지원단은 2020년 축제 때만 활동한 임시단이다. 이후 상시 지역지원 조직과는 다른 단체다.",
+          "target_surface": "다봄지원단",
+          "target_span": [
+            13,
+            18
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문이 현재 조직과 법적·의미적으로 다른 옛 대상을 명시하며 옛 대상은 사전에 없다."
+        }
+      ]
+    },
+    {
+      "family_id": "hist-yedam",
+      "stratum": "historical_current",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "hist-yedam",
+          "canonical": "예담자료센터",
+          "short_definition": "2022년 세운 가상 유료 데이터센터. 2015년 문을 닫은 동명 시민 독서 공간과 별개다.",
+          "surfaces": [],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "2022년 세운 가상 유료 데이터센터. 2015년 문을 닫은 동명 시민 독서 공간과 별개다.",
+        "날짜와 조직 관계는 전부 평가용 창작이며 실제 기관 역사 주장이 아니다."
+      ],
+      "cases": [
+        {
+          "case_id": "hist-yedam:1",
+          "text": "신규 서버 계약서의 예담자료센터는 2022년 설립한 유료 데이터센터다. 계약 대상은 데이터 저장 서비스 제공 조직이다.",
+          "target_surface": "예담자료센터",
+          "target_span": [
+            11,
+            17
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:hist-yedam",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문에 명시된 설립 시점과 활동이 등록된 현재 조직과 일치한다."
+        },
+        {
+          "case_id": "hist-yedam:2",
+          "text": "서비스 장애 공지의 발신자는 예담자료센터다. 2022년에 세운 데이터센터에서 운영하는 현행 서비스에 관한 안내다.",
+          "target_surface": "예담자료센터",
+          "target_span": [
+            16,
+            22
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:hist-yedam",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문에 명시된 설립 시점과 활동이 등록된 현재 조직과 일치한다."
+        },
+        {
+          "case_id": "hist-yedam:3",
+          "text": "2014년 독서 모임 안내에서 예담자료센터는 시민에게 책을 빌려주던 공간이다. 2015년에 폐쇄됐으며 이후 데이터센터와 관계없다.",
+          "target_surface": "예담자료센터",
+          "target_span": [
+            17,
+            23
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문이 현재 조직과 법적·의미적으로 다른 옛 대상을 명시하며 옛 대상은 사전에 없다."
+        },
+        {
+          "case_id": "hist-yedam:4",
+          "text": "기록물 사진 속 예담자료센터는 2015년 문을 닫은 독서 공간이다. 2022년 설립 데이터센터가 이 사진의 대상은 아니다.",
+          "target_surface": "예담자료센터",
+          "target_span": [
+            9,
+            15
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문이 현재 조직과 법적·의미적으로 다른 옛 대상을 명시하며 옛 대상은 사전에 없다."
+        }
+      ]
+    },
+    {
+      "family_id": "hist-solbit",
+      "stratum": "historical_current",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "hist-solbit",
+          "canonical": "솔빛운영회",
+          "short_definition": "2026년 출범한 가상 협동조합 운영회. 2021년 활동을 끝낸 동명 공연 동호회와 별개다.",
+          "surfaces": [],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "2026년 출범한 가상 협동조합 운영회. 2021년 활동을 끝낸 동명 공연 동호회와 별개다.",
+        "날짜와 조직 관계는 전부 평가용 창작이며 실제 기관 역사 주장이 아니다."
+      ],
+      "cases": [
+        {
+          "case_id": "hist-solbit:1",
+          "text": "협동조합 회계 문서에서 솔빛운영회는 2026년에 출범한 운영 조직이다. 공연 동호회 활동비와는 회계를 분리한다.",
+          "target_surface": "솔빛운영회",
+          "target_span": [
+            13,
+            18
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:hist-solbit",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문에 명시된 설립 시점과 활동이 등록된 현재 조직과 일치한다."
+        },
+        {
+          "case_id": "hist-solbit:2",
+          "text": "현재 공동 구매를 승인한 솔빛운영회는 2026년 신설 협동조합 운영회다. 이전 동호회의 임원을 자동 승계하지 않았다.",
+          "target_surface": "솔빛운영회",
+          "target_span": [
+            14,
+            19
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:hist-solbit",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문에 명시된 설립 시점과 활동이 등록된 현재 조직과 일치한다."
+        },
+        {
+          "case_id": "hist-solbit:3",
+          "text": "2020년 공연 포스터의 솔빛운영회는 지역 공연 동호회다. 이 모임은 2021년에 활동을 끝냈고 현행 협동조합과 무관하다.",
+          "target_surface": "솔빛운영회",
+          "target_span": [
+            14,
+            19
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문이 현재 조직과 법적·의미적으로 다른 옛 대상을 명시하며 옛 대상은 사전에 없다."
+        },
+        {
+          "case_id": "hist-solbit:4",
+          "text": "해산 기록에서 솔빛운영회는 2021년 종료된 동호회를 가리킨다. 2026년 출범 조직의 현재 업무를 기록한 문서가 아니다.",
+          "target_surface": "솔빛운영회",
+          "target_span": [
+            8,
+            13
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문이 현재 조직과 법적·의미적으로 다른 옛 대상을 명시하며 옛 대상은 사전에 없다."
+        }
+      ]
+    },
+    {
+      "family_id": "hist-narim",
+      "stratum": "historical_current",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "hist-narim",
+          "canonical": "나림연구소",
+          "short_definition": "2024년 등록된 가상 수질 연구 법인. 2016년 폐쇄된 동명 개인 작업실과 별개다.",
+          "surfaces": [],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "2024년 등록된 가상 수질 연구 법인. 2016년 폐쇄된 동명 개인 작업실과 별개다.",
+        "날짜와 조직 관계는 전부 평가용 창작이며 실제 기관 역사 주장이 아니다."
+      ],
+      "cases": [
+        {
+          "case_id": "hist-narim:1",
+          "text": "수질 검사 위탁 대상인 나림연구소는 2024년 등록된 연구 법인이다. 개인 작업실이 아닌 법인 명의의 검사 계약이다.",
+          "target_surface": "나림연구소",
+          "target_span": [
+            13,
+            18
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:hist-narim",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문에 명시된 설립 시점과 활동이 등록된 현재 조직과 일치한다."
+        },
+        {
+          "case_id": "hist-narim:2",
+          "text": "이번 수질 조사 데이터는 나림연구소에서 받았다. 제공 주체는 2024년 등록 법인이며 기관 등록번호를 함께 확인했다.",
+          "target_surface": "나림연구소",
+          "target_span": [
+            14,
+            19
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:hist-narim",
+            "full_identity": "SAME"
+          },
+          "rationale": "원문에 명시된 설립 시점과 활동이 등록된 현재 조직과 일치한다."
+        },
+        {
+          "case_id": "hist-narim:3",
+          "text": "2013년 수첩의 나림연구소는 개인이 쓰던 작업실 이름이다. 그 공간은 2016년에 폐쇄됐으며 현행 수질 법인과 다른 대상이다.",
+          "target_surface": "나림연구소",
+          "target_span": [
+            10,
+            15
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문이 현재 조직과 법적·의미적으로 다른 옛 대상을 명시하며 옛 대상은 사전에 없다."
+        },
+        {
+          "case_id": "hist-narim:4",
+          "text": "철거 기록에 남은 나림연구소는 2016년 폐쇄 개인 작업실이다. 2024년 수질 연구 법인의 옛 이름이거나 전신이 아니다.",
+          "target_surface": "나림연구소",
+          "target_span": [
+            10,
+            15
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문이 현재 조직과 법적·의미적으로 다른 옛 대상을 명시하며 옛 대상은 사전에 없다."
+        }
+      ]
+    },
+    {
+      "family_id": "amb-saeon",
+      "stratum": "ambiguity_denial",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "amb-saeon-a",
+          "canonical": "새온급식지원단",
+          "short_definition": "학교 급식 지원을 맡는 가상 조직",
+          "surfaces": [
+            "새온"
+          ],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        },
+        {
+          "key": "amb-saeon-b",
+          "canonical": "새온통학지원단",
+          "short_definition": "학교 통학 지원을 맡는 가상 조직",
+          "surfaces": [
+            "새온"
+          ],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "학교 급식 지원을 맡는 가상 조직와 학교 통학 지원을 맡는 가상 조직는 서로 다른 창작 대상이다.",
+        "두 조직은 모두 새온이라는 약칭을 쓴다. 정식 명칭은 각각 유일하다."
+      ],
+      "cases": [
+        {
+          "case_id": "amb-saeon:1",
+          "text": "급식 재료 공동 구매 담당은 새온급식지원단이다. 통학 버스 계약은 다른 조직에서 처리한다.",
+          "target_surface": "새온급식지원단",
+          "target_span": [
+            16,
+            23
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:amb-saeon-a",
+            "full_identity": "SAME"
+          },
+          "rationale": "전체 정식 명칭과 담당 업무가 첫 번째 등록 조직을 명시한다."
+        },
+        {
+          "case_id": "amb-saeon:2",
+          "text": "등교 버스 계약의 담당 조직은 새온통학지원단이다. 급식 운영비를 이 조직에 배정하지 않는다.",
+          "target_surface": "새온통학지원단",
+          "target_span": [
+            17,
+            24
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:amb-saeon-b",
+            "full_identity": "SAME"
+          },
+          "rationale": "전체 정식 명칭과 담당 업무가 두 번째 등록 조직을 명시한다."
+        },
+        {
+          "case_id": "amb-saeon:3",
+          "text": "담당자는 새온에 연락하라고만 적었다. 급식과 통학 중 어느 업무인지, 두 조직 중 어디인지 구별할 정보가 없다.",
+          "target_surface": "새온",
+          "target_span": [
+            5,
+            7
+          ],
+          "gold": {
+            "label": "AMBIGUOUS",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "같은 약칭을 두 기관이 공유하며 원문에 구별할 근거가 없다."
+        },
+        {
+          "case_id": "amb-saeon:4",
+          "text": "문구 검토의 대상 단어 새온은 신제품 향의 이름이다. 학교 지원 조직을 부르는 약칭으로 쓰지 않았다.",
+          "target_surface": "새온",
+          "target_span": [
+            13,
+            15
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문에서 해당 문자열은 등록 조직이 아닌 단어·인물·작품·상품을 지칭한다."
+        }
+      ]
+    },
+    {
+      "family_id": "amb-daeul",
+      "stratum": "ambiguity_denial",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "amb-daeul-a",
+          "canonical": "대울물류센터",
+          "short_definition": "상품 배송을 맡는 가상 센터",
+          "surfaces": [
+            "대울"
+          ],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        },
+        {
+          "key": "amb-daeul-b",
+          "canonical": "대울상담센터",
+          "short_definition": "고객 상담을 맡는 가상 센터",
+          "surfaces": [
+            "대울"
+          ],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "상품 배송을 맡는 가상 센터와 고객 상담을 맡는 가상 센터는 서로 다른 창작 대상이다.",
+        "두 조직은 모두 대울이라는 약칭을 쓴다. 정식 명칭은 각각 유일하다."
+      ],
+      "cases": [
+        {
+          "case_id": "amb-daeul:1",
+          "text": "발송 지연 건은 대울물류센터에 이관했다. 상품 분류와 배송 계획을 맡는 조직이기 때문이다.",
+          "target_surface": "대울물류센터",
+          "target_span": [
+            9,
+            15
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:amb-daeul-a",
+            "full_identity": "SAME"
+          },
+          "rationale": "전체 정식 명칭과 담당 업무가 첫 번째 등록 조직을 명시한다."
+        },
+        {
+          "case_id": "amb-daeul:2",
+          "text": "상담 녹취 열람은 대울상담센터에서 처리한다. 창고 배송 조직의 업무는 아니다.",
+          "target_surface": "대울상담센터",
+          "target_span": [
+            10,
+            16
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:amb-daeul-b",
+            "full_identity": "SAME"
+          },
+          "rationale": "전체 정식 명칭과 담당 업무가 두 번째 등록 조직을 명시한다."
+        },
+        {
+          "case_id": "amb-daeul:3",
+          "text": "인계 메모에는 대울이라는 약칭만 있다. 배송 건인지 상담 건인지 확인할 단서가 전혀 없다.",
+          "target_surface": "대울",
+          "target_span": [
+            8,
+            10
+          ],
+          "gold": {
+            "label": "AMBIGUOUS",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "같은 약칭을 두 기관이 공유하며 원문에 구별할 근거가 없다."
+        },
+        {
+          "case_id": "amb-daeul:4",
+          "text": "동화의 인물 대울은 주인공의 친구 이름이다. 기업의 물류 또는 상담 조직이 등장하는 이야기는 아니다.",
+          "target_surface": "대울",
+          "target_span": [
+            7,
+            9
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문에서 해당 문자열은 등록 조직이 아닌 단어·인물·작품·상품을 지칭한다."
+        }
+      ]
+    },
+    {
+      "family_id": "amb-haram",
+      "stratum": "ambiguity_denial",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "amb-haram-a",
+          "canonical": "하람수질연구원",
+          "short_definition": "물 환경 분석을 맡는 가상 연구원",
+          "surfaces": [
+            "하람"
+          ],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        },
+        {
+          "key": "amb-haram-b",
+          "canonical": "하람대기연구원",
+          "short_definition": "공기 환경 분석을 맡는 가상 연구원",
+          "surfaces": [
+            "하람"
+          ],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "물 환경 분석을 맡는 가상 연구원와 공기 환경 분석을 맡는 가상 연구원는 서로 다른 창작 대상이다.",
+        "두 조직은 모두 하람이라는 약칭을 쓴다. 정식 명칭은 각각 유일하다."
+      ],
+      "cases": [
+        {
+          "case_id": "amb-haram:1",
+          "text": "하천 시료 분석은 하람수질연구원이 맡았다. 이 요청은 물 환경 분석 기관에 보낸다.",
+          "target_surface": "하람수질연구원",
+          "target_span": [
+            10,
+            17
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:amb-haram-a",
+            "full_identity": "SAME"
+          },
+          "rationale": "전체 정식 명칭과 담당 업무가 첫 번째 등록 조직을 명시한다."
+        },
+        {
+          "case_id": "amb-haram:2",
+          "text": "미세먼지 측정 자료는 하람대기연구원에서 취합했다. 담당 주체는 공기 환경 분석 기관이다.",
+          "target_surface": "하람대기연구원",
+          "target_span": [
+            12,
+            19
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:amb-haram-b",
+            "full_identity": "SAME"
+          },
+          "rationale": "전체 정식 명칭과 담당 업무가 두 번째 등록 조직을 명시한다."
+        },
+        {
+          "case_id": "amb-haram:3",
+          "text": "시험 의뢰서의 수신자는 하람이라고만 되어 있다. 시료 종류와 담당 기관 설명이 모두 빠져 있다.",
+          "target_surface": "하람",
+          "target_span": [
+            13,
+            15
+          ],
+          "gold": {
+            "label": "AMBIGUOUS",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "같은 약칭을 두 기관이 공유하며 원문에 구별할 근거가 없다."
+        },
+        {
+          "case_id": "amb-haram:4",
+          "text": "작곡가가 악장의 별칭으로 하람을 붙였다. 이 작품 목록의 별칭은 환경 연구기관과 관련이 없다.",
+          "target_surface": "하람",
+          "target_span": [
+            14,
+            16
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문에서 해당 문자열은 등록 조직이 아닌 단어·인물·작품·상품을 지칭한다."
+        }
+      ]
+    },
+    {
+      "family_id": "amb-yeondu",
+      "stratum": "ambiguity_denial",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "amb-yeondu-a",
+          "canonical": "연두공간재단",
+          "short_definition": "작업 공간을 지원하는 가상 재단",
+          "surfaces": [
+            "연두"
+          ],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        },
+        {
+          "key": "amb-yeondu-b",
+          "canonical": "연두교육재단",
+          "short_definition": "청소년 교육을 지원하는 가상 재단",
+          "surfaces": [
+            "연두"
+          ],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "작업 공간을 지원하는 가상 재단와 청소년 교육을 지원하는 가상 재단는 서로 다른 창작 대상이다.",
+        "두 조직은 모두 연두이라는 약칭을 쓴다. 정식 명칭은 각각 유일하다."
+      ],
+      "cases": [
+        {
+          "case_id": "amb-yeondu:1",
+          "text": "작업실 임대 지원 법인은 연두공간재단이다. 지원 대상은 공간 이용료이며 교육 장학금은 별도 사업이다.",
+          "target_surface": "연두공간재단",
+          "target_span": [
+            14,
+            20
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:amb-yeondu-a",
+            "full_identity": "SAME"
+          },
+          "rationale": "전체 정식 명칭과 담당 업무가 첫 번째 등록 조직을 명시한다."
+        },
+        {
+          "case_id": "amb-yeondu:2",
+          "text": "청소년 장학 사업의 운영 주체는 연두교육재단이다. 작업실 임대 재단을 대신 등록하지 않는다.",
+          "target_surface": "연두교육재단",
+          "target_span": [
+            18,
+            24
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:amb-yeondu-b",
+            "full_identity": "SAME"
+          },
+          "rationale": "전체 정식 명칭과 담당 업무가 두 번째 등록 조직을 명시한다."
+        },
+        {
+          "case_id": "amb-yeondu:3",
+          "text": "후원 영수증에는 연두라고만 인쇄됐다. 공간 사업인지 교육 사업인지 판별할 정보가 없고 두 재단이 모두 같은 약칭을 쓴다.",
+          "target_surface": "연두",
+          "target_span": [
+            9,
+            11
+          ],
+          "gold": {
+            "label": "AMBIGUOUS",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "같은 약칭을 두 기관이 공유하며 원문에 구별할 근거가 없다."
+        },
+        {
+          "case_id": "amb-yeondu:4",
+          "text": "색 견본에서 연두는 옅은 녹색 계열을 지칭한다. 어느 재단의 약칭도 아닌 색 이름이다.",
+          "target_surface": "연두",
+          "target_span": [
+            7,
+            9
+          ],
+          "gold": {
+            "label": "NON_MENTION",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문에서 해당 문자열은 등록 조직이 아닌 단어·인물·작품·상품을 지칭한다."
+        }
+      ]
+    },
+    {
+      "family_id": "amb-nuri",
+      "stratum": "ambiguity_denial",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "amb-nuri-a",
+          "canonical": "누리보안팀",
+          "short_definition": "접근 권한을 관리하는 가상 팀",
+          "surfaces": [
+            "누리"
+          ],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        },
+        {
+          "key": "amb-nuri-b",
+          "canonical": "누리결제팀",
+          "short_definition": "대금 결제를 관리하는 가상 팀",
+          "surfaces": [
+            "누리"
+          ],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "접근 권한을 관리하는 가상 팀와 대금 결제를 관리하는 가상 팀는 서로 다른 창작 대상이다.",
+        "두 조직은 모두 누리이라는 약칭을 쓴다. 정식 명칭은 각각 유일하다."
+      ],
+      "cases": [
+        {
+          "case_id": "amb-nuri:1",
+          "text": "접근 권한 신청의 승인 팀은 누리보안팀이다. 권한 설정 책임 주체를 조직 필드에 기록한다.",
+          "target_surface": "누리보안팀",
+          "target_span": [
+            16,
+            21
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:amb-nuri-a",
+            "full_identity": "SAME"
+          },
+          "rationale": "전체 정식 명칭과 담당 업무가 첫 번째 등록 조직을 명시한다."
+        },
+        {
+          "case_id": "amb-nuri:2",
+          "text": "환불 결재의 담당 팀은 누리결제팀이다. 결제 내역을 관리하는 조직으로 이 건을 분류한다.",
+          "target_surface": "누리결제팀",
+          "target_span": [
+            13,
+            18
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:amb-nuri-b",
+            "full_identity": "SAME"
+          },
+          "rationale": "전체 정식 명칭과 담당 업무가 두 번째 등록 조직을 명시한다."
+        },
+        {
+          "case_id": "amb-nuri:3",
+          "text": "대상 팀으로 누리만 적힌 빈 티켓을 받았다. 권한 신청과 결제 문의 중 어느 쪽인지 알 수 있는 본문이 없다.",
+          "target_surface": "누리",
+          "target_span": [
+            7,
+            9
+          ],
+          "gold": {
+            "label": "AMBIGUOUS",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "같은 약칭을 두 기관이 공유하며 원문에 구별할 근거가 없다."
+        },
+        {
+          "case_id": "amb-nuri:4",
+          "text": "국어 수업에서 누리는 세상을 뜻하는 낱말의 예로 제시됐다. 이 문장의 대상은 사내 팀 이름이 아니다.",
+          "target_surface": "누리",
+          "target_span": [
+            8,
+            10
+          ],
+          "gold": {
+            "label": "NON_MENTION",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문에서 해당 문자열은 등록 조직이 아닌 단어·인물·작품·상품을 지칭한다."
+        }
+      ]
+    },
+    {
+      "family_id": "amb-dodam",
+      "stratum": "ambiguity_denial",
+      "domain": "fictional_safety",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "amb-dodam-a",
+          "canonical": "도담시설관리단",
+          "short_definition": "건물 유지보수를 맡는 가상 단체",
+          "surfaces": [
+            "도담"
+          ],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        },
+        {
+          "key": "amb-dodam-b",
+          "canonical": "도담행사운영단",
+          "short_definition": "행사 진행을 맡는 가상 단체",
+          "surfaces": [
+            "도담"
+          ],
+          "type": "organization",
+          "domains": [
+            "authored_safety"
+          ]
+        }
+      ],
+      "source_facts": [
+        "건물 유지보수를 맡는 가상 단체와 행사 진행을 맡는 가상 단체는 서로 다른 창작 대상이다.",
+        "두 조직은 모두 도담이라는 약칭을 쓴다. 정식 명칭은 각각 유일하다."
+      ],
+      "cases": [
+        {
+          "case_id": "amb-dodam:1",
+          "text": "배관 수리 계약의 담당 조직은 도담시설관리단이다. 행사 진행 조직의 인력 명단과는 별도로 관리한다.",
+          "target_surface": "도담시설관리단",
+          "target_span": [
+            17,
+            24
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:amb-dodam-a",
+            "full_identity": "SAME"
+          },
+          "rationale": "전체 정식 명칭과 담당 업무가 첫 번째 등록 조직을 명시한다."
+        },
+        {
+          "case_id": "amb-dodam:2",
+          "text": "축제 진행표의 운영 주체는 도담행사운영단이다. 이 단체가 무대 순서와 참가자 안내를 맡는다.",
+          "target_surface": "도담행사운영단",
+          "target_span": [
+            15,
+            22
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:amb-dodam-b",
+            "full_identity": "SAME"
+          },
+          "rationale": "전체 정식 명칭과 담당 업무가 두 번째 등록 조직을 명시한다."
+        },
+        {
+          "case_id": "amb-dodam:3",
+          "text": "회의 기록에는 도담이 처리한다고만 쓰여 있다. 시설 수리와 행사 진행 중 어느 건인지 문맥에 제시되지 않았다.",
+          "target_surface": "도담",
+          "target_span": [
+            8,
+            10
+          ],
+          "gold": {
+            "label": "AMBIGUOUS",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "같은 약칭을 두 기관이 공유하며 원문에 구별할 근거가 없다."
+        },
+        {
+          "case_id": "amb-dodam:4",
+          "text": "아기 사진첩의 표제 도담은 아이의 태명이다. 시설이나 행사 운영 단체를 지칭하는 표현이 아니다.",
+          "target_surface": "도담",
+          "target_span": [
+            11,
+            13
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문에서 해당 문자열은 등록 조직이 아닌 단어·인물·작품·상품을 지칭한다."
+        }
+      ]
+    }
+  ]
+}
