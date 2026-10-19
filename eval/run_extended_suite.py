@@ -20,7 +20,10 @@ from .run_followup_llm import ANSWER_SCHEMA, ARTIFACTS, DECODING
 from .run_product_llm import _request_json, parse_model_json
 
 PROTOCOL_ID = "ktrf_extended_v1"
-EXPERIMENTS = {"transfer", "budget", "corpus", "pack", "semantic_safety"}
+DIAGNOSTIC_CONDITION_COUNTS = {"source_pack_factorial": 6, "fresh_compact": 3, "safety_robustness": 4}
+DIAGNOSTIC_EXPERIMENTS = set(DIAGNOSTIC_CONDITION_COUNTS)
+EXPERIMENTS = {"transfer", "budget", "corpus", "pack", "semantic_safety"} | DIAGNOSTIC_EXPERIMENTS
+SAFETY_EXPERIMENTS = {"semantic_safety", "safety_robustness"}
 ROUTING_SCHEMA = {"type": "object", "properties": {"selections": {
     "type": "array", "minItems": 1, "maxItems": 1, "items": {
         "type": "object", "properties": {"surface": {"type": "string"},
@@ -45,6 +48,9 @@ def validate_protocol(protocol):
             or any(not isinstance(c, str) or re.fullmatch(r"[a-z][a-z0-9_]*", c) is None for c in conditions)
             or len(set(conditions)) != len(conditions)):
         raise ValueError("unique explicit condition names required")
+    condition_count = DIAGNOSTIC_CONDITION_COUNTS.get(protocol["experiment"])
+    if condition_count is not None and len(conditions) != condition_count:
+        raise ValueError(f"{protocol['experiment']} requires {condition_count} conditions")
     if type(protocol.get("repeat_count")) is not int or protocol["repeat_count"] != 1:
         raise ValueError("extended experiments require repeat_count=1")
     if (not isinstance(protocol.get("limitations"), list) or not protocol["limitations"]
@@ -67,20 +73,35 @@ def validate_requests(rows, protocol):
     if len(tasks) != 1 or not tasks <= {"document_qa", "structured_routing"}:
         raise ValueError("mixed tasks or unknown task")
     safety = next(iter(tasks)) == "structured_routing"
-    if safety != (protocol["experiment"] == "semantic_safety"):
+    if safety != (protocol["experiment"] in SAFETY_EXPERIMENTS):
         raise ValueError("task differs from declared experiment")
     if safety:
-        validate_production_requests(rows, check_current_policy=False)
+        if protocol["experiment"] == "safety_robustness":
+            from .diagnostic_safety import validate_robustness_requests
+            validate_robustness_requests(rows)
+        else:
+            validate_production_requests(rows, check_current_policy=False)
+    diagnostic = protocol["experiment"] in DIAGNOSTIC_EXPERIMENTS
     fixed = (("stratum", "text", "target_surface", "target_span", "gold", "expected_entity_id", "document_sha256")
              if safety else ("stratum", "positive_gold", "expected_answers", "parent_document_id",
                              "document_sha256", "source_text", "question"))
-    grouped, seen = defaultdict(list), set()
+    fixed += ("evaluation_split", "family_id")
+    grouped, seen, family_splits = defaultdict(list), set(), defaultdict(set)
     for row in rows:
         for field in ("case_id", "condition", "system", "user"):
             if not isinstance(row.get(field), str) or not row[field].strip():
                 raise ValueError("nonempty string field required: " + field)
         if row.get("experiment", protocol["experiment"]) != protocol["experiment"]:
             raise ValueError("mixed experiment")
+        for field in ("evaluation_split", "family_id"):
+            if (diagnostic or field in row) and (not isinstance(row.get(field), str) or not row[field].strip()):
+                raise ValueError("nonempty diagnostic metadata required: " + field)
+        for field in ("evaluation_split", "source_variant", "pack_variant"):
+            if field in row and (not isinstance(row[field], str)
+                    or re.fullmatch(r"[a-z][a-z0-9_]{0,63}", row[field]) is None):
+                raise ValueError("invalid diagnostic label: " + field)
+        if diagnostic:
+            family_splits[row["family_id"]].add(row["evaluation_split"])
         if row["condition"] not in protocol["conditions"]:
             raise ValueError("undeclared condition")
         if type(row.get("repeat_id")) is not int or row["repeat_id"] != 0:
@@ -114,6 +135,8 @@ def validate_requests(rows, protocol):
             raise ValueError("complete unique condition matrix required")
         if any(any(row.get(field) != group[0].get(field) for field in fixed) for row in group):
             raise ValueError("variants disagree on source or gold")
+    if any(len(splits) != 1 for splits in family_splits.values()):
+        raise ValueError("a semantic family cannot cross evaluation splits")
     return rows
 
 
@@ -144,6 +167,8 @@ def _metrics(cases, safety):
         "malformed": sum(r["malformed"] for r in cases), "valid": sum(r["valid"] for r in cases),
         "pack_injected_requests": sum(r["pack_injected"] for r in cases),
         "pack_injected_questions": sum(r["pack_injected"] for r in cases)}
+    if cases and "family_id" in cases[0]:
+        values["families"] = len({r["family_id"] for r in cases})
     if safety:
         values.update({key: sum(r[key] for r in cases) for key in SAFETY_METRICS})
         accepted = values["accepted_correct_id"] + values["accepted_wrong_id"]
@@ -169,10 +194,34 @@ def _metrics(cases, safety):
     return values
 
 
+def _paired_metrics(pairs, known, left, right, *, safety, diagnostic):
+    complete = [(a, b) for a, b in pairs if a["valid"] and b["valid"]]
+    values = {"planned": len(pairs), "questions": len(pairs),
+        "comparable": len(complete), "incomplete_or_malformed": len(pairs) - len(complete),
+        "helpful": sum(not a["correct"] and b["correct"] for a, b in complete),
+        "harmful": sum(a["correct"] and not b["correct"] for a, b in complete),
+        "mean_correctness_delta_all_planned": math.fsum(int(b["correct"]) - int(a["correct"]) for a, b in pairs) / len(pairs) if pairs else None,
+        "identical_prompt_pairs": sum(all(known[(a["case_id"], left)][field] == known[(b["case_id"], right)][field]
+            for field in ("system", "user")) for a, b in pairs), "no_independence_claim_for_repeats": True}
+    if diagnostic:
+        values.update(families=len({a["family_id"] for a, _ in pairs}),
+            helpful_rate_among_comparable=values["helpful"] / len(complete) if complete else None,
+            harmful_rate_among_comparable=values["harmful"] / len(complete) if complete else None)
+        if safety:
+            for metric in ("accepted_wrong_id", "over_abstention"):
+                increased = sum(not a[metric] and b[metric] for a, b in complete)
+                decreased = sum(a[metric] and not b[metric] for a, b in complete)
+                values.update({metric + "_increased": increased, metric + "_decreased": decreased,
+                    metric + "_increase_rate_among_comparable": increased / len(complete) if complete else None,
+                    metric + "_decrease_rate_among_comparable": decreased / len(complete) if complete else None})
+    return values
+
+
 def grade_outputs(rows, outputs, protocol):
     validate_requests(rows, protocol)
     known = {(row["case_id"], row["condition"]): row for row in rows}
     safety = rows[0]["task"] == "structured_routing"
+    diagnostic = protocol["experiment"] in DIAGNOSTIC_EXPERIMENTS
     observed = {}
     for output in outputs:
         if not isinstance(output, dict):
@@ -194,13 +243,15 @@ def grade_outputs(rows, outputs, protocol):
         case = {"case_id": row["case_id"], "condition": row["condition"], "stratum": row["stratum"],
             "missing": missing, "error": bool(error), "malformed": bool(malformed), "valid": bool(valid),
             "pack_injected": row.get("pack_injected", row.get("injected", False))}
+        if diagnostic:
+            case.update(family_id=row["family_id"], evaluation_split=row["evaluation_split"])
         if safety:
             from .extended_safety import grade_safety
             # Keep the complete response, including unexpected fields, at the guard boundary.
             result = grade_safety(row, output.get("response")) if not missing and not error else {}
             case.update({name: bool(valid and result.get(name, False)) for name in SAFETY_METRICS})
-            for diagnostic in ("attempted_nonnull", "guard_valid"):
-                case[diagnostic] = bool(result.get(diagnostic, False))
+            for metric in ("attempted_nonnull", "guard_valid"):
+                case[metric] = bool(result.get(metric, False))
             case["guard_violations"] = result.get("guard_violations")
             case["positive_gold"] = row["expected_entity_id"] is not None
         else:
@@ -225,16 +276,30 @@ def grade_outputs(rows, outputs, protocol):
     comparisons = protocol.get("comparisons", [[protocol["conditions"][0], c] for c in protocol["conditions"][1:]])
     for left, right in comparisons:
         pairs = [(case, indexed[(case["case_id"], right)]) for case in cases if case["condition"] == left]
-        complete = [(a, b) for a, b in pairs if a["valid"] and b["valid"]]
-        paired[left + "_to_" + right] = {"planned": len(pairs), "questions": len(pairs),
-            "comparable": len(complete), "incomplete_or_malformed": len(pairs) - len(complete),
-            "helpful": sum(not a["correct"] and b["correct"] for a, b in complete),
-            "harmful": sum(a["correct"] and not b["correct"] for a, b in complete),
-            "mean_correctness_delta_all_planned": math.fsum(int(b["correct"]) - int(a["correct"]) for a, b in pairs) / len(pairs),
-            "identical_prompt_pairs": sum(all(known[(a["case_id"], left)][field] == known[(b["case_id"], right)][field]
-                for field in ("system", "user")) for a, b in pairs), "no_independence_claim_for_repeats": True}
-    return {"cases": cases, "missing_outputs": sum(case["missing"] for case in cases),
-            "by_variant": by_variant, "paired": paired}
+        paired[left + "_to_" + right] = _paired_metrics(pairs, known, left, right,
+            safety=safety, diagnostic=diagnostic)
+    result = {"cases": cases, "missing_outputs": sum(case["missing"] for case in cases),
+              "by_variant": by_variant, "paired": paired}
+    if diagnostic:
+        result["by_evaluation_split"] = {}
+        for split in sorted({case["evaluation_split"] for case in cases}):
+            selected = [case for case in cases if case["evaluation_split"] == split]
+            variant_groups = {condition: [case for case in selected if case["condition"] == condition]
+                              for condition in protocol["conditions"]}
+            split_pairs = {}
+            for left, right in comparisons:
+                pairs = [(case, indexed[(case["case_id"], right)]) for case in variant_groups[left]]
+                split_pairs[left + "_to_" + right] = _paired_metrics(pairs, known, left, right,
+                    safety=safety, diagnostic=True)
+            result["by_evaluation_split"][split] = {
+                "questions": len({case["case_id"] for case in selected}),
+                "families": len({case["family_id"] for case in selected}),
+                "by_variant": {condition: _metrics(group, safety) | {"by_stratum": {
+                    stratum: _metrics([case for case in group if case["stratum"] == stratum], safety)
+                    for stratum in sorted({case["stratum"] for case in group})}}
+                    for condition, group in variant_groups.items()},
+                "paired": split_pairs}
+    return result
 
 
 def run_benchmark(*, requests_file, endpoint, model, out_dir, code_revision, timeout=180):

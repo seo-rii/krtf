@@ -99,10 +99,9 @@ def read_run(run_dir):
     return manifest, rows, records, graded, counts
 
 
-def prepare_report(run_dir):
-    manifest, rows, records, graded, counts = read_run(run_dir)
+def _with_observations(variants, records):
     by_variant = {}
-    for condition, values in graded["by_variant"].items():
+    for condition, values in variants.items():
         calls = [record for record in records if record["condition"] == condition]
         usage, observed = {}, {}
         for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
@@ -114,7 +113,13 @@ def prepare_report(run_dir):
             "finish_reason_counts": dict(Counter(record["finish_reason"] if record.get("finish_reason") in
                 ("stop", "length", "content_filter", "tool_calls", "function_call") else
                 "missing" if record.get("finish_reason") is None else "other" for record in calls))}
-    return {"protocol": PROTOCOL_ID, "experiment": manifest["experiment"], "task": rows[0]["task"],
+    return by_variant
+
+
+def prepare_report(run_dir):
+    manifest, rows, records, graded, counts = read_run(run_dir)
+    by_variant = _with_observations(graded["by_variant"], records)
+    summary = {"protocol": PROTOCOL_ID, "experiment": manifest["experiment"], "task": rows[0]["task"],
         "model": manifest["requested_model"], "code_revision": manifest["code_revision"],
         "request_corpus_sha256": manifest["request_corpus_sha256"],
         "frozen_request_file_sha256": manifest["frozen_request_file_sha256"], "status": manifest["status"],
@@ -126,6 +131,21 @@ def prepare_report(run_dir):
         "inference_unit": "case; shared documents, semantic families and conditions are not independent samples",
         "limitations": list(manifest["declared_protocol"]["limitations"]),
         "publication": "aggregate_only_no_source_text_or_individual_model_answers"}
+    if "by_evaluation_split" in graded:
+        summary.update(families=len({row["family_id"] for row in rows}), by_evaluation_split={},
+            aggregate_scope="Workload aggregate; exposed diagnostics and fresh families must be assessed separately.")
+        for split, values in graded["by_evaluation_split"].items():
+            keys = {(row["case_id"], row["condition"]) for row in rows if row["evaluation_split"] == split}
+            summary["by_evaluation_split"][split] = values | {"by_variant": _with_observations(
+                values["by_variant"], [record for record in records
+                    if (record["case_id"], record["condition"]) in keys])}
+        for condition, values in summary["by_variant"].items():
+            condition_rows = [row for row in rows if row["condition"] == condition]
+            for field in ("source_variant", "pack_variant"):
+                labels = sorted({row[field] for row in condition_rows if field in row})
+                if labels:
+                    values[field + "s"] = labels
+    return summary
 
 
 def render_markdown(summary):
@@ -144,8 +164,24 @@ def render_markdown(summary):
                       "|---|---:|---:|---:|---:|---:|---:|"])
         for condition, values in summary["by_variant"].items():
             lines.append(f"| {condition} | {values['positive_exact']}/{values['positive_planned']} | {values['article_no_answer_null']}/{values['no_answer_planned']} | {values['malformed']} | {values['errors']} | {values['missing']} | {values['usage']['prompt_tokens']} |")
-    lines.extend(["", "Paired comparisons:", "", "```json", json.dumps(summary["paired"], indent=2), "```", "",
-                  *["- " + value for value in summary["limitations"]], ""])
+    lines.extend(["", "Paired comparisons:", "", "```json", json.dumps(summary["paired"], indent=2), "```", ""])
+    if "by_evaluation_split" in summary:
+        lines.extend([summary["aggregate_scope"], "",
+            "Split results are descriptive. Prompt interventions share cases; reused cases are diagnostic, and no new deployment risk bound is inferred.", ""])
+        for split, values in summary["by_evaluation_split"].items():
+            lines.extend([f"Evaluation split: `{split}`. Cases: {values['questions']}; families: {values['families']}.", ""])
+            if safety:
+                lines.extend(["| Condition | Accepted correct ID | Accepted wrong ID | Correct abstention | Over-abstention | Prompt tokens |",
+                    "|---|---:|---:|---:|---:|---:|"])
+                for condition, metrics in values["by_variant"].items():
+                    lines.append(f"| {condition} | {metrics['accepted_correct_id']} | {metrics['accepted_wrong_id']} | {metrics['correct_abstention']} | {metrics['over_abstention']} | {metrics['usage']['prompt_tokens']} |")
+            else:
+                lines.extend(["| Condition | Positive exact | No-answer null | Prompt tokens |",
+                    "|---|---:|---:|---:|"])
+                for condition, metrics in values["by_variant"].items():
+                    lines.append(f"| {condition} | {metrics['positive_exact']}/{metrics['positive_planned']} | {metrics['article_no_answer_null']}/{metrics['no_answer_planned']} | {metrics['usage']['prompt_tokens']} |")
+            lines.extend(["", "Split paired comparisons:", "", "```json", json.dumps(values["paired"], indent=2), "```", ""])
+    lines.extend([*["- " + value for value in summary["limitations"]], ""])
     return "\n".join(lines)
 
 
