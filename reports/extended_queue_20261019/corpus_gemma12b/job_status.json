@@ -1,0 +1,1 @@
+{"benchmark_exit_code": 0, "benchmark_started": true, "error_count": 0, "exit_code": 0, "experiment": "corpus", "finished_at": "2026-10-19T14:15:05.048398+00:00", "id": "corpus_gemma12b", "malformed_count": 0, "missing_count": 0, "received_count": 512, "report_exit_code": 0, "request_count": 512, "started_at": "2026-10-19T14:09:19.676839+00:00", "status": "COMPLETE"}
