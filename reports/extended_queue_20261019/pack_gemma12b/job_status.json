@@ -1,0 +1,1 @@
+{"benchmark_exit_code": 0, "benchmark_started": true, "error_count": 0, "exit_code": 0, "experiment": "pack", "finished_at": "2026-10-19T14:20:35.351093+00:00", "id": "pack_gemma12b", "malformed_count": 0, "missing_count": 0, "received_count": 640, "report_exit_code": 0, "request_count": 640, "started_at": "2026-10-19T14:15:05.049734+00:00", "status": "COMPLETE"}
