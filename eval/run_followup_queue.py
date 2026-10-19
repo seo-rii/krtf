@@ -20,6 +20,11 @@ from .run_production_queue import file_hash, save_json, start_model_runtime, sto
 
 KIND = "ktrf_followup_queue_v1"
 COMBINED_KIND = "ktrf_combined_queue_v1"
+EXTENDED_KIND = "ktrf_extended_queue_v1"
+EXTENDED_COUNTS = {"transfer": 1024, "budget": 512, "corpus": 512,
+                   "pack": 640, "semantic_safety": 96}
+EXTENDED_ORDER = [(experiment, model) for model in ("gemma12b", "qwen27b")
+                  for experiment in EXTENDED_COUNTS]
 ORDER = [(experiment, model) for model in ("gemma12b", "qwen27b")
          for experiment in ("retrieval", "stability")]
 COMBINED_ORDER = [("combined", model) for model in ("gemma12b", "qwen27b")]
@@ -30,9 +35,10 @@ def now():
 
 
 def validate_plan(plan):
-    if not isinstance(plan, dict) or plan.get("kind") not in {KIND, COMBINED_KIND}:
+    if not isinstance(plan, dict) or plan.get("kind") not in {KIND, COMBINED_KIND, EXTENDED_KIND}:
         raise ValueError("frozen followup queue required")
     combined = plan["kind"] == COMBINED_KIND
+    extended = plan["kind"] == EXTENDED_KIND
     sample_design = plan.get("sample_design")
     if "sample_design" in plan:
         if (not combined or not isinstance(sample_design, dict)
@@ -56,14 +62,16 @@ def validate_plan(plan):
     if not re.fullmatch(r"[0-9a-f]{64}", plan.get("archive_sha256", "")):
         raise ValueError("source archive hash required")
     stages = plan.get("stages", [])
-    order = COMBINED_ORDER if combined else ORDER
+    order = EXTENDED_ORDER if extended else COMBINED_ORDER if combined else ORDER
     if [(s.get("experiment"), s.get("model_key")) for s in stages] != order:
-        raise ValueError("expected matched combined stages for Gemma then Qwen" if combined else
+        raise ValueError("expected matched five experiments for Gemma then Qwen" if extended else
+                         "expected matched combined stages for Gemma then Qwen" if combined else
                          "expected matched retrieval/stability for Gemma then Qwen")
     if len({s.get("id") for s in stages}) != len(order):
         raise ValueError("unique stage IDs required")
     for stage in stages:
-        request_count = (sample_design["question_count"] * 12 if sample_design else
+        request_count = (EXTENDED_COUNTS[stage["experiment"]] if extended else
+                         sample_design["question_count"] * 12 if sample_design else
                          512 if stage["experiment"] == "retrieval" else 1536)
         if (not re.fullmatch(r"[a-zA-Z0-9_]+", stage.get("id", ""))
                 or stage.get("request_count") != request_count):
@@ -88,9 +96,9 @@ def validate_plan(plan):
             raise ValueError("local checkpoint and served identity required")
     if not 0 < plan.get("resource_wait_seconds", 0) <= 2 * 86400:
         raise ValueError("bounded resource deadline required")
-    expected_proofs = {"unit", "preparation"} if combined else {"unit", "preparation", "blind_document"}
+    expected_proofs = {"unit", "preparation"} if combined or extended else {"unit", "preparation", "blind_document"}
     if set(plan.get("proofs", {})) != expected_proofs:
-        raise ValueError("unit and tokenizer preparation proofs required" if combined else
+        raise ValueError("unit and tokenizer preparation proofs required" if combined or extended else
                          "unit, tokenizer preparation and blind-document proofs required")
     for proof in plan["proofs"].values():
         if not proof.get("path") or not re.fullmatch(r"[0-9a-f]{64}", proof.get("sha256", "")):
@@ -139,7 +147,10 @@ def verify_inputs(plan):
         path = Path(stage["requests_file"])
         if file_hash(path) != stage["envelope_sha256"]:
             raise ValueError("frozen request envelope changed")
-        rows, protocol, _ = load_request_file(path)
+        loader = load_request_file
+        if plan["kind"] == EXTENDED_KIND:
+            from .run_extended_suite import load_request_file as loader
+        rows, protocol, _ = loader(path)
         if (protocol["experiment"] != stage["experiment"] or len(rows) != stage["request_count"]
                 or hashlib.sha256(b"".join(canonical(row) for row in rows)).hexdigest() != stage["requests_sha256"]):
             raise ValueError("request matrix differs from frozen plan")
@@ -228,7 +239,10 @@ def run_queue(plan):
                         raise ValueError("stage output already exists; no answer reruns allowed")
                     current.update(status="RUNNING", benchmark_started=True, started_at=now())
                     update(active_stage=stage["id"], phase="MODEL_REQUESTS", responses_completed=0)
-                    run_command = [plan["python"], "-m", "eval.run_followup_llm",
+                    extended = plan["kind"] == EXTENDED_KIND
+                    runner_module = "eval.run_extended_suite" if extended else "eval.run_followup_llm"
+                    report_module = "eval.report_extended_suite" if extended else "eval.report_followup_llm"
+                    run_command = [plan["python"], "-m", runner_module,
                         "--requests-file", stage["requests_file"], "--endpoint", endpoint,
                         "--model", model["served_name"], "--out-dir", str(out),
                         "--code-revision", plan["code_revision"]]
@@ -256,7 +270,7 @@ def run_queue(plan):
                             "model_config_sha256": file_hash(Path(model["path"]) / "config.json"),
                             "code_revision": plan["code_revision"], "source_archive_sha256": plan["archive_sha256"],
                             "queue_plan_sha256": state["plan_sha256"]})
-                        report = subprocess.run([plan["python"], "-m", "eval.report_followup_llm",
+                        report = subprocess.run([plan["python"], "-m", report_module,
                             "--run-dir", str(out)], cwd=plan["source"], env=environment)
                         result_code = benchmark.returncode or report.returncode
                         current.update(status="COMPLETE" if result_code == 0 else "FAILED",

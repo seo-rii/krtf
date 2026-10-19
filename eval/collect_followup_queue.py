@@ -15,13 +15,16 @@ from .collect_hf_qa_queue import validate_public_json
 from .hf_qa import canonical
 from .report_followup_llm import prepare_report, render_markdown
 from .run_followup_llm import ARTIFACTS
-from .run_followup_queue import COMBINED_KIND, KIND, validate_plan
+from .run_followup_queue import COMBINED_KIND, EXTENDED_KIND, KIND, validate_plan
 from .run_production_queue import save_json
 
 
 def verify_stage(root, stage, plan):
     root = Path(root)
-    summary = prepare_report(root)
+    reporter = prepare_report
+    if plan["kind"] == EXTENDED_KIND:
+        from .report_extended_suite import prepare_report as reporter
+    summary = reporter(root)
     manifest = json.loads((root / "run_manifest.json").read_text())
     expected = {"code_revision": plan["code_revision"], "experiment": stage["experiment"],
                 "request_count": stage["request_count"], "request_corpus_sha256": stage["requests_sha256"],
@@ -46,6 +49,13 @@ def verify_stage(root, stage, plan):
 
 def compare_models(summaries, plan):
     result = {}
+
+    def rate_delta(current, baseline, key):
+        # No negatives in the corpus track; semantic safety uses other rates.
+        # An absent denominator is unknown, never a zero-percent success rate.
+        values = current.get(key), baseline.get(key)
+        return None if any(value is None for value in values) else values[0] - values[1]
+
     for experiment in dict.fromkeys(s["experiment"] for s in plan["stages"]):
         stages = [s for s in plan["stages"] if s["experiment"] == experiment]
         if not all(s["id"] in summaries for s in stages):
@@ -58,8 +68,13 @@ def compare_models(summaries, plan):
         result[experiment] = {"baseline_model": first["model"], "current_model": second["model"],
             "questions": first["questions"], "request_corpus_sha256": first["request_corpus_sha256"],
             "by_variant": {key: {
-                "positive_exact_rate_delta": second["by_variant"][key]["positive_exact_rate"] - values["positive_exact_rate"],
-                "no_answer_null_rate_delta": second["by_variant"][key]["article_no_answer_null_rate"] - values["article_no_answer_null_rate"],
+                "positive_exact_rate_delta": rate_delta(second["by_variant"][key], values, "positive_exact_rate"),
+                "no_answer_null_rate_delta": rate_delta(second["by_variant"][key], values, "article_no_answer_null_rate"),
+                **({metric + "_delta": rate_delta(second["by_variant"][key], values, metric)
+                    for metric in ("correct_rate", "accepted_wrong_id_rate",
+                                   "accepted_wrong_id_rate_among_accepted", "accepted_correct_id_rate",
+                                   "correct_abstention_rate", "over_abstention_rate")}
+                   if experiment == "semantic_safety" else {}),
                 "baseline_malformed": values["malformed"],
                 "current_malformed": second["by_variant"][key]["malformed"]}
                 for key, values in first["by_variant"].items()},
@@ -78,8 +93,8 @@ def collect(config):
     private_parent = repo / "eval/out"
     if "private_storage_root" in config:
         storage = Path(config["private_storage_root"])
-        if plan["kind"] != COMBINED_KIND or not storage.is_absolute() or not storage.is_dir():
-            raise ValueError("explicit absolute private storage root is supported only for combined queues")
+        if plan["kind"] not in {COMBINED_KIND, EXTENDED_KIND} or not storage.is_absolute() or not storage.is_dir():
+            raise ValueError("explicit absolute private storage root is supported only for combined or extended queues")
         private_parent = storage.resolve(strict=True)
     status_path = Path(config["local_status"]).resolve()
     if (not public.is_relative_to(repo / "reports") or public == repo / "reports"
@@ -210,6 +225,7 @@ def collect(config):
             raise ValueError("no verified generation runs available")
         comparison = compare_models(summaries, plan)
         combined = plan["kind"] == COMBINED_KIND
+        extended = plan["kind"] == EXTENDED_KIND
         fresh = combined and plan.get("sample_design", {}).get("kind") == "fresh_document_holdout"
         limitations = ([
             "Previously inspected frozen retrieval questions are reused for this adaptive combined followup; no independent holdout claim.",
@@ -226,6 +242,14 @@ def collect(config):
                 "Fresh article split excludes declared prior articles by identity and content hash; this is a same-corpus holdout, not external independent validation.",
                 "Exact article exclusion does not establish absence of near-duplicate documents or pretrained-model contamination.",
                 "Earlier results informed the methods; this sample was frozen before its generation outputs."]
+        if extended:
+            limitations = [
+                "The four QA experiments share a frozen KLUE-MRC sample; nested subsets are not independent replications.",
+                "Overlap filtering covers declared sources only and cannot establish absence of model pretraining contamination.",
+                "Corpus retrieval uses a fixed 512-document corpus and positive questions only; article-specific negatives do not establish corpus-wide absence.",
+                "Budget comparisons share total prompt caps, not identical consumed token counts.",
+                "Semantic safety gold is AI authored and reviewed; it is not independently human verified or a deployment error-rate estimate.",
+                "Model family and size change together; shared-host timing is descriptive. No thresholds are tuned on these results."]
         overview = {"kind": plan["kind"], "run_id": plan["run_id"], "status": terminal["status"],
             "exit_code": terminal["exit_code"], "verified_reports": sorted(summaries), "missing_stages": missing,
             "raw_artifacts_published": False,
@@ -246,13 +270,18 @@ def collect(config):
             for name, value in artifacts[stage["id"]].items():
                 validate_public_json(value)
                 save_json(target / name, value)
-            (target / "RESULTS.md").write_text(render_markdown(summaries[stage["id"]]))
+            renderer = render_markdown
+            if extended:
+                from .report_extended_suite import render_markdown as renderer
+            (target / "RESULTS.md").write_text(renderer(summaries[stage["id"]]))
         for name, value in public_objects.items():
             save_json(public / name, value)
         heading = "# KTRF combined BM25, pack and JSON queue" if combined else "# KTRF followup queue"
         if fresh:
             heading = "# KTRF fresh-document combined BM25, pack and JSON queue"
-        preparation = ("Frozen unit tests and actual-tokenizer preparation completed before GPU generation." if combined else
+        if extended:
+            heading = "# KTRF five extended experiments"
+        preparation = ("Frozen unit tests and actual-tokenizer preparation completed before GPU generation." if combined or extended else
                        "CPU preparation and AI blind-document evaluation completed before GPU generation.")
         lines = [heading, "", f"Status: **{terminal['status']}**, exit code `{terminal['exit_code']}`.", "",
                  preparation, "",
@@ -268,6 +297,7 @@ def collect(config):
                 paths = [public / stage["id"] / name for name in (*artifacts[stage["id"]], "RESULTS.md")]
                 publish(paths, "test: report followup " + stage["id"])
         publish([public / name for name in (*public_objects, "RESULTS.md")],
+                "test: summarize five queued extended experiments" if extended else
                 "test: summarize queued combined retrieval experiments" if combined else
                 "test: summarize queued retrieval and stability experiments")
         update(publication_complete=True, verified_reports=sorted(summaries), missing_stages=missing)
