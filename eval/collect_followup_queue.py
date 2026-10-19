@@ -15,14 +15,14 @@ from .collect_hf_qa_queue import validate_public_json
 from .hf_qa import canonical
 from .report_followup_llm import prepare_report, render_markdown
 from .run_followup_llm import ARTIFACTS
-from .run_followup_queue import COMBINED_KIND, EXTENDED_KIND, KIND, validate_plan
+from .run_followup_queue import COMBINED_KIND, DIAGNOSTIC_KIND, EXTENDED_KIND, KIND, validate_plan
 from .run_production_queue import save_json
 
 
 def verify_stage(root, stage, plan):
     root = Path(root)
     reporter = prepare_report
-    if plan["kind"] == EXTENDED_KIND:
+    if plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND}:
         from .report_extended_suite import prepare_report as reporter
     summary = reporter(root)
     manifest = json.loads((root / "run_manifest.json").read_text())
@@ -56,6 +56,19 @@ def compare_models(summaries, plan):
         values = current.get(key), baseline.get(key)
         return None if any(value is None for value in values) else values[0] - values[1]
 
+    def compare_variants(first, second, safety):
+        if set(first) != set(second):
+            raise ValueError("model conditions differ")
+        return {key: {
+            "positive_exact_rate_delta": rate_delta(second[key], values, "positive_exact_rate"),
+            "no_answer_null_rate_delta": rate_delta(second[key], values, "article_no_answer_null_rate"),
+            **({metric + "_delta": rate_delta(second[key], values, metric) for metric in (
+                "correct_rate", "accepted_wrong_id_rate", "accepted_wrong_id_rate_among_accepted",
+                "accepted_correct_id_rate", "correct_abstention_rate", "over_abstention_rate")}
+               if safety else {}),
+            "baseline_malformed": values["malformed"], "current_malformed": second[key]["malformed"]}
+            for key, values in first.items()}
+
     for experiment in dict.fromkeys(s["experiment"] for s in plan["stages"]):
         stages = [s for s in plan["stages"] if s["experiment"] == experiment]
         if not all(s["id"] in summaries for s in stages):
@@ -67,19 +80,22 @@ def compare_models(summaries, plan):
             raise ValueError("matched comparison requires identical inputs and configuration")
         result[experiment] = {"baseline_model": first["model"], "current_model": second["model"],
             "questions": first["questions"], "request_corpus_sha256": first["request_corpus_sha256"],
-            "by_variant": {key: {
-                "positive_exact_rate_delta": rate_delta(second["by_variant"][key], values, "positive_exact_rate"),
-                "no_answer_null_rate_delta": rate_delta(second["by_variant"][key], values, "article_no_answer_null_rate"),
-                **({metric + "_delta": rate_delta(second["by_variant"][key], values, metric)
-                    for metric in ("correct_rate", "accepted_wrong_id_rate",
-                                   "accepted_wrong_id_rate_among_accepted", "accepted_correct_id_rate",
-                                   "correct_abstention_rate", "over_abstention_rate")}
-                   if experiment == "semantic_safety" else {}),
-                "baseline_malformed": values["malformed"],
-                "current_malformed": second["by_variant"][key]["malformed"]}
-                for key, values in first["by_variant"].items()},
+            "by_variant": compare_variants(first["by_variant"], second["by_variant"],
+                                            experiment in {"semantic_safety", "safety_robustness"}),
             "limitations": ["Model family and size both change.",
                 "Repeated generations do not increase the number of independent questions."]}
+        if plan["kind"] == DIAGNOSTIC_KIND:
+            left, right = first["by_evaluation_split"], second["by_evaluation_split"]
+            if set(left) != set(right) or any(
+                    any(left[key][field] != right[key][field] for field in ("questions", "families"))
+                    for key in left):
+                raise ValueError("diagnostic evaluation splits differ between models")
+            result[experiment]["by_evaluation_split"] = {key: {
+                "questions": value["questions"], "families": value["families"],
+                "by_variant": compare_variants(value["by_variant"], right[key]["by_variant"],
+                                                experiment == "safety_robustness")}
+                for key, value in left.items()}
+            result[experiment]["aggregate_scope"] = "workload aggregate only; evaluate exposed and fresh splits separately"
     return validate_public_json(result)
 
 
@@ -93,8 +109,8 @@ def collect(config):
     private_parent = repo / "eval/out"
     if "private_storage_root" in config:
         storage = Path(config["private_storage_root"])
-        if plan["kind"] not in {COMBINED_KIND, EXTENDED_KIND} or not storage.is_absolute() or not storage.is_dir():
-            raise ValueError("explicit absolute private storage root is supported only for combined or extended queues")
+        if plan["kind"] not in {COMBINED_KIND, EXTENDED_KIND, DIAGNOSTIC_KIND} or not storage.is_absolute() or not storage.is_dir():
+            raise ValueError("explicit absolute private storage root is supported only for combined, extended or diagnostic queues")
         private_parent = storage.resolve(strict=True)
     status_path = Path(config["local_status"]).resolve()
     if (not public.is_relative_to(repo / "reports") or public == repo / "reports"
@@ -225,7 +241,8 @@ def collect(config):
             raise ValueError("no verified generation runs available")
         comparison = compare_models(summaries, plan)
         combined = plan["kind"] == COMBINED_KIND
-        extended = plan["kind"] == EXTENDED_KIND
+        extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND}
+        diagnostic = plan["kind"] == DIAGNOSTIC_KIND
         fresh = combined and plan.get("sample_design", {}).get("kind") == "fresh_document_holdout"
         limitations = ([
             "Previously inspected frozen retrieval questions are reused for this adaptive combined followup; no independent holdout claim.",
@@ -250,6 +267,15 @@ def collect(config):
                 "Budget comparisons share total prompt caps, not identical consumed token counts.",
                 "Semantic safety gold is AI authored and reviewed; it is not independently human verified or a deployment error-rate estimate.",
                 "Model family and size change together; shared-host timing is descriptive. No thresholds are tuned on these results."]
+        if diagnostic:
+            limitations = [
+                "The source/pack factorial reuses previously inspected questions and is an adaptive diagnostic, not independent validation.",
+                "Fresh KLUE contexts exclude prior source contexts and the complete earlier 512-context search corpus; original article identities and pretraining independence remain unverified.",
+                "The factorial fixes policy and pack facts across source amounts; its arms are not a shared-token-cap product comparison.",
+                "Compact packs remove metadata while preserving projected semantic facts and caveats; this is not pure serialization alone.",
+                "Safety results must separate 96 exposed cases from 64 fresh AI-authored cases; shared families and prompt variants are not independent samples.",
+                "Prompt instructions add no execution authority: complete responses still pass the unchanged production guard.",
+                "These tests do not tune deployment thresholds or establish operational error-rate guarantees."]
         overview = {"kind": plan["kind"], "run_id": plan["run_id"], "status": terminal["status"],
             "exit_code": terminal["exit_code"], "verified_reports": sorted(summaries), "missing_stages": missing,
             "raw_artifacts_published": False,
@@ -281,6 +307,8 @@ def collect(config):
             heading = "# KTRF fresh-document combined BM25, pack and JSON queue"
         if extended:
             heading = "# KTRF five extended experiments"
+        if diagnostic:
+            heading = "# KTRF source, compact-pack and safety diagnostics"
         preparation = ("Frozen unit tests and actual-tokenizer preparation completed before GPU generation." if combined or extended else
                        "CPU preparation and AI blind-document evaluation completed before GPU generation.")
         lines = [heading, "", f"Status: **{terminal['status']}**, exit code `{terminal['exit_code']}`.", "",
@@ -297,6 +325,7 @@ def collect(config):
                 paths = [public / stage["id"] / name for name in (*artifacts[stage["id"]], "RESULTS.md")]
                 publish(paths, "test: report followup " + stage["id"])
         publish([public / name for name in (*public_objects, "RESULTS.md")],
+                "test: summarize queued source and safety diagnostics" if diagnostic else
                 "test: summarize five queued extended experiments" if extended else
                 "test: summarize queued combined retrieval experiments" if combined else
                 "test: summarize queued retrieval and stability experiments")
