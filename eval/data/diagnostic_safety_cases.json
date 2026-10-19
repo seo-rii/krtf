@@ -1,0 +1,1430 @@
+{
+  "schema_version": 1,
+  "annotation_origin": "AI_AUTHORED",
+  "human_verified": false,
+  "authored_by": "codex-diagnostic-safety",
+  "gold_source": "Explicit fictional document semantics and glossary definitions fixed before resolver invocation.",
+  "limitations": [
+    "AI-authored diagnostic families, not a random deployment sample or human-verified gold.",
+    "All places, countries, organizations and histories are fictional.",
+    "The 64 fresh cases share 16 families and closely related templates; freshness is entity-family separation, not independent natural-language distribution."
+  ],
+  "families": [
+    {
+      "family_id": "robust-geo-lerdan",
+      "stratum": "homonym_geography",
+      "domain": "fictional_robustness",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "robust-geo-lerdan",
+          "canonical": "르단시",
+          "short_definition": "가상 루에국의 내륙 산업 도시",
+          "surfaces": [],
+          "type": "place",
+          "domains": [
+            "diagnostic_fictional"
+          ]
+        }
+      ],
+      "source_facts": [
+        "루에국과 미포국은 창작 국가이며 양국에 같은 이름의 별개 장소가 있다.",
+        "사전에는 루에국의 르단시만 등재한다."
+      ],
+      "cases": [
+        {
+          "case_id": "robust-geo-lerdan:1",
+          "text": "관할국가가 루에국인 지역 목록이다. 르단시는 이 국가의 내륙 산업 도시이며 이번 통계의 대상이다.",
+          "target_surface": "르단시",
+          "target_span": [
+            20,
+            23
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-geo-lerdan",
+            "full_identity": "SAME"
+          },
+          "rationale": "관할 국가와 장소의 역할이 등록 정의와 모두 일치한다."
+        },
+        {
+          "case_id": "robust-geo-lerdan:2",
+          "text": "가상 루에국의 행정 사무국이 발표했다. 내륙 산업 도시 르단시의 담당 창구를 그 나라 지역 대장으로 확인했다.",
+          "target_surface": "르단시",
+          "target_span": [
+            31,
+            34
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-geo-lerdan",
+            "full_identity": "SAME"
+          },
+          "rationale": "발표 주체와 대상의 관할국가가 사전 항목과 같다."
+        },
+        {
+          "case_id": "robust-geo-lerdan:3",
+          "text": "이 운송 서류는 미포국의 국내 배송만 다룬다. 목적지 르단시는 이 나라에 있는 동명 장소이며 루에국의 지역과 별개다.",
+          "target_surface": "르단시",
+          "target_span": [
+            30,
+            33
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "명시된 관할 국가가 등록 정의와 다르고 해당 동명 장소는 사전에 없다."
+        },
+        {
+          "case_id": "robust-geo-lerdan:4",
+          "text": "미포국 지도에서 고른 르단시의 현장 기록이다. 두 국가의 장소가 이름만 같을 뿐 동일한 행정 실체가 아니라는 주석이 붙었다. 루에국 자료는 포함하지 않았다.",
+          "target_surface": "르단시",
+          "target_span": [
+            12,
+            15
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "서로 다른 관할의 장소이며 이름 동일성만으로 등록 ID를 부여할 수 없다."
+        }
+      ]
+    },
+    {
+      "family_id": "robust-geo-vero",
+      "stratum": "homonym_geography",
+      "domain": "fictional_robustness",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "robust-geo-vero",
+          "canonical": "베로군",
+          "short_definition": "가상 토렌국의 산악 자치 군",
+          "surfaces": [],
+          "type": "place",
+          "domains": [
+            "diagnostic_fictional"
+          ]
+        }
+      ],
+      "source_facts": [
+        "토렌국과 아스국은 창작 국가이며 양국에 같은 이름의 별개 장소가 있다.",
+        "사전에는 토렌국의 베로군만 등재한다."
+      ],
+      "cases": [
+        {
+          "case_id": "robust-geo-vero:1",
+          "text": "관할국가가 토렌국인 지역 목록이다. 베로군은 이 국가의 산악 자치 군이며 이번 통계의 대상이다.",
+          "target_surface": "베로군",
+          "target_span": [
+            20,
+            23
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-geo-vero",
+            "full_identity": "SAME"
+          },
+          "rationale": "관할 국가와 장소의 역할이 등록 정의와 모두 일치한다."
+        },
+        {
+          "case_id": "robust-geo-vero:2",
+          "text": "가상 토렌국의 행정 사무국이 발표했다. 산악 자치 군 베로군의 담당 창구를 그 나라 지역 대장으로 확인했다.",
+          "target_surface": "베로군",
+          "target_span": [
+            30,
+            33
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-geo-vero",
+            "full_identity": "SAME"
+          },
+          "rationale": "발표 주체와 대상의 관할국가가 사전 항목과 같다."
+        },
+        {
+          "case_id": "robust-geo-vero:3",
+          "text": "이 운송 서류는 아스국의 국내 배송만 다룬다. 목적지 베로군은 이 나라에 있는 동명 장소이며 토렌국의 지역과 별개다.",
+          "target_surface": "베로군",
+          "target_span": [
+            30,
+            33
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "명시된 관할 국가가 등록 정의와 다르고 해당 동명 장소는 사전에 없다."
+        },
+        {
+          "case_id": "robust-geo-vero:4",
+          "text": "아스국 지도에서 고른 베로군의 현장 기록이다. 두 국가의 장소가 이름만 같을 뿐 동일한 행정 실체가 아니라는 주석이 붙었다. 토렌국 자료는 포함하지 않았다.",
+          "target_surface": "베로군",
+          "target_span": [
+            12,
+            15
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "서로 다른 관할의 장소이며 이름 동일성만으로 등록 ID를 부여할 수 없다."
+        }
+      ]
+    },
+    {
+      "family_id": "robust-geo-tarin",
+      "stratum": "homonym_geography",
+      "domain": "fictional_robustness",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "robust-geo-tarin",
+          "canonical": "타린항",
+          "short_definition": "가상 베즈국의 서해안 무역 항구",
+          "surfaces": [],
+          "type": "place",
+          "domains": [
+            "diagnostic_fictional"
+          ]
+        }
+      ],
+      "source_facts": [
+        "베즈국과 오린국은 창작 국가이며 양국에 같은 이름의 별개 장소가 있다.",
+        "사전에는 베즈국의 타린항만 등재한다."
+      ],
+      "cases": [
+        {
+          "case_id": "robust-geo-tarin:1",
+          "text": "관할국가가 베즈국인 지역 목록이다. 타린항은 이 국가의 서해안 무역 항구이며 이번 통계의 대상이다.",
+          "target_surface": "타린항",
+          "target_span": [
+            20,
+            23
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-geo-tarin",
+            "full_identity": "SAME"
+          },
+          "rationale": "관할 국가와 장소의 역할이 등록 정의와 모두 일치한다."
+        },
+        {
+          "case_id": "robust-geo-tarin:2",
+          "text": "가상 베즈국의 행정 사무국이 발표했다. 서해안 무역 항구 타린항의 담당 창구를 그 나라 지역 대장으로 확인했다.",
+          "target_surface": "타린항",
+          "target_span": [
+            32,
+            35
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-geo-tarin",
+            "full_identity": "SAME"
+          },
+          "rationale": "발표 주체와 대상의 관할국가가 사전 항목과 같다."
+        },
+        {
+          "case_id": "robust-geo-tarin:3",
+          "text": "이 운송 서류는 오린국의 국내 배송만 다룬다. 목적지 타린항은 이 나라에 있는 동명 장소이며 베즈국의 지역과 별개다.",
+          "target_surface": "타린항",
+          "target_span": [
+            30,
+            33
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "명시된 관할 국가가 등록 정의와 다르고 해당 동명 장소는 사전에 없다."
+        },
+        {
+          "case_id": "robust-geo-tarin:4",
+          "text": "오린국 지도에서 고른 타린항의 현장 기록이다. 두 국가의 장소가 이름만 같을 뿐 동일한 행정 실체가 아니라는 주석이 붙었다. 베즈국 자료는 포함하지 않았다.",
+          "target_surface": "타린항",
+          "target_span": [
+            12,
+            15
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "서로 다른 관할의 장소이며 이름 동일성만으로 등록 ID를 부여할 수 없다."
+        }
+      ]
+    },
+    {
+      "family_id": "robust-geo-seru",
+      "stratum": "homonym_geography",
+      "domain": "fictional_robustness",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "robust-geo-seru",
+          "canonical": "세르구",
+          "short_definition": "가상 이븐국의 수도 북부 행정구",
+          "surfaces": [],
+          "type": "place",
+          "domains": [
+            "diagnostic_fictional"
+          ]
+        }
+      ],
+      "source_facts": [
+        "이븐국과 페룬국은 창작 국가이며 양국에 같은 이름의 별개 장소가 있다.",
+        "사전에는 이븐국의 세르구만 등재한다."
+      ],
+      "cases": [
+        {
+          "case_id": "robust-geo-seru:1",
+          "text": "관할국가가 이븐국인 지역 목록이다. 세르구는 이 국가의 수도 북부 행정구이며 이번 통계의 대상이다.",
+          "target_surface": "세르구",
+          "target_span": [
+            20,
+            23
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-geo-seru",
+            "full_identity": "SAME"
+          },
+          "rationale": "관할 국가와 장소의 역할이 등록 정의와 모두 일치한다."
+        },
+        {
+          "case_id": "robust-geo-seru:2",
+          "text": "가상 이븐국의 행정 사무국이 발표했다. 수도 북부 행정구 세르구의 담당 창구를 그 나라 지역 대장으로 확인했다.",
+          "target_surface": "세르구",
+          "target_span": [
+            32,
+            35
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-geo-seru",
+            "full_identity": "SAME"
+          },
+          "rationale": "발표 주체와 대상의 관할국가가 사전 항목과 같다."
+        },
+        {
+          "case_id": "robust-geo-seru:3",
+          "text": "이 운송 서류는 페룬국의 국내 배송만 다룬다. 목적지 세르구는 이 나라에 있는 동명 장소이며 이븐국의 지역과 별개다.",
+          "target_surface": "세르구",
+          "target_span": [
+            30,
+            33
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "명시된 관할 국가가 등록 정의와 다르고 해당 동명 장소는 사전에 없다."
+        },
+        {
+          "case_id": "robust-geo-seru:4",
+          "text": "페룬국 지도에서 고른 세르구의 현장 기록이다. 두 국가의 장소가 이름만 같을 뿐 동일한 행정 실체가 아니라는 주석이 붙었다. 이븐국 자료는 포함하지 않았다.",
+          "target_surface": "세르구",
+          "target_span": [
+            12,
+            15
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "서로 다른 관할의 장소이며 이름 동일성만으로 등록 ID를 부여할 수 없다."
+        }
+      ]
+    },
+    {
+      "family_id": "robust-role-murin",
+      "stratum": "organization_role",
+      "domain": "fictional_robustness",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "robust-role-murin",
+          "canonical": "무린기록원",
+          "short_definition": "가상 도시 무린의 공공 영상 기록을 보관하는 기관",
+          "surfaces": [],
+          "type": "organization",
+          "domains": [
+            "diagnostic_fictional"
+          ]
+        }
+      ],
+      "source_facts": [
+        "무린기록원은 창작 기관으로 법인 또는 기관 자체만 사전에 등록한다.",
+        "무린기록원장은 기관의 책임자라는 사람 또는 직위를 뜻하며 기관과 동일한 실체가 아니다."
+      ],
+      "cases": [
+        {
+          "case_id": "robust-role-murin:1",
+          "text": "업무 협약의 당사자는 기관 자체인 무린기록원이다. 서명한 책임자의 개인 정보와 기관의 등록 정보는 별도 칸에 기록했다.",
+          "target_surface": "무린기록원",
+          "target_span": [
+            19,
+            24
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-role-murin",
+            "full_identity": "SAME"
+          },
+          "rationale": "지정 대상이 사람의 직위가 아니라 협약 당사자인 기관이다."
+        },
+        {
+          "case_id": "robust-role-murin:2",
+          "text": "기록의 소유자 항목에는 무린기록원을 넣었다. 이 항목은 조직의 자산 귀속을 나타내며 직원 개인에게 귀속된다는 뜻이 아니다.",
+          "target_surface": "무린기록원",
+          "target_span": [
+            13,
+            18
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-role-murin",
+            "full_identity": "SAME"
+          },
+          "rationale": "조직 자체가 자산 소유자라는 문서 의미가 등록 기관과 일치한다."
+        },
+        {
+          "case_id": "robust-role-murin:3",
+          "text": "회의 참석자는 무린기록원장이다. 참석자 칸은 책임자 한 사람의 직위를 적는 곳이며 기관 명단이 아니다.",
+          "target_surface": "무린기록원장",
+          "target_span": [
+            8,
+            14
+          ],
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT",
+            "core_surface": "무린기록원",
+            "core_entity_ref": "global:robust-role-murin"
+          },
+          "rationale": "대상 전체는 기관 책임자라는 사람 또는 직위이고 core 기관과 다른 실체다."
+        },
+        {
+          "case_id": "robust-role-murin:4",
+          "text": "무린기록원장의 임기 종료에 따라 후임자를 모집한다. 이번 문서는 기관의 폐지나 교체가 아니라 책임자 개인의 인사 절차를 다룬다.",
+          "target_surface": "무린기록원장",
+          "target_span": [
+            0,
+            6
+          ],
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT",
+            "core_surface": "무린기록원",
+            "core_entity_ref": "global:robust-role-murin"
+          },
+          "rationale": "임기와 인사의 대상은 책임자 직위이므로 기관 ID로 전체 표현을 연결할 수 없다."
+        }
+      ]
+    },
+    {
+      "family_id": "robust-role-jenul",
+      "stratum": "organization_role",
+      "domain": "fictional_robustness",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "robust-role-jenul",
+          "canonical": "제눌교통공단",
+          "short_definition": "가상 제눌 지역의 공영버스를 운영하는 법인",
+          "surfaces": [],
+          "type": "organization",
+          "domains": [
+            "diagnostic_fictional"
+          ]
+        }
+      ],
+      "source_facts": [
+        "제눌교통공단은 창작 기관으로 법인 또는 기관 자체만 사전에 등록한다.",
+        "제눌교통공단 이사장은 기관의 책임자라는 사람 또는 직위를 뜻하며 기관과 동일한 실체가 아니다."
+      ],
+      "cases": [
+        {
+          "case_id": "robust-role-jenul:1",
+          "text": "업무 협약의 당사자는 기관 자체인 제눌교통공단이다. 서명한 책임자의 개인 정보와 기관의 등록 정보는 별도 칸에 기록했다.",
+          "target_surface": "제눌교통공단",
+          "target_span": [
+            19,
+            25
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-role-jenul",
+            "full_identity": "SAME"
+          },
+          "rationale": "지정 대상이 사람의 직위가 아니라 협약 당사자인 기관이다."
+        },
+        {
+          "case_id": "robust-role-jenul:2",
+          "text": "기록의 소유자 항목에는 제눌교통공단을 넣었다. 이 항목은 조직의 자산 귀속을 나타내며 직원 개인에게 귀속된다는 뜻이 아니다.",
+          "target_surface": "제눌교통공단",
+          "target_span": [
+            13,
+            19
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-role-jenul",
+            "full_identity": "SAME"
+          },
+          "rationale": "조직 자체가 자산 소유자라는 문서 의미가 등록 기관과 일치한다."
+        },
+        {
+          "case_id": "robust-role-jenul:3",
+          "text": "회의 참석자는 제눌교통공단 이사장이다. 참석자 칸은 책임자 한 사람의 직위를 적는 곳이며 기관 명단이 아니다.",
+          "target_surface": "제눌교통공단 이사장",
+          "target_span": [
+            8,
+            18
+          ],
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT",
+            "core_surface": "제눌교통공단",
+            "core_entity_ref": "global:robust-role-jenul"
+          },
+          "rationale": "대상 전체는 기관 책임자라는 사람 또는 직위이고 core 기관과 다른 실체다."
+        },
+        {
+          "case_id": "robust-role-jenul:4",
+          "text": "제눌교통공단 이사장의 임기 종료에 따라 후임자를 모집한다. 이번 문서는 기관의 폐지나 교체가 아니라 책임자 개인의 인사 절차를 다룬다.",
+          "target_surface": "제눌교통공단 이사장",
+          "target_span": [
+            0,
+            10
+          ],
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT",
+            "core_surface": "제눌교통공단",
+            "core_entity_ref": "global:robust-role-jenul"
+          },
+          "rationale": "임기와 인사의 대상은 책임자 직위이므로 기관 ID로 전체 표현을 연결할 수 없다."
+        }
+      ]
+    },
+    {
+      "family_id": "robust-role-ravin",
+      "stratum": "organization_role",
+      "domain": "fictional_robustness",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "robust-role-ravin",
+          "canonical": "라빈보존재단",
+          "short_definition": "가상 라빈 지역의 목조 건축물 보존을 지원하는 재단",
+          "surfaces": [],
+          "type": "organization",
+          "domains": [
+            "diagnostic_fictional"
+          ]
+        }
+      ],
+      "source_facts": [
+        "라빈보존재단은 창작 기관으로 법인 또는 기관 자체만 사전에 등록한다.",
+        "라빈보존재단 이사장은 기관의 책임자라는 사람 또는 직위를 뜻하며 기관과 동일한 실체가 아니다."
+      ],
+      "cases": [
+        {
+          "case_id": "robust-role-ravin:1",
+          "text": "업무 협약의 당사자는 기관 자체인 라빈보존재단이다. 서명한 책임자의 개인 정보와 기관의 등록 정보는 별도 칸에 기록했다.",
+          "target_surface": "라빈보존재단",
+          "target_span": [
+            19,
+            25
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-role-ravin",
+            "full_identity": "SAME"
+          },
+          "rationale": "지정 대상이 사람의 직위가 아니라 협약 당사자인 기관이다."
+        },
+        {
+          "case_id": "robust-role-ravin:2",
+          "text": "기록의 소유자 항목에는 라빈보존재단을 넣었다. 이 항목은 조직의 자산 귀속을 나타내며 직원 개인에게 귀속된다는 뜻이 아니다.",
+          "target_surface": "라빈보존재단",
+          "target_span": [
+            13,
+            19
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-role-ravin",
+            "full_identity": "SAME"
+          },
+          "rationale": "조직 자체가 자산 소유자라는 문서 의미가 등록 기관과 일치한다."
+        },
+        {
+          "case_id": "robust-role-ravin:3",
+          "text": "회의 참석자는 라빈보존재단 이사장이다. 참석자 칸은 책임자 한 사람의 직위를 적는 곳이며 기관 명단이 아니다.",
+          "target_surface": "라빈보존재단 이사장",
+          "target_span": [
+            8,
+            18
+          ],
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT",
+            "core_surface": "라빈보존재단",
+            "core_entity_ref": "global:robust-role-ravin"
+          },
+          "rationale": "대상 전체는 기관 책임자라는 사람 또는 직위이고 core 기관과 다른 실체다."
+        },
+        {
+          "case_id": "robust-role-ravin:4",
+          "text": "라빈보존재단 이사장의 임기 종료에 따라 후임자를 모집한다. 이번 문서는 기관의 폐지나 교체가 아니라 책임자 개인의 인사 절차를 다룬다.",
+          "target_surface": "라빈보존재단 이사장",
+          "target_span": [
+            0,
+            10
+          ],
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT",
+            "core_surface": "라빈보존재단",
+            "core_entity_ref": "global:robust-role-ravin"
+          },
+          "rationale": "임기와 인사의 대상은 책임자 직위이므로 기관 ID로 전체 표현을 연결할 수 없다."
+        }
+      ]
+    },
+    {
+      "family_id": "robust-role-nuvent",
+      "stratum": "organization_role",
+      "domain": "fictional_robustness",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "robust-role-nuvent",
+          "canonical": "누벤트자료센터",
+          "short_definition": "가상 누벤트 단지의 지질 표본을 관리하는 기관",
+          "surfaces": [],
+          "type": "organization",
+          "domains": [
+            "diagnostic_fictional"
+          ]
+        }
+      ],
+      "source_facts": [
+        "누벤트자료센터는 창작 기관으로 법인 또는 기관 자체만 사전에 등록한다.",
+        "누벤트자료센터장은 기관의 책임자라는 사람 또는 직위를 뜻하며 기관과 동일한 실체가 아니다."
+      ],
+      "cases": [
+        {
+          "case_id": "robust-role-nuvent:1",
+          "text": "업무 협약의 당사자는 기관 자체인 누벤트자료센터다. 서명한 책임자의 개인 정보와 기관의 등록 정보는 별도 칸에 기록했다.",
+          "target_surface": "누벤트자료센터",
+          "target_span": [
+            19,
+            26
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-role-nuvent",
+            "full_identity": "SAME"
+          },
+          "rationale": "지정 대상이 사람의 직위가 아니라 협약 당사자인 기관이다."
+        },
+        {
+          "case_id": "robust-role-nuvent:2",
+          "text": "기록의 소유자 항목에는 누벤트자료센터를 넣었다. 이 항목은 조직의 자산 귀속을 나타내며 직원 개인에게 귀속된다는 뜻이 아니다.",
+          "target_surface": "누벤트자료센터",
+          "target_span": [
+            13,
+            20
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-role-nuvent",
+            "full_identity": "SAME"
+          },
+          "rationale": "조직 자체가 자산 소유자라는 문서 의미가 등록 기관과 일치한다."
+        },
+        {
+          "case_id": "robust-role-nuvent:3",
+          "text": "회의 참석자는 누벤트자료센터장이다. 참석자 칸은 책임자 한 사람의 직위를 적는 곳이며 기관 명단이 아니다.",
+          "target_surface": "누벤트자료센터장",
+          "target_span": [
+            8,
+            16
+          ],
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT",
+            "core_surface": "누벤트자료센터",
+            "core_entity_ref": "global:robust-role-nuvent"
+          },
+          "rationale": "대상 전체는 기관 책임자라는 사람 또는 직위이고 core 기관과 다른 실체다."
+        },
+        {
+          "case_id": "robust-role-nuvent:4",
+          "text": "누벤트자료센터장의 임기 종료에 따라 후임자를 모집한다. 이번 문서는 기관의 폐지나 교체가 아니라 책임자 개인의 인사 절차를 다룬다.",
+          "target_surface": "누벤트자료센터장",
+          "target_span": [
+            0,
+            8
+          ],
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT",
+            "core_surface": "누벤트자료센터",
+            "core_entity_ref": "global:robust-role-nuvent"
+          },
+          "rationale": "임기와 인사의 대상은 책임자 직위이므로 기관 ID로 전체 표현을 연결할 수 없다."
+        }
+      ]
+    },
+    {
+      "family_id": "robust-hist-dosel",
+      "stratum": "historical_current",
+      "domain": "fictional_robustness",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "robust-hist-dosel",
+          "canonical": "도셀검정원",
+          "short_definition": "2016년에 새로 설립되어 현재 광학 센서 검정을 담당하는 가상 독립 법인. 1991~2004년의 동명 폐지 조직과 법적 승계 관계가 없다.",
+          "surfaces": [],
+          "type": "organization",
+          "domains": [
+            "diagnostic_fictional"
+          ]
+        }
+      ],
+      "source_facts": [
+        "1991년 설립되어 2004년 해산한 옛 조직과 2016년 새로 설립한 현행 조직은 별개 법인이다.",
+        "사전에는 2016년 설립 현행 조직만 등록하며 모든 연혁은 평가용 창작이다."
+      ],
+      "cases": [
+        {
+          "case_id": "robust-hist-dosel:1",
+          "text": "2016년 신규 설립 법인의 현재 계약을 검토한다. 도셀검정원은 광학 센서 검정을 담당하며 예전에 같은 이름을 썼던 조직의 권리나 의무를 승계하지 않았다.",
+          "target_surface": "도셀검정원",
+          "target_span": [
+            29,
+            34
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-hist-dosel",
+            "full_identity": "SAME"
+          },
+          "rationale": "문서가 신규 설립 현행 법인을 지정하여 등록 항목과 설립 시점 및 정체성이 같다."
+        },
+        {
+          "case_id": "robust-hist-dosel:2",
+          "text": "현재 운영 중인 도셀검정원의 설립증명서에는 2016년이 적혀 있다. 이 법인의 조직 기록은 옛 동명 단체의 폐쇄 기록과 분리되어 있다.",
+          "target_surface": "도셀검정원",
+          "target_span": [
+            9,
+            14
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-hist-dosel",
+            "full_identity": "SAME"
+          },
+          "rationale": "현행 법인의 설립 연도가 사전 정의와 일치한다."
+        },
+        {
+          "case_id": "robust-hist-dosel:3",
+          "text": "보존 기록의 조사 대상은 1991년에 설립되어 2004년에 해산한 도셀검정원이다. 지금 같은 이름을 쓰는 법인은 별개이며 이 기록의 당사자가 아니다.",
+          "target_surface": "도셀검정원",
+          "target_span": [
+            37,
+            42
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "폐지된 옛 법인이 대상이며 사전에 있는 현행 법인과 법적 정체성이 다르다."
+        },
+        {
+          "case_id": "robust-hist-dosel:4",
+          "text": "2004년 해산 당시 도셀검정원이 남긴 청산 서류를 복원했다. 2016년 설립 법인은 그 조직의 법적 후계자가 아니고 이 서류에도 등장하지 않는다.",
+          "target_surface": "도셀검정원",
+          "target_span": [
+            12,
+            17
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "대상은 해산한 옛 조직으로 현행 조직이 승계하지 않았으므로 현행 ID와 연결하면 오답이다."
+        }
+      ]
+    },
+    {
+      "family_id": "robust-hist-banel",
+      "stratum": "historical_current",
+      "domain": "fictional_robustness",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "robust-hist-banel",
+          "canonical": "바넬지원회",
+          "short_definition": "2020년에 새로 설립되어 현재 소형 선박 수리 지원을 담당하는 가상 독립 법인. 1987~1999년의 동명 폐지 조직과 법적 승계 관계가 없다.",
+          "surfaces": [],
+          "type": "organization",
+          "domains": [
+            "diagnostic_fictional"
+          ]
+        }
+      ],
+      "source_facts": [
+        "1987년 설립되어 1999년 해산한 옛 조직과 2020년 새로 설립한 현행 조직은 별개 법인이다.",
+        "사전에는 2020년 설립 현행 조직만 등록하며 모든 연혁은 평가용 창작이다."
+      ],
+      "cases": [
+        {
+          "case_id": "robust-hist-banel:1",
+          "text": "2020년 신규 설립 법인의 현재 계약을 검토한다. 바넬지원회는 소형 선박 수리 지원을 담당하며 예전에 같은 이름을 썼던 조직의 권리나 의무를 승계하지 않았다.",
+          "target_surface": "바넬지원회",
+          "target_span": [
+            29,
+            34
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-hist-banel",
+            "full_identity": "SAME"
+          },
+          "rationale": "문서가 신규 설립 현행 법인을 지정하여 등록 항목과 설립 시점 및 정체성이 같다."
+        },
+        {
+          "case_id": "robust-hist-banel:2",
+          "text": "현재 운영 중인 바넬지원회의 설립증명서에는 2020년이 적혀 있다. 이 법인의 조직 기록은 옛 동명 단체의 폐쇄 기록과 분리되어 있다.",
+          "target_surface": "바넬지원회",
+          "target_span": [
+            9,
+            14
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-hist-banel",
+            "full_identity": "SAME"
+          },
+          "rationale": "현행 법인의 설립 연도가 사전 정의와 일치한다."
+        },
+        {
+          "case_id": "robust-hist-banel:3",
+          "text": "보존 기록의 조사 대상은 1987년에 설립되어 1999년에 해산한 바넬지원회다. 지금 같은 이름을 쓰는 법인은 별개이며 이 기록의 당사자가 아니다.",
+          "target_surface": "바넬지원회",
+          "target_span": [
+            37,
+            42
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "폐지된 옛 법인이 대상이며 사전에 있는 현행 법인과 법적 정체성이 다르다."
+        },
+        {
+          "case_id": "robust-hist-banel:4",
+          "text": "1999년 해산 당시 바넬지원회가 남긴 청산 서류를 복원했다. 2020년 설립 법인은 그 조직의 법적 후계자가 아니고 이 서류에도 등장하지 않는다.",
+          "target_surface": "바넬지원회",
+          "target_span": [
+            12,
+            17
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "대상은 해산한 옛 조직으로 현행 조직이 승계하지 않았으므로 현행 ID와 연결하면 오답이다."
+        }
+      ]
+    },
+    {
+      "family_id": "robust-hist-kiram",
+      "stratum": "historical_current",
+      "domain": "fictional_robustness",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "robust-hist-kiram",
+          "canonical": "키람연구단",
+          "short_definition": "2019년에 새로 설립되어 현재 수중 통신 연구를 담당하는 가상 독립 법인. 2001~2008년의 동명 폐지 조직과 법적 승계 관계가 없다.",
+          "surfaces": [],
+          "type": "organization",
+          "domains": [
+            "diagnostic_fictional"
+          ]
+        }
+      ],
+      "source_facts": [
+        "2001년 설립되어 2008년 해산한 옛 조직과 2019년 새로 설립한 현행 조직은 별개 법인이다.",
+        "사전에는 2019년 설립 현행 조직만 등록하며 모든 연혁은 평가용 창작이다."
+      ],
+      "cases": [
+        {
+          "case_id": "robust-hist-kiram:1",
+          "text": "2019년 신규 설립 법인의 현재 계약을 검토한다. 키람연구단은 수중 통신 연구를 담당하며 예전에 같은 이름을 썼던 조직의 권리나 의무를 승계하지 않았다.",
+          "target_surface": "키람연구단",
+          "target_span": [
+            29,
+            34
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-hist-kiram",
+            "full_identity": "SAME"
+          },
+          "rationale": "문서가 신규 설립 현행 법인을 지정하여 등록 항목과 설립 시점 및 정체성이 같다."
+        },
+        {
+          "case_id": "robust-hist-kiram:2",
+          "text": "현재 운영 중인 키람연구단의 설립증명서에는 2019년이 적혀 있다. 이 법인의 조직 기록은 옛 동명 단체의 폐쇄 기록과 분리되어 있다.",
+          "target_surface": "키람연구단",
+          "target_span": [
+            9,
+            14
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-hist-kiram",
+            "full_identity": "SAME"
+          },
+          "rationale": "현행 법인의 설립 연도가 사전 정의와 일치한다."
+        },
+        {
+          "case_id": "robust-hist-kiram:3",
+          "text": "보존 기록의 조사 대상은 2001년에 설립되어 2008년에 해산한 키람연구단이다. 지금 같은 이름을 쓰는 법인은 별개이며 이 기록의 당사자가 아니다.",
+          "target_surface": "키람연구단",
+          "target_span": [
+            37,
+            42
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "폐지된 옛 법인이 대상이며 사전에 있는 현행 법인과 법적 정체성이 다르다."
+        },
+        {
+          "case_id": "robust-hist-kiram:4",
+          "text": "2008년 해산 당시 키람연구단이 남긴 청산 서류를 복원했다. 2019년 설립 법인은 그 조직의 법적 후계자가 아니고 이 서류에도 등장하지 않는다.",
+          "target_surface": "키람연구단",
+          "target_span": [
+            12,
+            17
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "대상은 해산한 옛 조직으로 현행 조직이 승계하지 않았으므로 현행 ID와 연결하면 오답이다."
+        }
+      ]
+    },
+    {
+      "family_id": "robust-hist-ruban",
+      "stratum": "historical_current",
+      "domain": "fictional_robustness",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "robust-hist-ruban",
+          "canonical": "루반측량원",
+          "short_definition": "2014년에 새로 설립되어 현재 지하 시설 측량을 담당하는 가상 독립 법인. 1978~1995년의 동명 폐지 조직과 법적 승계 관계가 없다.",
+          "surfaces": [],
+          "type": "organization",
+          "domains": [
+            "diagnostic_fictional"
+          ]
+        }
+      ],
+      "source_facts": [
+        "1978년 설립되어 1995년 해산한 옛 조직과 2014년 새로 설립한 현행 조직은 별개 법인이다.",
+        "사전에는 2014년 설립 현행 조직만 등록하며 모든 연혁은 평가용 창작이다."
+      ],
+      "cases": [
+        {
+          "case_id": "robust-hist-ruban:1",
+          "text": "2014년 신규 설립 법인의 현재 계약을 검토한다. 루반측량원은 지하 시설 측량을 담당하며 예전에 같은 이름을 썼던 조직의 권리나 의무를 승계하지 않았다.",
+          "target_surface": "루반측량원",
+          "target_span": [
+            29,
+            34
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-hist-ruban",
+            "full_identity": "SAME"
+          },
+          "rationale": "문서가 신규 설립 현행 법인을 지정하여 등록 항목과 설립 시점 및 정체성이 같다."
+        },
+        {
+          "case_id": "robust-hist-ruban:2",
+          "text": "현재 운영 중인 루반측량원의 설립증명서에는 2014년이 적혀 있다. 이 법인의 조직 기록은 옛 동명 단체의 폐쇄 기록과 분리되어 있다.",
+          "target_surface": "루반측량원",
+          "target_span": [
+            9,
+            14
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-hist-ruban",
+            "full_identity": "SAME"
+          },
+          "rationale": "현행 법인의 설립 연도가 사전 정의와 일치한다."
+        },
+        {
+          "case_id": "robust-hist-ruban:3",
+          "text": "보존 기록의 조사 대상은 1978년에 설립되어 1995년에 해산한 루반측량원이다. 지금 같은 이름을 쓰는 법인은 별개이며 이 기록의 당사자가 아니다.",
+          "target_surface": "루반측량원",
+          "target_span": [
+            37,
+            42
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "폐지된 옛 법인이 대상이며 사전에 있는 현행 법인과 법적 정체성이 다르다."
+        },
+        {
+          "case_id": "robust-hist-ruban:4",
+          "text": "1995년 해산 당시 루반측량원이 남긴 청산 서류를 복원했다. 2014년 설립 법인은 그 조직의 법적 후계자가 아니고 이 서류에도 등장하지 않는다.",
+          "target_surface": "루반측량원",
+          "target_span": [
+            12,
+            17
+          ],
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "대상은 해산한 옛 조직으로 현행 조직이 승계하지 않았으므로 현행 ID와 연결하면 오답이다."
+        }
+      ]
+    },
+    {
+      "family_id": "robust-amb-erun",
+      "stratum": "ambiguity_denial",
+      "domain": "fictional_robustness",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "robust-amb-erun-a",
+          "canonical": "에르운송관리단",
+          "short_definition": "가상 조직이며 운송 편성을 담당한다. 별도 조직 에르민원지원단과 인력 및 업무가 다르다.",
+          "surfaces": [
+            "에르"
+          ],
+          "type": "organization",
+          "domains": [
+            "diagnostic_fictional"
+          ]
+        },
+        {
+          "key": "robust-amb-erun-b",
+          "canonical": "에르민원지원단",
+          "short_definition": "가상 조직이며 민원 상담을 담당한다. 별도 조직 에르운송관리단과 인력 및 업무가 다르다.",
+          "surfaces": [
+            "에르"
+          ],
+          "type": "organization",
+          "domains": [
+            "diagnostic_fictional"
+          ]
+        }
+      ],
+      "source_facts": [
+        "에르운송관리단과 에르민원지원단은 창작한 별개 조직으로 약칭 에르를 공유한다.",
+        "두 정식 명칭은 각각 확정 가능하고 공통 약칭만 남은 기록은 모호하다. 무관한 문자열 표본에는 어느 조직 ID도 부여하지 않는다."
+      ],
+      "cases": [
+        {
+          "case_id": "robust-amb-erun:1",
+          "text": "운송 편성 업무를 담당하는 에르운송관리단이 새 접수 시간을 공지했다. 이름이 비슷한 다른 조직의 업무는 이 공지에 포함되지 않는다.",
+          "target_surface": "에르운송관리단",
+          "target_span": [
+            15,
+            22
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-amb-erun-a",
+            "full_identity": "SAME"
+          },
+          "rationale": "정식 명칭과 업무 설명이 첫 번째 사전 조직과 일치한다."
+        },
+        {
+          "case_id": "robust-amb-erun:2",
+          "text": "이번 공문의 발행 기관은 에르민원지원단이고 내용은 민원 상담 절차다. 공문에는 정식 기관 이름을 생략하지 않았다.",
+          "target_surface": "에르민원지원단",
+          "target_span": [
+            14,
+            21
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-amb-erun-b",
+            "full_identity": "SAME"
+          },
+          "rationale": "정식 명칭과 업무 설명이 두 번째 사전 조직과 일치한다."
+        },
+        {
+          "case_id": "robust-amb-erun:3",
+          "text": "오래된 메모에는 연락처 이름으로 에르만 남아 있다. 같은 약칭을 쓰는 두 조직 가운데 어느 쪽인지 확인할 부서, 업무, 주소 정보는 전혀 없다.",
+          "target_surface": "에르",
+          "target_span": [
+            18,
+            20
+          ],
+          "gold": {
+            "label": "AMBIGUOUS",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "공통 약칭을 구별할 문맥이 없어서 두 조직 중 하나의 ID를 정할 수 없다."
+        },
+        {
+          "case_id": "robust-amb-erun:4",
+          "text": "문자 인식 시험에서 에르라는 글자 묶음을 표본으로 입력했다. 여기서는 조직을 지칭하지 않으며 어떤 담당 기관을 선택하라는 요청도 아니다.",
+          "target_surface": "에르",
+          "target_span": [
+            11,
+            13
+          ],
+          "gold": {
+            "label": "NON_MENTION",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문이 단순 문자열 표본임을 명시하므로 동일 약칭의 실제 조직 언급이 아니다."
+        }
+      ]
+    },
+    {
+      "family_id": "robust-amb-osel",
+      "stratum": "ambiguity_denial",
+      "domain": "fictional_robustness",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "robust-amb-osel-a",
+          "canonical": "오셀산림연구회",
+          "short_definition": "가상 조직이며 산림 토양 연구를 담당한다. 별도 조직 오셀수질연구회와 인력 및 업무가 다르다.",
+          "surfaces": [
+            "오셀"
+          ],
+          "type": "organization",
+          "domains": [
+            "diagnostic_fictional"
+          ]
+        },
+        {
+          "key": "robust-amb-osel-b",
+          "canonical": "오셀수질연구회",
+          "short_definition": "가상 조직이며 하천 수질 연구를 담당한다. 별도 조직 오셀산림연구회와 인력 및 업무가 다르다.",
+          "surfaces": [
+            "오셀"
+          ],
+          "type": "organization",
+          "domains": [
+            "diagnostic_fictional"
+          ]
+        }
+      ],
+      "source_facts": [
+        "오셀산림연구회와 오셀수질연구회는 창작한 별개 조직으로 약칭 오셀을 공유한다.",
+        "두 정식 명칭은 각각 확정 가능하고 공통 약칭만 남은 기록은 모호하다. 무관한 문자열 표본에는 어느 조직 ID도 부여하지 않는다."
+      ],
+      "cases": [
+        {
+          "case_id": "robust-amb-osel:1",
+          "text": "산림 토양 연구 업무를 담당하는 오셀산림연구회가 새 접수 시간을 공지했다. 이름이 비슷한 다른 조직의 업무는 이 공지에 포함되지 않는다.",
+          "target_surface": "오셀산림연구회",
+          "target_span": [
+            18,
+            25
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-amb-osel-a",
+            "full_identity": "SAME"
+          },
+          "rationale": "정식 명칭과 업무 설명이 첫 번째 사전 조직과 일치한다."
+        },
+        {
+          "case_id": "robust-amb-osel:2",
+          "text": "이번 공문의 발행 기관은 오셀수질연구회이고 내용은 하천 수질 연구 절차다. 공문에는 정식 기관 이름을 생략하지 않았다.",
+          "target_surface": "오셀수질연구회",
+          "target_span": [
+            14,
+            21
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-amb-osel-b",
+            "full_identity": "SAME"
+          },
+          "rationale": "정식 명칭과 업무 설명이 두 번째 사전 조직과 일치한다."
+        },
+        {
+          "case_id": "robust-amb-osel:3",
+          "text": "오래된 메모에는 연락처 이름으로 오셀만 남아 있다. 같은 약칭을 쓰는 두 조직 가운데 어느 쪽인지 확인할 부서, 업무, 주소 정보는 전혀 없다.",
+          "target_surface": "오셀",
+          "target_span": [
+            18,
+            20
+          ],
+          "gold": {
+            "label": "AMBIGUOUS",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "공통 약칭을 구별할 문맥이 없어서 두 조직 중 하나의 ID를 정할 수 없다."
+        },
+        {
+          "case_id": "robust-amb-osel:4",
+          "text": "문자 인식 시험에서 오셀이라는 글자 묶음을 표본으로 입력했다. 여기서는 조직을 지칭하지 않으며 어떤 담당 기관을 선택하라는 요청도 아니다.",
+          "target_surface": "오셀",
+          "target_span": [
+            11,
+            13
+          ],
+          "gold": {
+            "label": "NON_MENTION",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문이 단순 문자열 표본임을 명시하므로 동일 약칭의 실제 조직 언급이 아니다."
+        }
+      ]
+    },
+    {
+      "family_id": "robust-amb-birun",
+      "stratum": "ambiguity_denial",
+      "domain": "fictional_robustness",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "robust-amb-birun-a",
+          "canonical": "비룬출입운영팀",
+          "short_definition": "가상 조직이며 방문자 출입 승인을 담당한다. 별도 조직 비룬요금운영팀과 인력 및 업무가 다르다.",
+          "surfaces": [
+            "비룬"
+          ],
+          "type": "organization",
+          "domains": [
+            "diagnostic_fictional"
+          ]
+        },
+        {
+          "key": "robust-amb-birun-b",
+          "canonical": "비룬요금운영팀",
+          "short_definition": "가상 조직이며 통행료 정산을 담당한다. 별도 조직 비룬출입운영팀과 인력 및 업무가 다르다.",
+          "surfaces": [
+            "비룬"
+          ],
+          "type": "organization",
+          "domains": [
+            "diagnostic_fictional"
+          ]
+        }
+      ],
+      "source_facts": [
+        "비룬출입운영팀과 비룬요금운영팀은 창작한 별개 조직으로 약칭 비룬을 공유한다.",
+        "두 정식 명칭은 각각 확정 가능하고 공통 약칭만 남은 기록은 모호하다. 무관한 문자열 표본에는 어느 조직 ID도 부여하지 않는다."
+      ],
+      "cases": [
+        {
+          "case_id": "robust-amb-birun:1",
+          "text": "방문자 출입 승인 업무를 담당하는 비룬출입운영팀이 새 접수 시간을 공지했다. 이름이 비슷한 다른 조직의 업무는 이 공지에 포함되지 않는다.",
+          "target_surface": "비룬출입운영팀",
+          "target_span": [
+            19,
+            26
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-amb-birun-a",
+            "full_identity": "SAME"
+          },
+          "rationale": "정식 명칭과 업무 설명이 첫 번째 사전 조직과 일치한다."
+        },
+        {
+          "case_id": "robust-amb-birun:2",
+          "text": "이번 공문의 발행 기관은 비룬요금운영팀이고 내용은 통행료 정산 절차다. 공문에는 정식 기관 이름을 생략하지 않았다.",
+          "target_surface": "비룬요금운영팀",
+          "target_span": [
+            14,
+            21
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-amb-birun-b",
+            "full_identity": "SAME"
+          },
+          "rationale": "정식 명칭과 업무 설명이 두 번째 사전 조직과 일치한다."
+        },
+        {
+          "case_id": "robust-amb-birun:3",
+          "text": "오래된 메모에는 연락처 이름으로 비룬만 남아 있다. 같은 약칭을 쓰는 두 조직 가운데 어느 쪽인지 확인할 부서, 업무, 주소 정보는 전혀 없다.",
+          "target_surface": "비룬",
+          "target_span": [
+            18,
+            20
+          ],
+          "gold": {
+            "label": "AMBIGUOUS",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "공통 약칭을 구별할 문맥이 없어서 두 조직 중 하나의 ID를 정할 수 없다."
+        },
+        {
+          "case_id": "robust-amb-birun:4",
+          "text": "문자 인식 시험에서 비룬이라는 글자 묶음을 표본으로 입력했다. 여기서는 조직을 지칭하지 않으며 어떤 담당 기관을 선택하라는 요청도 아니다.",
+          "target_surface": "비룬",
+          "target_span": [
+            11,
+            13
+          ],
+          "gold": {
+            "label": "NON_MENTION",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문이 단순 문자열 표본임을 명시하므로 동일 약칭의 실제 조직 언급이 아니다."
+        }
+      ]
+    },
+    {
+      "family_id": "robust-amb-teban",
+      "stratum": "ambiguity_denial",
+      "domain": "fictional_robustness",
+      "glossary_mode": "authored",
+      "terms": [
+        {
+          "key": "robust-amb-teban-a",
+          "canonical": "테반악기보관소",
+          "short_definition": "가상 조직이며 공연 악기 보관을 담당한다. 별도 조직 테반의상보관소와 인력 및 업무가 다르다.",
+          "surfaces": [
+            "테반"
+          ],
+          "type": "organization",
+          "domains": [
+            "diagnostic_fictional"
+          ]
+        },
+        {
+          "key": "robust-amb-teban-b",
+          "canonical": "테반의상보관소",
+          "short_definition": "가상 조직이며 공연 의상 보관을 담당한다. 별도 조직 테반악기보관소와 인력 및 업무가 다르다.",
+          "surfaces": [
+            "테반"
+          ],
+          "type": "organization",
+          "domains": [
+            "diagnostic_fictional"
+          ]
+        }
+      ],
+      "source_facts": [
+        "테반악기보관소와 테반의상보관소는 창작한 별개 조직으로 약칭 테반을 공유한다.",
+        "두 정식 명칭은 각각 확정 가능하고 공통 약칭만 남은 기록은 모호하다. 무관한 문자열 표본에는 어느 조직 ID도 부여하지 않는다."
+      ],
+      "cases": [
+        {
+          "case_id": "robust-amb-teban:1",
+          "text": "공연 악기 보관 업무를 담당하는 테반악기보관소가 새 접수 시간을 공지했다. 이름이 비슷한 다른 조직의 업무는 이 공지에 포함되지 않는다.",
+          "target_surface": "테반악기보관소",
+          "target_span": [
+            18,
+            25
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-amb-teban-a",
+            "full_identity": "SAME"
+          },
+          "rationale": "정식 명칭과 업무 설명이 첫 번째 사전 조직과 일치한다."
+        },
+        {
+          "case_id": "robust-amb-teban:2",
+          "text": "이번 공문의 발행 기관은 테반의상보관소이고 내용은 공연 의상 보관 절차다. 공문에는 정식 기관 이름을 생략하지 않았다.",
+          "target_surface": "테반의상보관소",
+          "target_span": [
+            14,
+            21
+          ],
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:robust-amb-teban-b",
+            "full_identity": "SAME"
+          },
+          "rationale": "정식 명칭과 업무 설명이 두 번째 사전 조직과 일치한다."
+        },
+        {
+          "case_id": "robust-amb-teban:3",
+          "text": "오래된 메모에는 연락처 이름으로 테반만 남아 있다. 같은 약칭을 쓰는 두 조직 가운데 어느 쪽인지 확인할 부서, 업무, 주소 정보는 전혀 없다.",
+          "target_surface": "테반",
+          "target_span": [
+            18,
+            20
+          ],
+          "gold": {
+            "label": "AMBIGUOUS",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "공통 약칭을 구별할 문맥이 없어서 두 조직 중 하나의 ID를 정할 수 없다."
+        },
+        {
+          "case_id": "robust-amb-teban:4",
+          "text": "문자 인식 시험에서 테반이라는 글자 묶음을 표본으로 입력했다. 여기서는 조직을 지칭하지 않으며 어떤 담당 기관을 선택하라는 요청도 아니다.",
+          "target_surface": "테반",
+          "target_span": [
+            11,
+            13
+          ],
+          "gold": {
+            "label": "NON_MENTION",
+            "entity_ref": null,
+            "full_identity": "UNKNOWN"
+          },
+          "rationale": "원문이 단순 문자열 표본임을 명시하므로 동일 약칭의 실제 조직 언급이 아니다."
+        }
+      ]
+    }
+  ]
+}
