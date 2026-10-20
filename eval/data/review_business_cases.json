@@ -1,0 +1,2174 @@
+{
+  "schema_version": 1,
+  "annotation_origin": "AI_AUTHORED",
+  "authored_by": "codex-context-agent",
+  "human_verified": false,
+  "gold_source": "Authored source documents and explicit fictional glossary worlds, before any resolver/model outputs.",
+  "limitations": [
+    "Fictional business cases authored by AI, independently AI reviewed; not human gold or actual deployment distribution.",
+    "Four documents share each lexical family; 64 documents are 16 families, not 64 independent glossary worlds.",
+    "Term-required questions are predeclared; never selected by pack injection or model correctness."
+  ],
+  "families": [
+    {
+      "family_id": "rev-glass",
+      "source_facts": "이 평가의 새결사는 가상 기업이다. 수리등은 국내 운영 변경만 다루며 국외 동명 절차와는 다르다.",
+      "terms": [
+        {
+          "key": "rev-glass",
+          "canonical": "수리등 변경심사",
+          "surfaces": [
+            "수리등",
+            "YG"
+          ],
+          "short_definition": "대한민국 새결사의 2025년 이후 운영 변경 심사 절차다. 운영 반영 전에 승인 코드 G7을 받아야 한다. 외부 고객 요청에는 적용하지 않으며 이 이름 자체가 실행 권한을 의미하지 않는다."
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "rev-glass:1",
+          "document_id": "rev-glass:doc1",
+          "text": "새결사 국내 운영팀은 수리등에 서버 교체안을 접수했다. 담당자는 승인 코드를 확인한 뒤 일정을 확정할 예정이다.",
+          "target_surface": "수리등",
+          "target_core_span": {
+            "start": 12,
+            "end": 15
+          },
+          "target_full_span": {
+            "start": 12,
+            "end": 15
+          },
+          "expected_entity_id": "global:rev-glass",
+          "stratum": "registered",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-glass",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "수리등에서 운영 반영 전에 받아야 하는 승인 코드는?",
+            "answers": [
+              "G7"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "새결사 국내 운영 변경 절차를 지칭하며 코드는 사전에만 있다."
+        },
+        {
+          "case_id": "rev-glass:2",
+          "document_id": "rev-glass:doc2",
+          "text": "새결사 운영팀은 YG를 거쳐 11월 6일에 교체 일정을 알리기로 했다.",
+          "target_surface": "YG",
+          "target_core_span": {
+            "start": 9,
+            "end": 11
+          },
+          "target_full_span": {
+            "start": 9,
+            "end": 11
+          },
+          "expected_entity_id": "global:rev-glass",
+          "stratum": "alias",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-glass",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "교체 일정은 언제 알리는가?",
+            "answers": [
+              "11월 6일"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "등록된 약칭을 사용하며 답 날짜는 원문에 있다."
+        },
+        {
+          "case_id": "rev-glass:3",
+          "document_id": "rev-glass:doc3",
+          "text": "캐나다 협력사는 자체 절차인 수리등을 도입했다. 새결사 국내 절차와는 별개이며 승인 코드는 공유하지 않는다.",
+          "target_surface": "수리등",
+          "target_core_span": {
+            "start": 16,
+            "end": 19
+          },
+          "target_full_span": {
+            "start": 16,
+            "end": 19
+          },
+          "expected_entity_id": null,
+          "stratum": "jurisdiction",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "캐나다 협력사의 수리등 승인 코드는? ",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "같은 이름이어도 다른 관할의 독립 절차이며 코드 근거가 없다."
+        },
+        {
+          "case_id": "rev-glass:4",
+          "document_id": "rev-glass:doc4",
+          "text": "새결사는 수리등으로 국내 운영 변경을 심사한다. 외부 고객사는 자기 회사가 독립적으로 만든 문의 접수 시스템 수리등을 11월 9일에 공개했다. 두 시스템은 이름만 같고 운영 주체와 기능이 다르다.",
+          "target_surface": "수리등",
+          "target_core_span": {
+            "start": 61,
+            "end": 64
+          },
+          "target_full_span": {
+            "start": 61,
+            "end": 64
+          },
+          "expected_entity_id": null,
+          "stratum": "jurisdiction",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "외부 고객사는 문의 접수 시스템을 언제 공개했는가?",
+            "answers": [
+              "11월 9일"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "마지막 발생은 외부 고객사가 독립적으로 만든 문의 접수 시스템이다. 새결사의 운영 변경 절차와 주체·기능이 명시적으로 다르다."
+        }
+      ]
+    },
+    {
+      "family_id": "rev-calendar",
+      "source_facts": "달력함은 야간 개발 인수인계 기록함이고 면접 일정용 동명 상자는 별개다.",
+      "terms": [
+        {
+          "key": "rev-calendar",
+          "canonical": "달력함 인수인계",
+          "surfaces": [
+            "달력함",
+            "DH"
+          ],
+          "short_definition": "새결사 개발 조직의 야간 인수인계 기록함이다. 최종 확인 담당은 일정감사팀이다. 채용 면접 일정함과 다르며 외부 협력사에는 적용하지 않는다."
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "rev-calendar:1",
+          "document_id": "rev-calendar:doc1",
+          "text": "개발 조직은 야간 근무가 끝난 뒤 달력함에 작업 내역을 남겼다. 다음 날 최종 확인 담당 부서가 기록을 검토한다.",
+          "target_surface": "달력함",
+          "target_core_span": {
+            "start": 19,
+            "end": 22
+          },
+          "target_full_span": {
+            "start": 19,
+            "end": 22
+          },
+          "expected_entity_id": "global:rev-calendar",
+          "stratum": "registered",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-calendar",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "달력함 기록의 최종 확인 담당 부서는?",
+            "answers": [
+              "일정감사팀"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "개발 인수인계 기록함이고 담당 부서는 사전 정의가 필요하다."
+        },
+        {
+          "case_id": "rev-calendar:2",
+          "document_id": "rev-calendar:doc2",
+          "text": "개발팀은 달럭함에 미완료 작업 8건을 남겼다.",
+          "target_surface": "달럭함",
+          "target_core_span": {
+            "start": 5,
+            "end": 8
+          },
+          "target_full_span": {
+            "start": 5,
+            "end": 8
+          },
+          "expected_entity_id": "global:rev-calendar",
+          "stratum": "unregistered_typo",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-calendar",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "미완료 작업은 몇 건인가?",
+            "answers": [
+              "8건"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "약칭이 등록돼 있고 건수는 본문에 있다. 등록된 해당 업무 용어의 한 글자 오타이며 원문 부서와 업무가 일치한다. 정답은 resolver 출력 전에 작성했다."
+        },
+        {
+          "case_id": "rev-calendar:3",
+          "document_id": "rev-calendar:doc3",
+          "text": "채용팀은 면접 지원자용 달력함을 만들었다. 개발 인수인계 기록함과 이름만 같고 담당 부서는 아직 정하지 않았다.",
+          "target_surface": "달력함",
+          "target_core_span": {
+            "start": 13,
+            "end": 16
+          },
+          "target_full_span": {
+            "start": 13,
+            "end": 16
+          },
+          "expected_entity_id": null,
+          "stratum": "role",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "채용팀 달력함의 최종 확인 담당 부서는? ",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "같은 이름의 채용 자료이며 사내 개발 도구의 담당을 전이하면 안 된다."
+        },
+        {
+          "case_id": "rev-calendar:4",
+          "document_id": "rev-calendar:doc4",
+          "text": "외부 협력사는 자신들의 달력함을 폐지했다는 공지를 12월 2일에 발송했다. 새결사의 개발 기록함은 변경하지 않았다.",
+          "target_surface": "달력함",
+          "target_core_span": {
+            "start": 13,
+            "end": 16
+          },
+          "target_full_span": {
+            "start": 13,
+            "end": 16
+          },
+          "expected_entity_id": null,
+          "stratum": "jurisdiction",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "협력사는 공지를 언제 발송했는가?",
+            "answers": [
+              "12월 2일"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "협력사 소유의 별도 기록함이다."
+        }
+      ]
+    },
+    {
+      "family_id": "rev-wave",
+      "source_facts": "현재 서비스 당직 배정과 과거 여행 경비표는 다른 항목이다.",
+      "terms": [
+        {
+          "key": "rev-wave",
+          "canonical": "파도표 당직배정",
+          "surfaces": [
+            "파도표",
+            "PD"
+          ],
+          "short_definition": "새결사 서비스 조직에서 2024년부터 사용하는 당직 배정 절차다. 야간 담당자 변경은 코드 W4로 접수한다. 2023년에 폐지된 동명 여행 경비표와 관계없다."
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "rev-wave:1",
+          "document_id": "rev-wave:doc1",
+          "text": "서비스 조직은 파도표로 이번 주 야간 담당자 변경을 접수했다. 접수 화면에는 변경 코드 입력란이 있다.",
+          "target_surface": "파도표",
+          "target_core_span": {
+            "start": 8,
+            "end": 11
+          },
+          "target_full_span": {
+            "start": 8,
+            "end": 11
+          },
+          "expected_entity_id": "global:rev-wave",
+          "stratum": "registered",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-wave",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "파도표의 야간 담당자 변경 접수 코드는?",
+            "answers": [
+              "W4"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "현행 서비스 당직 절차를 명시했다."
+        },
+        {
+          "case_id": "rev-wave:2",
+          "document_id": "rev-wave:doc2",
+          "text": "서비스 조직은 파도포에 다음 주 당직자 6명을 등록했다.",
+          "target_surface": "파도포",
+          "target_core_span": {
+            "start": 8,
+            "end": 11
+          },
+          "target_full_span": {
+            "start": 8,
+            "end": 11
+          },
+          "expected_entity_id": "global:rev-wave",
+          "stratum": "unregistered_typo",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-wave",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "등록한 당직자는 몇 명인가?",
+            "answers": [
+              "6명"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "등록된 약칭과 원문의 수량이다. 등록된 해당 업무 용어의 한 글자 오타이며 원문 부서와 업무가 일치한다. 정답은 resolver 출력 전에 작성했다."
+        },
+        {
+          "case_id": "rev-wave:3",
+          "document_id": "rev-wave:doc3",
+          "text": "2022년 회계 기록의 파도표는 여행 경비표다. 당시 분류 코드는 자료 유실로 확인할 수 없다.",
+          "target_surface": "파도표",
+          "target_core_span": {
+            "start": 13,
+            "end": 16
+          },
+          "target_full_span": {
+            "start": 13,
+            "end": 16
+          },
+          "expected_entity_id": null,
+          "stratum": "historical",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "2022년 여행 경비용 파도표의 분류 코드는? ",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "폐지된 별도 동명 표의 코드를 현행 당직 코드로 답할 수 없다."
+        },
+        {
+          "case_id": "rev-wave:4",
+          "document_id": "rev-wave:doc4",
+          "text": "박물관은 폐지된 여행 경비용 파도표를 10월 18일부터 전시한다. 현행 당직 배정 도구는 전시하지 않는다.",
+          "target_surface": "파도표",
+          "target_core_span": {
+            "start": 16,
+            "end": 19
+          },
+          "target_full_span": {
+            "start": 16,
+            "end": 19
+          },
+          "expected_entity_id": null,
+          "stratum": "historical",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "전시는 언제 시작하는가?",
+            "answers": [
+              "10월 18일"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "과거 경비표를 지칭하므로 현재 절차와 연결하지 않는다."
+        }
+      ]
+    },
+    {
+      "family_id": "rev-lighthouse",
+      "source_facts": "등대창은 보안 사고 접수 시스템이며 관리자 역할은 별도다.",
+      "terms": [
+        {
+          "key": "rev-lighthouse",
+          "canonical": "등대창 사고접수",
+          "surfaces": [
+            "등대창",
+            "DC"
+          ],
+          "short_definition": "새결사 보안 조직의 사고 접수 시스템이다. 긴급 사고의 초기 분류 담당은 탐지대응팀이다. 사고 접수 시스템 관리자라는 사람이나 창문 제품은 시스템 자체가 아니다."
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "rev-lighthouse:1",
+          "document_id": "rev-lighthouse:doc1",
+          "text": "보안 조직은 등대창에 긴급 사고를 등록했다. 초기 분류를 담당할 팀에 전달할 예정이다.",
+          "target_surface": "등대창",
+          "target_core_span": {
+            "start": 7,
+            "end": 10
+          },
+          "target_full_span": {
+            "start": 7,
+            "end": 10
+          },
+          "expected_entity_id": "global:rev-lighthouse",
+          "stratum": "registered",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-lighthouse",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "등대창의 긴급 사고 초기 분류 담당은?",
+            "answers": [
+              "탐지대응팀"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "보안 사고 접수 시스템을 지칭한다."
+        },
+        {
+          "case_id": "rev-lighthouse:2",
+          "document_id": "rev-lighthouse:doc2",
+          "text": "보안팀은 등대찬에 사고 3건을 추가했다.",
+          "target_surface": "등대찬",
+          "target_core_span": {
+            "start": 5,
+            "end": 8
+          },
+          "target_full_span": {
+            "start": 5,
+            "end": 8
+          },
+          "expected_entity_id": "global:rev-lighthouse",
+          "stratum": "unregistered_typo",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-lighthouse",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "추가한 사고는 몇 건인가?",
+            "answers": [
+              "3건"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "등록 약칭이며 수량 근거는 원문이다. 등록된 해당 업무 용어의 한 글자 오타이며 원문 부서와 업무가 일치한다. 정답은 resolver 출력 전에 작성했다."
+        },
+        {
+          "case_id": "rev-lighthouse:3",
+          "document_id": "rev-lighthouse:doc3",
+          "text": "채용 공고는 등대창관리자를 모집한다. 사람의 근무조 배정 기준은 아직 발표하지 않았다.",
+          "target_surface": "등대창관리자",
+          "target_core_span": {
+            "start": 7,
+            "end": 10
+          },
+          "target_full_span": {
+            "start": 7,
+            "end": 13
+          },
+          "expected_entity_id": null,
+          "stratum": "role",
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "등대창관리자의 근무조 배정 기준은? ",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "관리자라는 사람에 시스템 정의를 전이할 수 없다."
+        },
+        {
+          "case_id": "rev-lighthouse:4",
+          "document_id": "rev-lighthouse:doc4",
+          "text": "건축 업체는 동명 창문 제품 등대창을 9월 3일 출시했다. 보안 시스템과는 관계없다.",
+          "target_surface": "등대창",
+          "target_core_span": {
+            "start": 16,
+            "end": 19
+          },
+          "target_full_span": {
+            "start": 16,
+            "end": 19
+          },
+          "expected_entity_id": null,
+          "stratum": "homonym",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "창문 제품은 언제 출시됐는가?",
+            "answers": [
+              "9월 3일"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "별도 제품이라는 명시적 설명이 있다."
+        }
+      ]
+    },
+    {
+      "family_id": "rev-sprout",
+      "source_facts": "새싹상자는 개인정보 검토 대기 자료 격리함이고 외부 전송 권한과 다르다.",
+      "terms": [
+        {
+          "key": "rev-sprout",
+          "canonical": "새싹상자 개인정보격리",
+          "surfaces": [
+            "새싹상자",
+            "SS"
+          ],
+          "short_definition": "새결사 개인정보 검토 조직의 임시 격리함이다. 검토 대기 자료에는 보관 코드 P8을 붙인다. 검토 완료는 외부 전송 승인과 같지 않다."
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "rev-sprout:1",
+          "document_id": "rev-sprout:doc1",
+          "text": "개인정보 검토 조직은 새싹상자에 검토 대기 자료를 넣었다. 담당자가 보관 코드를 표시한다.",
+          "target_surface": "새싹상자",
+          "target_core_span": {
+            "start": 12,
+            "end": 16
+          },
+          "target_full_span": {
+            "start": 12,
+            "end": 16
+          },
+          "expected_entity_id": "global:rev-sprout",
+          "stratum": "registered",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-sprout",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "새싹상자 검토 대기 자료의 보관 코드는?",
+            "answers": [
+              "P8"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "정의에만 있는 코드로 용어 해석의 필요성을 확인한다."
+        },
+        {
+          "case_id": "rev-sprout:2",
+          "document_id": "rev-sprout:doc2",
+          "text": "검토팀은 새싹상차에 대기 자료 12건을 보관했다.",
+          "target_surface": "새싹상차",
+          "target_core_span": {
+            "start": 5,
+            "end": 9
+          },
+          "target_full_span": {
+            "start": 5,
+            "end": 9
+          },
+          "expected_entity_id": "global:rev-sprout",
+          "stratum": "unregistered_typo",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-sprout",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "대기 자료는 몇 건인가?",
+            "answers": [
+              "12건"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "본문 수량은 용어 정의와 독립적으로 답할 수 있다. 등록된 해당 업무 용어의 한 글자 오타이며 원문 부서와 업무가 일치한다. 정답은 resolver 출력 전에 작성했다."
+        },
+        {
+          "case_id": "rev-sprout:3",
+          "document_id": "rev-sprout:doc3",
+          "text": "외부 교육 업체는 신입생 선물 묶음을 새싹상자라고 부른다. 선물의 배송 코드는 공개하지 않았다.",
+          "target_surface": "새싹상자",
+          "target_core_span": {
+            "start": 21,
+            "end": 25
+          },
+          "target_full_span": {
+            "start": 21,
+            "end": 25
+          },
+          "expected_entity_id": null,
+          "stratum": "homonym",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "선물 묶음 새싹상자의 배송 코드는? ",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "사내 개인정보 격리함과 무관한 선물 묶음이다."
+        },
+        {
+          "case_id": "rev-sprout:4",
+          "document_id": "rev-sprout:doc4",
+          "text": "새싹상자는 검토 대기 자료를 보관한다. 담당자는 고객의 외부 전송 권한을 뜻하는 새싹상자를 승인해 달라는 요청을 8월 14일 거절했다.",
+          "target_surface": "새싹상자",
+          "target_core_span": {
+            "start": 45,
+            "end": 49
+          },
+          "target_full_span": {
+            "start": 45,
+            "end": 49
+          },
+          "expected_entity_id": null,
+          "stratum": "exception",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "담당자는 요청을 언제 거절했는가?",
+            "answers": [
+              "8월 14일"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "대상은 외부 전송 권한이라는 잘못된 의미이며 정의에 권한이 아니라고 명시됐다."
+        }
+      ]
+    },
+    {
+      "family_id": "rev-maze",
+      "source_facts": "미로지도는 새결사 국내 파트너 등록 절차다.",
+      "terms": [
+        {
+          "key": "rev-maze",
+          "canonical": "미로지도 파트너등록",
+          "surfaces": [
+            "미로지도",
+            "MZ"
+          ],
+          "short_definition": "새결사 국내 파트너 등록 절차다. 신규 파트너의 첫 검토는 공급검증팀이 맡는다. 해외 법인의 독자 절차에는 이 팀의 책임을 적용하지 않는다."
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "rev-maze:1",
+          "document_id": "rev-maze:doc1",
+          "text": "국내 사업 조직은 미로지도로 신규 파트너를 등록했다. 첫 검토 담당 부서의 확인을 기다린다.",
+          "target_surface": "미로지도",
+          "target_core_span": {
+            "start": 10,
+            "end": 14
+          },
+          "target_full_span": {
+            "start": 10,
+            "end": 14
+          },
+          "expected_entity_id": "global:rev-maze",
+          "stratum": "registered",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-maze",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "미로지도의 신규 파트너 첫 검토 담당은?",
+            "answers": [
+              "공급검증팀"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "국내 파트너 등록이라는 관할과 업무가 일치한다."
+        },
+        {
+          "case_id": "rev-maze:2",
+          "document_id": "rev-maze:doc2",
+          "text": "국내 사업팀은 MZ에 파트너 5곳을 등록했다.",
+          "target_surface": "MZ",
+          "target_core_span": {
+            "start": 8,
+            "end": 10
+          },
+          "target_full_span": {
+            "start": 8,
+            "end": 10
+          },
+          "expected_entity_id": "global:rev-maze",
+          "stratum": "alias",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-maze",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "등록한 파트너는 몇 곳인가?",
+            "answers": [
+              "5곳"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "원문에 있는 수량이다."
+        },
+        {
+          "case_id": "rev-maze:3",
+          "document_id": "rev-maze:doc3",
+          "text": "베트남 법인은 자체 미로지도를 운영한다. 현지 신규 파트너 검토팀의 이름은 이 문서에 없다.",
+          "target_surface": "미로지도",
+          "target_core_span": {
+            "start": 11,
+            "end": 15
+          },
+          "target_full_span": {
+            "start": 11,
+            "end": 15
+          },
+          "expected_entity_id": null,
+          "stratum": "jurisdiction",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "베트남 법인 미로지도의 첫 검토팀 이름은? ",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "해외 법인의 별도 절차에 국내 담당 팀을 적용할 수 없다."
+        },
+        {
+          "case_id": "rev-maze:4",
+          "document_id": "rev-maze:doc4",
+          "text": "베트남 법인은 독자 절차 미로지도의 접수 기한을 7월 22일로 정했다.",
+          "target_surface": "미로지도",
+          "target_core_span": {
+            "start": 14,
+            "end": 18
+          },
+          "target_full_span": {
+            "start": 14,
+            "end": 18
+          },
+          "expected_entity_id": null,
+          "stratum": "jurisdiction",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "현지 접수 기한은 언제인가?",
+            "answers": [
+              "7월 22일"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "현지 별도 절차이며 기한은 본문 근거다."
+        }
+      ]
+    },
+    {
+      "family_id": "rev-horizon",
+      "source_facts": "수평선은 현재 매출 정산 절차이며 과거 동명 자산 목록 작성법은 별개다.",
+      "terms": [
+        {
+          "key": "rev-horizon",
+          "canonical": "수평선 정산검토",
+          "surfaces": [
+            "수평선",
+            "SP"
+          ],
+          "short_definition": "새결사 2025년 이후 서비스 매출 정산 검토 절차다. 최종 대조 파일의 이름은 정산원장이다. 2020년 폐지된 자산 목록 작성법과 다르다."
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "rev-horizon:1",
+          "document_id": "rev-horizon:doc1",
+          "text": "회계팀은 현행 매출 정산 절차인 수평선을 진행했다. 최종 대조 파일과 내역을 비교한다.",
+          "target_surface": "수평선",
+          "target_core_span": {
+            "start": 18,
+            "end": 21
+          },
+          "target_full_span": {
+            "start": 18,
+            "end": 21
+          },
+          "expected_entity_id": "global:rev-horizon",
+          "stratum": "registered",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-horizon",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "현행 수평선의 최종 대조 파일 이름은?",
+            "answers": [
+              "정산원장"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "현행 매출 정산에 대한 용어 사전 정보가 필요하다."
+        },
+        {
+          "case_id": "rev-horizon:2",
+          "document_id": "rev-horizon:doc2",
+          "text": "회계팀은 SP의 검토 회의를 6월 11일로 잡았다.",
+          "target_surface": "SP",
+          "target_core_span": {
+            "start": 5,
+            "end": 7
+          },
+          "target_full_span": {
+            "start": 5,
+            "end": 7
+          },
+          "expected_entity_id": "global:rev-horizon",
+          "stratum": "alias",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-horizon",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "검토 회의는 언제인가?",
+            "answers": [
+              "6월 11일"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "일정은 원문에 있다."
+        },
+        {
+          "case_id": "rev-horizon:3",
+          "document_id": "rev-horizon:doc3",
+          "text": "2019년 자산 목록 작성법인 수평선은 현재 폐지됐다. 당시 사용한 최종 파일의 이름은 남아 있지 않다.",
+          "target_surface": "수평선",
+          "target_core_span": {
+            "start": 17,
+            "end": 20
+          },
+          "target_full_span": {
+            "start": 17,
+            "end": 20
+          },
+          "expected_entity_id": null,
+          "stratum": "historical",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "2019년 자산 목록 수평선의 최종 파일 이름은? ",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "과거 별도 절차의 소실 정보를 현행 정의로 보충할 수 없다."
+        },
+        {
+          "case_id": "rev-horizon:4",
+          "document_id": "rev-horizon:doc4",
+          "text": "기록관은 폐지된 자산 목록용 수평선 자료 17건을 이관했다.",
+          "target_surface": "수평선",
+          "target_core_span": {
+            "start": 16,
+            "end": 19
+          },
+          "target_full_span": {
+            "start": 16,
+            "end": 19
+          },
+          "expected_entity_id": null,
+          "stratum": "historical",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "이관한 자료는 몇 건인가?",
+            "answers": [
+              "17건"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "과거 절차 자료이며 수량은 원문에 있다."
+        }
+      ]
+    },
+    {
+      "family_id": "rev-stone",
+      "source_facts": "돌다리는 구매 공급사 심사 절차이며 직책·사람과 구별한다.",
+      "terms": [
+        {
+          "key": "rev-stone",
+          "canonical": "돌다리 공급사심사",
+          "surfaces": [
+            "돌다리",
+            "DD"
+          ],
+          "short_definition": "새결사 구매 조직의 공급사 심사 절차다. 현장 실사의 필수 확인 항목은 안전등록증이다. 심사 담당자라는 직책과 절차 자체는 서로 다른 대상이다."
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "rev-stone:1",
+          "document_id": "rev-stone:doc1",
+          "text": "구매 조직은 돌다리 현장 실사를 준비한다. 필수 확인 항목을 공급사에 안내할 예정이다.",
+          "target_surface": "돌다리",
+          "target_core_span": {
+            "start": 7,
+            "end": 10
+          },
+          "target_full_span": {
+            "start": 7,
+            "end": 10
+          },
+          "expected_entity_id": "global:rev-stone",
+          "stratum": "registered",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-stone",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "돌다리 현장 실사의 필수 확인 항목은?",
+            "answers": [
+              "안전등록증"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "구매 절차에 필요한 정보는 사전에만 있다."
+        },
+        {
+          "case_id": "rev-stone:2",
+          "document_id": "rev-stone:doc2",
+          "text": "구매팀은 DD 실사 대상 공급사 4곳을 선정했다.",
+          "target_surface": "DD",
+          "target_core_span": {
+            "start": 5,
+            "end": 7
+          },
+          "target_full_span": {
+            "start": 5,
+            "end": 7
+          },
+          "expected_entity_id": "global:rev-stone",
+          "stratum": "alias",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-stone",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "실사 대상 공급사는 몇 곳인가?",
+            "answers": [
+              "4곳"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "원문 수량에 답하는 일반 QA다."
+        },
+        {
+          "case_id": "rev-stone:3",
+          "document_id": "rev-stone:doc3",
+          "text": "인사팀은 돌다리담당자의 승진 심사를 진행한다. 해당 직책의 승진 요건은 미공개다.",
+          "target_surface": "돌다리담당자",
+          "target_core_span": {
+            "start": 5,
+            "end": 8
+          },
+          "target_full_span": {
+            "start": 5,
+            "end": 11
+          },
+          "expected_entity_id": null,
+          "stratum": "role",
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "돌다리담당자의 승진 요건은? ",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "직책의 인사 요건을 공급사 심사 절차에서 가져올 수 없다."
+        },
+        {
+          "case_id": "rev-stone:4",
+          "document_id": "rev-stone:doc4",
+          "text": "시청은 역사 유적 돌다리의 보수 시작일을 5월 16일로 발표했다. 새결사 업무 절차와는 관계없다.",
+          "target_surface": "돌다리",
+          "target_core_span": {
+            "start": 10,
+            "end": 13
+          },
+          "target_full_span": {
+            "start": 10,
+            "end": 13
+          },
+          "expected_entity_id": null,
+          "stratum": "homonym",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "보수는 언제 시작하는가?",
+            "answers": [
+              "5월 16일"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "같은 이름의 물리적 유적을 말한다."
+        }
+      ]
+    },
+    {
+      "family_id": "rev-silver",
+      "source_facts": "은실은 운영 서비스 인증키 교체 절차다.",
+      "terms": [
+        {
+          "key": "rev-silver",
+          "canonical": "은실 인증키교체",
+          "surfaces": [
+            "은실",
+            "ES"
+          ],
+          "short_definition": "새결사 보안 조직의 서비스 인증키 교체 절차다. 이전 키를 폐기하기 전 확인할 기록은 교체검증표다. 테스트용 키에는 이 운영 절차를 자동 적용하지 않는다."
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "rev-silver:1",
+          "document_id": "rev-silver:doc1",
+          "text": "운영 보안팀은 은실에 따라 서비스 인증키를 교체한다. 이전 키 폐기 전에 필수 기록을 확인한다.",
+          "target_surface": "은실",
+          "target_core_span": {
+            "start": 8,
+            "end": 10
+          },
+          "target_full_span": {
+            "start": 8,
+            "end": 10
+          },
+          "expected_entity_id": "global:rev-silver",
+          "stratum": "registered",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-silver",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "은실에서 이전 키 폐기 전에 확인할 기록은?",
+            "answers": [
+              "교체검증표"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "운영 인증키 절차와 의미가 일치한다."
+        },
+        {
+          "case_id": "rev-silver:2",
+          "document_id": "rev-silver:doc2",
+          "text": "운영 보안팀은 ES 교체 작업을 4월 8일에 끝냈다.",
+          "target_surface": "ES",
+          "target_core_span": {
+            "start": 8,
+            "end": 10
+          },
+          "target_full_span": {
+            "start": 8,
+            "end": 10
+          },
+          "expected_entity_id": "global:rev-silver",
+          "stratum": "alias",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-silver",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "교체 작업을 언제 끝냈는가?",
+            "answers": [
+              "4월 8일"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "날짜 답변은 사전 정의와 무관하다."
+        },
+        {
+          "case_id": "rev-silver:3",
+          "document_id": "rev-silver:doc3",
+          "text": "교육팀은 테스트 키 실습을 은실이라고 이름 붙였다. 실습 기록 양식은 아직 정하지 않았다.",
+          "target_surface": "은실",
+          "target_core_span": {
+            "start": 15,
+            "end": 17
+          },
+          "target_full_span": {
+            "start": 15,
+            "end": 17
+          },
+          "expected_entity_id": null,
+          "stratum": "exception",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "테스트 키 실습 은실의 기록 양식은? ",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "운영 절차의 제외 대상인 테스트 실습에 운영 기록 양식을 전이할 수 없다."
+        },
+        {
+          "case_id": "rev-silver:4",
+          "document_id": "rev-silver:doc4",
+          "text": "독일 협력사는 자체 인증키 절차 은실에 관한 설명회를 3월 19일 열었다. 새결사 절차와는 별개다.",
+          "target_surface": "은실",
+          "target_core_span": {
+            "start": 18,
+            "end": 20
+          },
+          "target_full_span": {
+            "start": 18,
+            "end": 20
+          },
+          "expected_entity_id": null,
+          "stratum": "jurisdiction",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "협력사의 설명회는 언제 열렸는가?",
+            "answers": [
+              "3월 19일"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "해외 별도 절차를 지칭한다."
+        }
+      ]
+    },
+    {
+      "family_id": "rev-floor",
+      "source_facts": "현재 사용량 배정과 과거 좌석 배정은 동명이나 서로 다르다.",
+      "terms": [
+        {
+          "key": "rev-floor",
+          "canonical": "마루선 사용량배정",
+          "surfaces": [
+            "마루선",
+            "MR"
+          ],
+          "short_definition": "새결사 플랫폼 조직의 2026년 사용량 배정 절차다. 한도 증설 요청은 코드 Q6으로 분류한다. 2021년에 폐지된 사무실 좌석 배정표와는 관계없다."
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "rev-floor:1",
+          "document_id": "rev-floor:doc1",
+          "text": "플랫폼팀은 2026년 마루선에서 서비스 한도 증설을 검토한다. 담당자가 요청 분류 코드를 넣는다.",
+          "target_surface": "마루선",
+          "target_core_span": {
+            "start": 12,
+            "end": 15
+          },
+          "target_full_span": {
+            "start": 12,
+            "end": 15
+          },
+          "expected_entity_id": "global:rev-floor",
+          "stratum": "registered",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-floor",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "현행 마루선의 한도 증설 요청 분류 코드는?",
+            "answers": [
+              "Q6"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "현행 플랫폼 배정 절차의 코드를 묻는다."
+        },
+        {
+          "case_id": "rev-floor:2",
+          "document_id": "rev-floor:doc2",
+          "text": "플랫폼팀은 MR에서 한도 증설 요청 9건을 승인했다.",
+          "target_surface": "MR",
+          "target_core_span": {
+            "start": 6,
+            "end": 8
+          },
+          "target_full_span": {
+            "start": 6,
+            "end": 8
+          },
+          "expected_entity_id": "global:rev-floor",
+          "stratum": "alias",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-floor",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "승인한 요청은 몇 건인가?",
+            "answers": [
+              "9건"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "승인 수는 원문에 명시됐다."
+        },
+        {
+          "case_id": "rev-floor:3",
+          "document_id": "rev-floor:doc3",
+          "text": "2020년 사무실 좌석용 마루선은 폐지된 양식이다. 당시 사용한 요청 코드는 확인할 수 없다.",
+          "target_surface": "마루선",
+          "target_core_span": {
+            "start": 14,
+            "end": 17
+          },
+          "target_full_span": {
+            "start": 14,
+            "end": 17
+          },
+          "expected_entity_id": null,
+          "stratum": "historical",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "2020년 좌석용 마루선의 요청 코드는? ",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "과거 다른 업무의 코드가 사전에 없다."
+        },
+        {
+          "case_id": "rev-floor:4",
+          "document_id": "rev-floor:doc4",
+          "text": "총무팀은 폐지된 좌석용 마루선 원본 21장을 폐기했다.",
+          "target_surface": "마루선",
+          "target_core_span": {
+            "start": 13,
+            "end": 16
+          },
+          "target_full_span": {
+            "start": 13,
+            "end": 16
+          },
+          "expected_entity_id": null,
+          "stratum": "historical",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "폐기한 원본은 몇 장인가?",
+            "answers": [
+              "21장"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "과거 양식의 수량에 대한 질문이다."
+        }
+      ]
+    },
+    {
+      "family_id": "rev-joint",
+      "source_facts": "이음표는 고객지원 이관 기록으로 기록과 작성자를 구별한다.",
+      "terms": [
+        {
+          "key": "rev-joint",
+          "canonical": "이음표 업무이관",
+          "surfaces": [
+            "이음표",
+            "IE"
+          ],
+          "short_definition": "새결사 고객지원 조직의 업무 이관 기록이다. 미해결 건의 인수 확인 담당은 연속지원팀이다. 기록을 작성하는 담당자라는 사람은 기록 자체와 다르다."
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "rev-joint:1",
+          "document_id": "rev-joint:doc1",
+          "text": "고객지원팀은 이음표에 미해결 건을 기록했다. 인수 확인 담당 팀에 확인을 요청한다.",
+          "target_surface": "이음표",
+          "target_core_span": {
+            "start": 7,
+            "end": 10
+          },
+          "target_full_span": {
+            "start": 7,
+            "end": 10
+          },
+          "expected_entity_id": "global:rev-joint",
+          "stratum": "registered",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-joint",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "이음표 미해결 건의 인수 확인 담당은?",
+            "answers": [
+              "연속지원팀"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "고객지원 이관 기록을 묻는다."
+        },
+        {
+          "case_id": "rev-joint:2",
+          "document_id": "rev-joint:doc2",
+          "text": "고객지원팀은 IE에 미해결 건 7건을 기입했다.",
+          "target_surface": "IE",
+          "target_core_span": {
+            "start": 7,
+            "end": 9
+          },
+          "target_full_span": {
+            "start": 7,
+            "end": 9
+          },
+          "expected_entity_id": "global:rev-joint",
+          "stratum": "alias",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-joint",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "기입한 미해결 건은 몇 건인가?",
+            "answers": [
+              "7건"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "원문에서 수량을 확인한다."
+        },
+        {
+          "case_id": "rev-joint:3",
+          "document_id": "rev-joint:doc3",
+          "text": "채용 담당자는 이음표작성자의 근무 형태를 문의했다. 이 직책의 계약 조건은 아직 공지되지 않았다.",
+          "target_surface": "이음표작성자",
+          "target_core_span": {
+            "start": 8,
+            "end": 11
+          },
+          "target_full_span": {
+            "start": 8,
+            "end": 14
+          },
+          "expected_entity_id": null,
+          "stratum": "role",
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "이음표작성자의 계약 조건은? ",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "작성자라는 역할은 기록 자체가 아니다."
+        },
+        {
+          "case_id": "rev-joint:4",
+          "document_id": "rev-joint:doc4",
+          "text": "인쇄업체는 장식 스티커 이음표를 2월 27일 판매하기 시작했다. 사내 이관 기록과는 관계없다.",
+          "target_surface": "이음표",
+          "target_core_span": {
+            "start": 13,
+            "end": 16
+          },
+          "target_full_span": {
+            "start": 13,
+            "end": 16
+          },
+          "expected_entity_id": null,
+          "stratum": "homonym",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "스티커 판매는 언제 시작했는가?",
+            "answers": [
+              "2월 27일"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "별도 소비재를 가리킨다."
+        }
+      ]
+    },
+    {
+      "family_id": "rev-button",
+      "source_facts": "단추장은 실패 결제 재시도 대기열이며 신규 결제 승인 권한과 다르다.",
+      "terms": [
+        {
+          "key": "rev-button",
+          "canonical": "단추장 결제재시도",
+          "surfaces": [
+            "단추장",
+            "DJ"
+          ],
+          "short_definition": "새결사 결제 조직의 실패 결제 재시도 대기열이다. 재시도 제외를 표시하는 코드는 R0이다. 고객의 신규 결제 승인 권한을 제공하는 기능이 아니다."
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "rev-button:1",
+          "document_id": "rev-button:doc1",
+          "text": "결제팀은 단추장에 실패 결제를 적재했다. 담당자는 재시도 제외 건에 별도 코드를 붙인다.",
+          "target_surface": "단추장",
+          "target_core_span": {
+            "start": 5,
+            "end": 8
+          },
+          "target_full_span": {
+            "start": 5,
+            "end": 8
+          },
+          "expected_entity_id": "global:rev-button",
+          "stratum": "registered",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-button",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "단추장의 재시도 제외 코드는?",
+            "answers": [
+              "R0"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "대기열의 제외 코드에 관한 사전 정보가 필요하다."
+        },
+        {
+          "case_id": "rev-button:2",
+          "document_id": "rev-button:doc2",
+          "text": "결제팀은 DJ에 실패 결제 15건을 넣었다.",
+          "target_surface": "DJ",
+          "target_core_span": {
+            "start": 5,
+            "end": 7
+          },
+          "target_full_span": {
+            "start": 5,
+            "end": 7
+          },
+          "expected_entity_id": "global:rev-button",
+          "stratum": "alias",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-button",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "적재한 실패 결제는 몇 건인가?",
+            "answers": [
+              "15건"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "원문 수량을 묻는다."
+        },
+        {
+          "case_id": "rev-button:3",
+          "document_id": "rev-button:doc3",
+          "text": "문구점은 단추 모양 장식집을 단추장이라고 부른다. 장식집의 상품 코드는 이 안내에 없다.",
+          "target_surface": "단추장",
+          "target_core_span": {
+            "start": 16,
+            "end": 19
+          },
+          "target_full_span": {
+            "start": 16,
+            "end": 19
+          },
+          "expected_entity_id": null,
+          "stratum": "homonym",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "문구점 단추장의 상품 코드는? ",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "사내 결제 대기열과 동명 상품이 다르다."
+        },
+        {
+          "case_id": "rev-button:4",
+          "document_id": "rev-button:doc4",
+          "text": "단추장은 실패 결제 대기열이다. 직원은 신규 결제 승인 권한을 뜻하는 단추장을 달라는 요청을 1월 13일 거절했다.",
+          "target_surface": "단추장",
+          "target_core_span": {
+            "start": 39,
+            "end": 42
+          },
+          "target_full_span": {
+            "start": 39,
+            "end": 42
+          },
+          "expected_entity_id": null,
+          "stratum": "exception",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "직원은 요청을 언제 거절했는가?",
+            "answers": [
+              "1월 13일"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "마지막 발생은 정의가 명시적으로 배제한 실행 권한을 가리킨다."
+        }
+      ]
+    },
+    {
+      "family_id": "rev-boat",
+      "source_facts": "조각배는 대한민국 지점의 비용 검토만 담당한다.",
+      "terms": [
+        {
+          "key": "rev-boat",
+          "canonical": "조각배 지점비용검토",
+          "surfaces": [
+            "조각배",
+            "JG"
+          ],
+          "short_definition": "새결사 대한민국 지점의 비용 검토 절차다. 예외 비용은 지역회계팀이 검토한다. 다른 나라 지사의 독자 절차에는 적용하지 않는다."
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "rev-boat:1",
+          "document_id": "rev-boat:doc1",
+          "text": "대한민국 지점은 조각배로 예외 비용을 접수했다. 담당 검토팀의 확인을 기다린다.",
+          "target_surface": "조각배",
+          "target_core_span": {
+            "start": 9,
+            "end": 12
+          },
+          "target_full_span": {
+            "start": 9,
+            "end": 12
+          },
+          "expected_entity_id": "global:rev-boat",
+          "stratum": "registered",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-boat",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "조각배 예외 비용의 검토 담당은?",
+            "answers": [
+              "지역회계팀"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "국가와 업무가 사전 정의에 일치한다."
+        },
+        {
+          "case_id": "rev-boat:2",
+          "document_id": "rev-boat:doc2",
+          "text": "대한민국 지점은 JG에 비용 항목 11건을 접수했다.",
+          "target_surface": "JG",
+          "target_core_span": {
+            "start": 9,
+            "end": 11
+          },
+          "target_full_span": {
+            "start": 9,
+            "end": 11
+          },
+          "expected_entity_id": "global:rev-boat",
+          "stratum": "alias",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-boat",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "접수한 비용 항목은 몇 건인가?",
+            "answers": [
+              "11건"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "본문에 수량이 있다."
+        },
+        {
+          "case_id": "rev-boat:3",
+          "document_id": "rev-boat:doc3",
+          "text": "브라질 지사는 독자 비용 절차인 조각배를 쓴다. 현지 예외 비용 검토 부서는 기재하지 않았다.",
+          "target_surface": "조각배",
+          "target_core_span": {
+            "start": 18,
+            "end": 21
+          },
+          "target_full_span": {
+            "start": 18,
+            "end": 21
+          },
+          "expected_entity_id": null,
+          "stratum": "jurisdiction",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "브라질 지사의 조각배 예외 비용 검토 부서는? ",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "국외 동명 절차의 담당은 근거가 없다."
+        },
+        {
+          "case_id": "rev-boat:4",
+          "document_id": "rev-boat:doc4",
+          "text": "브라질 지사는 자체 조각배 회의를 12월 5일 열기로 했다.",
+          "target_surface": "조각배",
+          "target_core_span": {
+            "start": 11,
+            "end": 14
+          },
+          "target_full_span": {
+            "start": 11,
+            "end": 14
+          },
+          "expected_entity_id": null,
+          "stratum": "jurisdiction",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "브라질 지사의 회의는 언제인가?",
+            "answers": [
+              "12월 5일"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "현지 별도 절차의 일정이다."
+        }
+      ]
+    },
+    {
+      "family_id": "rev-dawn",
+      "source_facts": "현재 서비스 출시 점검과 과거 장비 구매 창구는 별개다.",
+      "terms": [
+        {
+          "key": "rev-dawn",
+          "canonical": "해오름창 서비스출시",
+          "surfaces": [
+            "해오름창",
+            "HO"
+          ],
+          "short_definition": "새결사 2025년 신설된 서비스 출시 점검 절차다. 출시 직전 확인할 필수 기록은 배포확인서다. 2018년에 종료된 장비 구매 창구와는 다른 대상이다."
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "rev-dawn:1",
+          "document_id": "rev-dawn:doc1",
+          "text": "제품팀은 신설 서비스 출시 절차인 해오름창을 진행했다. 출시 직전 필수 기록을 확인한다.",
+          "target_surface": "해오름창",
+          "target_core_span": {
+            "start": 19,
+            "end": 23
+          },
+          "target_full_span": {
+            "start": 19,
+            "end": 23
+          },
+          "expected_entity_id": "global:rev-dawn",
+          "stratum": "registered",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-dawn",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "현행 해오름창의 출시 직전 필수 기록은?",
+            "answers": [
+              "배포확인서"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "현재 서비스 출시 절차를 명시한다."
+        },
+        {
+          "case_id": "rev-dawn:2",
+          "document_id": "rev-dawn:doc2",
+          "text": "제품팀은 HO 점검을 10월 7일 완료했다.",
+          "target_surface": "HO",
+          "target_core_span": {
+            "start": 5,
+            "end": 7
+          },
+          "target_full_span": {
+            "start": 5,
+            "end": 7
+          },
+          "expected_entity_id": "global:rev-dawn",
+          "stratum": "alias",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-dawn",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "점검을 언제 완료했는가?",
+            "answers": [
+              "10월 7일"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "날짜는 본문에서 확인할 수 있다."
+        },
+        {
+          "case_id": "rev-dawn:3",
+          "document_id": "rev-dawn:doc3",
+          "text": "2017년 장비 구매 창구였던 해오름창은 현재 종료됐다. 당시 필수 양식의 이름은 남아 있지 않다.",
+          "target_surface": "해오름창",
+          "target_core_span": {
+            "start": 17,
+            "end": 21
+          },
+          "target_full_span": {
+            "start": 17,
+            "end": 21
+          },
+          "expected_entity_id": null,
+          "stratum": "historical",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "2017년 장비 구매 해오름창의 필수 양식 이름은? ",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "과거 별도 대상의 양식은 알려져 있지 않다."
+        },
+        {
+          "case_id": "rev-dawn:4",
+          "document_id": "rev-dawn:doc4",
+          "text": "기록관은 종료된 장비 구매용 해오름창 자료 13건을 공개했다.",
+          "target_surface": "해오름창",
+          "target_core_span": {
+            "start": 16,
+            "end": 20
+          },
+          "target_full_span": {
+            "start": 16,
+            "end": 20
+          },
+          "expected_entity_id": null,
+          "stratum": "historical",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "공개한 자료는 몇 건인가?",
+            "answers": [
+              "13건"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "과거 자료의 건수를 묻는다."
+        }
+      ]
+    },
+    {
+      "family_id": "rev-compass",
+      "source_facts": "나침책은 재무 예산 조정 지침이다. 인용된 가상 물건과 지침 집필자는 별개다.",
+      "terms": [
+        {
+          "key": "rev-compass",
+          "canonical": "나침책 예산조정",
+          "surfaces": [
+            "나침책",
+            "NC"
+          ],
+          "short_definition": "새결사 재무 조직의 예산 조정 지침이다. 긴급 조정의 검토 담당은 예산통제팀이다. 지침을 집필한 편집자라는 사람이나 인용 속 가상 물건은 지침 자체와 다르다."
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "rev-compass:1",
+          "document_id": "rev-compass:doc1",
+          "text": "재무팀은 나침책에 따라 긴급 예산 조정을 신청했다. 검토 담당 부서의 답변을 기다린다.",
+          "target_surface": "나침책",
+          "target_core_span": {
+            "start": 5,
+            "end": 8
+          },
+          "target_full_span": {
+            "start": 5,
+            "end": 8
+          },
+          "expected_entity_id": "global:rev-compass",
+          "stratum": "registered",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-compass",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "나침책 긴급 예산 조정의 검토 담당은?",
+            "answers": [
+              "예산통제팀"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "재무 지침의 담당 부서는 사전에서 찾아야 한다."
+        },
+        {
+          "case_id": "rev-compass:2",
+          "document_id": "rev-compass:doc2",
+          "text": "재무팀은 NC에 조정 신청 10건을 기록했다.",
+          "target_surface": "NC",
+          "target_core_span": {
+            "start": 5,
+            "end": 7
+          },
+          "target_full_span": {
+            "start": 5,
+            "end": 7
+          },
+          "expected_entity_id": "global:rev-compass",
+          "stratum": "alias",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-compass",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "조정 신청은 몇 건인가?",
+            "answers": [
+              "10건"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "수량은 본문에 있다."
+        },
+        {
+          "case_id": "rev-compass:3",
+          "document_id": "rev-compass:doc3",
+          "text": "독서회는 소설의 구절 “나침책은 별을 읽는 마법 물건이다”를 인용했다. 그 물건을 관리하는 조직은 작품에 나오지 않는다.",
+          "target_surface": "나침책",
+          "target_core_span": {
+            "start": 13,
+            "end": 16
+          },
+          "target_full_span": {
+            "start": 13,
+            "end": 16
+          },
+          "expected_entity_id": null,
+          "stratum": "quotation",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "소설 속 나침책 관리 조직은? ",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "인용 속 가상 물건에 실제 사내 지침의 담당 부서를 연결할 수 없다."
+        },
+        {
+          "case_id": "rev-compass:4",
+          "document_id": "rev-compass:doc4",
+          "text": "채용팀은 나침책편집자의 면접일을 9월 12일로 정했다.",
+          "target_surface": "나침책편집자",
+          "target_core_span": {
+            "start": 5,
+            "end": 8
+          },
+          "target_full_span": {
+            "start": 5,
+            "end": 11
+          },
+          "expected_entity_id": null,
+          "stratum": "role",
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "면접일은 언제인가?",
+            "answers": [
+              "9월 12일"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "지침의 집필자라는 사람을 지침 ID로 승인하지 않는다."
+        }
+      ]
+    },
+    {
+      "family_id": "rev-scale",
+      "source_facts": "눈금함은 내부 계약서 보관 심사함이며 외부 제출·삭제 권한은 제외한다.",
+      "terms": [
+        {
+          "key": "rev-scale",
+          "canonical": "눈금함 보관심사",
+          "surfaces": [
+            "눈금함",
+            "NG"
+          ],
+          "short_definition": "새결사 법무 조직의 내부 계약서 보관 심사함이다. 보관 예외 검토는 기록법무팀이 맡는다. 외부 계약 상대의 자료 제출 창구로 사용할 수 없으며 자료 삭제 권한도 부여하지 않는다."
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "rev-scale:1",
+          "document_id": "rev-scale:doc1",
+          "text": "법무팀은 내부 계약서를 눈금함에 올렸다. 보관 예외가 있어 담당 검토팀에 확인을 요청한다.",
+          "target_surface": "눈금함",
+          "target_core_span": {
+            "start": 13,
+            "end": 16
+          },
+          "target_full_span": {
+            "start": 13,
+            "end": 16
+          },
+          "expected_entity_id": "global:rev-scale",
+          "stratum": "registered",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-scale",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "눈금함 보관 예외 검토 담당은?",
+            "answers": [
+              "기록법무팀"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "내부 보관 심사함을 지칭한다."
+        },
+        {
+          "case_id": "rev-scale:2",
+          "document_id": "rev-scale:doc2",
+          "text": "법무팀은 NG에 내부 계약서 14건을 올렸다.",
+          "target_surface": "NG",
+          "target_core_span": {
+            "start": 5,
+            "end": 7
+          },
+          "target_full_span": {
+            "start": 5,
+            "end": 7
+          },
+          "expected_entity_id": "global:rev-scale",
+          "stratum": "alias",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:rev-scale",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "올린 계약서는 몇 건인가?",
+            "answers": [
+              "14건"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "본문에 수량이 명시됐다."
+        },
+        {
+          "case_id": "rev-scale:3",
+          "document_id": "rev-scale:doc3",
+          "text": "외부 계약 상대는 자기 회사의 문서 제출함을 눈금함이라고 부른다. 그 회사의 보관 예외 담당 부서는 알려져 있지 않다.",
+          "target_surface": "눈금함",
+          "target_core_span": {
+            "start": 25,
+            "end": 28
+          },
+          "target_full_span": {
+            "start": 25,
+            "end": 28
+          },
+          "expected_entity_id": null,
+          "stratum": "jurisdiction",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "외부 회사 눈금함의 보관 예외 담당 부서는? ",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "외부 독립 회사의 제출함은 새결사 내부 심사함이 아니다."
+        },
+        {
+          "case_id": "rev-scale:4",
+          "document_id": "rev-scale:doc4",
+          "text": "눈금함은 내부 보관 심사함이다. 담당자는 자료 삭제 권한을 뜻하는 눈금함을 발급해 달라는 요청을 8월 20일 반려했다.",
+          "target_surface": "눈금함",
+          "target_core_span": {
+            "start": 37,
+            "end": 40
+          },
+          "target_full_span": {
+            "start": 37,
+            "end": 40
+          },
+          "expected_entity_id": null,
+          "stratum": "exception",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "담당자는 요청을 언제 반려했는가?",
+            "answers": [
+              "8월 20일"
+            ],
+            "is_impossible": false,
+            "requires_terminology": false
+          },
+          "rationale": "대상은 사전 정의에서 명시적으로 배제한 자료 삭제 권한이다."
+        }
+      ]
+    }
+  ]
+}
