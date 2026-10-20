@@ -360,6 +360,7 @@ measured together. As of **2026-10-20**, the following queues are complete:
 | Fresh TyDiQA article comparison | 864 | [fresh holdout queue](reports/fresh_holdout_queue_20261018/RESULTS.md) |
 | Transfer, budget, corpus retrieval, pack and semantic safety | 5,568 | [extended queue](reports/extended_queue_20261019/RESULTS.md) |
 | Source amount, compact pack and semantic-check diagnostics | 3,584 | [diagnostic queue](reports/diagnostic_queue_20261020/RESULTS.md) |
+| Source/glossary/KTRF, QA policy, budget, NoMIRACL and occurrence-bound routing | 5,888 | [review queue](reports/review_queue_20261020/RESULTS.md) |
 
 Calls include paired conditions and repeats; they are not independent new
 questions. General Korean QA still shows no consistent pack advantage, and
@@ -367,8 +368,19 @@ small total-input budgets can lose source evidence to the pack. The latest
 [CPU reanalysis](reports/review_cpu_20261020/ANALYSIS.md) verifies the historical
 sealed runs and integrates occurrence ranking with actual resolver candidates.
 Its synthetic cohorts are exposed diagnostics, with no execution authorization
-or independent risk guarantee. [Review followup experiments](docs/REVIEW_EXPERIMENTS.md)
-are a separate plan; new policy or budget improvements have no result claim yet.
+or independent risk guarantee. The [review experiments](docs/REVIEW_EXPERIMENTS.md)
+are complete. On 96 synthetic/public proxy cases with 42 linkable targets,
+Qwen 27B with KTRF plus a meaning check approved 36 correct IDs and 0 wrong IDs,
+versus 19 and 0 for a plain glossary. The matched-fact KTRF control still approved
+1 wrong ID (35 correct), and general QA did not establish an advantage over the
+plain glossary. These observations do not certify deployment safety.
+
+The next [routing confirmation](docs/ROUTING_CONFIRMATION.md) freezes new
+families and compares contextual gating and compact responses; results are
+pending. A local, non-executing [shadow ingress](eval/shadow_routing.py) prepares
+blind annotation packets and optional resolver latency measurements from
+user-provided documents. The actual workplace pilot is `WAITING_FOR_INPUT`;
+synthetic cases do not substitute for workplace documents or human review time.
 
 The unit most of these count is the *occurrence*, which the frequent terms
 decide. Two of them count the *registered term* instead — the question a

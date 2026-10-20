@@ -53,7 +53,9 @@
 | 새 TyDiQA 기사 | [864회](../reports/fresh_holdout_queue_20261018/RESULTS.md) | 같은 코퍼스의 새 기사 표본 |
 | 다섯 확장 실험 | [5,568회](../reports/extended_queue_20261019/RESULTS.md) | 이전·예산·512문맥 검색·정책·안전성 |
 | 원문·compact·의미 확인 | [3,584회](../reports/diagnostic_queue_20261020/RESULTS.md) | 기존/신규 문맥·family를 분리 |
+| 리뷰 후속 QA·예산·NoMIRACL·발생 위치 실행 | [5,888회](../reports/review_queue_20261020/RESULTS.md) | 생성·재채점·결과 푸시 완료 (`456ee80`) |
 | 봉인 원시 응답 재분석·실제 후보 통합 | [CPU 보고서](../reports/review_cpu_20261020/ANALYSIS.md) | 새 LLM 호출 없음, 노출된 진단 자료 |
+| 실제 후보 lexical/nano 통합 | [616대상 집계](../reports/review_cpu_20261020/nano.json) | 기존 552대상과 새 AI 업무 64대상을 구분 |
 
 호출에는 반복과 조건 비교가 포함되며 독립 질문 수로 합산하지 않는다. 일반 문서
 QA의 일관된 pack 개선이나 무검토 실행 안전성은 입증되지 않았다.
@@ -64,8 +66,13 @@ QA의 일관된 pack 개선이나 무검토 실행 안전성은 입증되지 않
 현재 코드는 Python reference library이며 Rust 코어·HTTP 서비스·Pi 호스트 배포는
 각각의 별도 과제다.
 
-다음 GPU 비교의 설계는 [REVIEW_EXPERIMENTS.md](REVIEW_EXPERIMENTS.md)에 있다.
-새 실제 업무 분포의 사람 gold는 여전히 확보해야 한다. AI 작성 업무 사례와
+완료한 GPU 비교의 계약과 해석은 [REVIEW_EXPERIMENTS.md](REVIEW_EXPERIMENTS.md)에 있다.
+Qwen KTRF+의미 확인의 실제 pipeline은 96사례에서 정답 승인 36건·오승인 0건,
+동일 사실 통제는 35건·1건이었다. 새 family 검증·문맥 차단·출력 압축을 다음
+[routing confirmation 큐](ROUTING_CONFIRMATION.md)로 준비한다.
+실제 업무 shadow pilot은 `WAITING_FOR_INPUT`이며 로컬 문서/용어집 ingress와
+blind 주석 packet·무실행 replay 도구를 준비했다. 사람 gold와 수정 시간은
+미측정이다. AI 작성 업무 사례와
 공개 근거 존재 자료의 실험을 실제 사내 문서나 독립 사람 감사로 바꾸어 읽지 않는다.
 준비·큐 등록·완료 결과는 구분하며 새 실험의 성능 수치는 완료 전 주장하지 않는다.
 
