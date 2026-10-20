@@ -22,6 +22,11 @@ KIND = "ktrf_followup_queue_v1"
 COMBINED_KIND = "ktrf_combined_queue_v1"
 EXTENDED_KIND = "ktrf_extended_queue_v1"
 DIAGNOSTIC_KIND = "ktrf_diagnostic_queue_v1"
+REVIEW_KIND = "ktrf_review_queue_v1"
+REVIEW_COUNTS = {"review_abcd": 1024, "review_policy": 384, "review_budget": 384,
+                 "review_nomiracl": 384, "review_routing": 768}
+REVIEW_ORDER = [(experiment, model) for model in ("gemma12b", "qwen27b")
+                for experiment in REVIEW_COUNTS]
 DIAGNOSTIC_COUNTS = {"source_pack_factorial": 768, "fresh_compact": 384, "safety_robustness": 640}
 DIAGNOSTIC_ORDER = [(experiment, model) for model in ("gemma12b", "qwen27b")
                     for experiment in DIAGNOSTIC_COUNTS]
@@ -39,11 +44,12 @@ def now():
 
 
 def validate_plan(plan):
-    if not isinstance(plan, dict) or plan.get("kind") not in {KIND, COMBINED_KIND, EXTENDED_KIND, DIAGNOSTIC_KIND}:
+    if not isinstance(plan, dict) or plan.get("kind") not in {KIND, COMBINED_KIND, EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND}:
         raise ValueError("frozen followup queue required")
     combined = plan["kind"] == COMBINED_KIND
-    extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND}
+    extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND}
     diagnostic = plan["kind"] == DIAGNOSTIC_KIND
+    review = plan["kind"] == REVIEW_KIND
     sample_design = plan.get("sample_design")
     if "sample_design" in plan:
         if (not combined or not isinstance(sample_design, dict)
@@ -67,16 +73,18 @@ def validate_plan(plan):
     if not re.fullmatch(r"[0-9a-f]{64}", plan.get("archive_sha256", "")):
         raise ValueError("source archive hash required")
     stages = plan.get("stages", [])
-    order = DIAGNOSTIC_ORDER if diagnostic else EXTENDED_ORDER if extended else COMBINED_ORDER if combined else ORDER
+    order = REVIEW_ORDER if review else DIAGNOSTIC_ORDER if diagnostic else EXTENDED_ORDER if extended else COMBINED_ORDER if combined else ORDER
     if [(s.get("experiment"), s.get("model_key")) for s in stages] != order:
-        raise ValueError("expected matched three diagnostics for Gemma then Qwen" if diagnostic else
+        raise ValueError("expected matched five review experiments for Gemma then Qwen" if review else
+                         "expected matched three diagnostics for Gemma then Qwen" if diagnostic else
                          "expected matched five experiments for Gemma then Qwen" if extended else
                          "expected matched combined stages for Gemma then Qwen" if combined else
                          "expected matched retrieval/stability for Gemma then Qwen")
     if len({s.get("id") for s in stages}) != len(order):
         raise ValueError("unique stage IDs required")
     for stage in stages:
-        request_count = (DIAGNOSTIC_COUNTS[stage["experiment"]] if diagnostic else
+        request_count = (REVIEW_COUNTS[stage["experiment"]] if review else
+                         DIAGNOSTIC_COUNTS[stage["experiment"]] if diagnostic else
                          EXTENDED_COUNTS[stage["experiment"]] if extended else
                          sample_design["question_count"] * 12 if sample_design else
                          512 if stage["experiment"] == "retrieval" else 1536)
@@ -155,7 +163,7 @@ def verify_inputs(plan):
         if file_hash(path) != stage["envelope_sha256"]:
             raise ValueError("frozen request envelope changed")
         loader = load_request_file
-        if plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND}:
+        if plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND}:
             from .run_extended_suite import load_request_file as loader
         rows, protocol, _ = loader(path)
         if (protocol["experiment"] != stage["experiment"] or len(rows) != stage["request_count"]
@@ -185,7 +193,7 @@ def verify_inputs(plan):
                 raise ValueError("fresh document sample requires one distinct parent article and content hash per question")
         token = preparation["models"][stage["model_key"]]
         if (token["request_count"] != stage["request_count"] or token["overflow_count"] != 0
-                or not 0 < token["max_prompt_tokens"] <= 8192 - 128
+                or not 0 < token["max_prompt_tokens"] <= 8192 - (384 if stage["experiment"] == "review_routing" else 128)
                 or token["path"] != plan["models"][stage["model_key"]]["path"]):
             raise ValueError("actual tokenizer proof differs from frozen requests")
     return proofs
@@ -246,7 +254,7 @@ def run_queue(plan):
                         raise ValueError("stage output already exists; no answer reruns allowed")
                     current.update(status="RUNNING", benchmark_started=True, started_at=now())
                     update(active_stage=stage["id"], phase="MODEL_REQUESTS", responses_completed=0)
-                    extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND}
+                    extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND}
                     runner_module = "eval.run_extended_suite" if extended else "eval.run_followup_llm"
                     report_module = "eval.report_extended_suite" if extended else "eval.report_followup_llm"
                     run_command = [plan["python"], "-m", runner_module,

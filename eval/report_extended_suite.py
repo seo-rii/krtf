@@ -12,7 +12,8 @@ from .hf_qa import canonical
 from .report_synthetic_grounding import _distribution
 from .run_extended_suite import (ANSWER_SCHEMA, ARTIFACTS, DECODING, PROTOCOL_ID,
                                  ROUTING_SCHEMA, grade_outputs, load_request_file,
-                                 output_error)
+                                 output_error, decoding_for, schema_for, validate_protocol, REVIEW_CONDITION_COUNTS,
+                                 _metrics)
 from .run_product_llm import parse_model_json
 
 
@@ -23,8 +24,10 @@ def read_run(run_dir):
     seal = unsealed.pop("seal_sha256", None)
     if hashlib.sha256(canonical(unsealed)).hexdigest() != seal:
         raise ValueError("invalid extended manifest seal")
+    validate_protocol(manifest.get("declared_protocol"))
     if (manifest.get("protocol") != PROTOCOL_ID or manifest.get("track") != "extended_suite"
-            or manifest.get("decoding") != DECODING or manifest.get("prompt_fields") != ["system", "user"]
+            or manifest.get("decoding") != decoding_for(manifest["declared_protocol"])
+            or manifest.get("prompt_fields") != ["system", "user"]
             or manifest.get("retries") != 0 or manifest.get("schema_transport") != "response_format.json_schema.strict"):
         raise ValueError("extended protocol or fixed decoding differs")
     if set(manifest.get("artifact_sha256", {})) != set(ARTIFACTS):
@@ -33,7 +36,7 @@ def read_run(run_dir):
     if any(hashlib.sha256(value).hexdigest() != manifest["artifact_sha256"][name] for name, value in data.items()):
         raise ValueError("extended artifact hash mismatch")
     rows, protocol, provenance = load_request_file(root / "frozen_envelope.json")
-    schema = ANSWER_SCHEMA if rows[0]["task"] == "document_qa" else ROUTING_SCHEMA
+    schema = schema_for(rows, protocol)
     if (manifest.get("experiment") != protocol["experiment"] or manifest.get("declared_protocol") != protocol
             or manifest.get("request_provenance") != provenance or manifest.get("answer_schema") != schema
             or manifest.get("declared_protocol_sha256") != hashlib.sha256(canonical(protocol)).hexdigest()
@@ -145,6 +148,36 @@ def prepare_report(run_dir):
                 labels = sorted({row[field] for row in condition_rows if field in row})
                 if labels:
                     values[field + "s"] = labels
+    if manifest["experiment"] in REVIEW_CONDITION_COUNTS:
+        from .review_cpu import paired_cluster_bootstrap
+        indexed = {(c["case_id"], c["condition"]): c for c in graded["cases"]}
+        summary["paired_cluster_bootstrap"] = {}
+        for label, selected in [("all_planned", graded["cases"])] + [
+                (split, [c for c in graded["cases"] if c["evaluation_split"] == split])
+                for split in sorted({c["evaluation_split"] for c in graded["cases"]})]:
+            contrasts = {}
+            for name in graded["paired"]:
+                left, right = name.split("_to_", 1)
+                observations = [{"family": c["family_id"], "document": c["document_id"],
+                    "left": int(c["correct"]), "right": int(indexed[(c["case_id"], right)]["correct"])}
+                    for c in selected if c["condition"] == left]
+                contrasts[name] = {unit: paired_cluster_bootstrap(observations, unit=unit)
+                                   for unit in ("family", "document")}
+            summary["paired_cluster_bootstrap"][label] = contrasts
+        summary["by_terminology_need"] = {}
+        for label, flag in (("required", True), ("not_required", False), ("unannotated", None)):
+            selected = [case for case in graded["cases"] if case.get("requires_terminology") is flag]
+            if selected:
+                summary["by_terminology_need"][label] = {
+                    "questions": len({c["case_id"] for c in selected}),
+                    "by_variant": {condition: _metrics([c for c in selected if c["condition"] == condition],
+                        rows[0]["task"] == "structured_routing") for condition in graded["by_variant"]}}
+        summary["metric_interpretation"] = (
+            "Provided-passage relevance classification: positive_exact means YES on relevant passage sets; no-answer null means abstention on non-relevant sets. Not answer-generation accuracy or entity linking."
+            if manifest["experiment"] == "review_nomiracl" else
+            "Normalized answer EM and separate source/terminology-need strata; character overlap is not semantic entailment."
+            if rows[0]["task"] == "document_qa" else
+            "Raw semantic selection and occurrence-bound approval are separate; synthetic/public proxy samples do not certify deployment risk.")
     return summary
 
 
@@ -164,6 +197,11 @@ def render_markdown(summary):
                       "|---|---:|---:|---:|---:|---:|---:|"])
         for condition, values in summary["by_variant"].items():
             lines.append(f"| {condition} | {values['positive_exact']}/{values['positive_planned']} | {values['article_no_answer_null']}/{values['no_answer_planned']} | {values['malformed']} | {values['errors']} | {values['missing']} | {values['usage']['prompt_tokens']} |")
+    if summary.get("metric_interpretation"):
+        lines.extend(["", summary["metric_interpretation"], ""])
+    if summary.get("by_terminology_need"):
+        lines.extend(["Pre-inference terminology-need strata:", "", "```json",
+                      json.dumps(summary["by_terminology_need"], indent=2), "```", ""])
     lines.extend(["", "Paired comparisons:", "", "```json", json.dumps(summary["paired"], indent=2), "```", ""])
     if "by_evaluation_split" in summary:
         lines.extend([summary["aggregate_scope"], "",

@@ -20,10 +20,13 @@ from .run_followup_llm import ANSWER_SCHEMA, ARTIFACTS, DECODING
 from .run_product_llm import _request_json, parse_model_json
 
 PROTOCOL_ID = "ktrf_extended_v1"
-DIAGNOSTIC_CONDITION_COUNTS = {"source_pack_factorial": 6, "fresh_compact": 3, "safety_robustness": 4}
+REVIEW_CONDITION_COUNTS = {"review_abcd": 8, "review_policy": 6,
+                           "review_budget": 6, "review_nomiracl": 3, "review_routing": 8}
+DIAGNOSTIC_CONDITION_COUNTS = {"source_pack_factorial": 6, "fresh_compact": 3,
+                               "safety_robustness": 4, **REVIEW_CONDITION_COUNTS}
 DIAGNOSTIC_EXPERIMENTS = set(DIAGNOSTIC_CONDITION_COUNTS)
 EXPERIMENTS = {"transfer", "budget", "corpus", "pack", "semantic_safety"} | DIAGNOSTIC_EXPERIMENTS
-SAFETY_EXPERIMENTS = {"semantic_safety", "safety_robustness"}
+SAFETY_EXPERIMENTS = {"semantic_safety", "safety_robustness", "review_routing"}
 ROUTING_SCHEMA = {"type": "object", "properties": {"selections": {
     "type": "array", "minItems": 1, "maxItems": 1, "items": {
         "type": "object", "properties": {"surface": {"type": "string"},
@@ -37,6 +40,17 @@ SAFETY_METRICS = ("correct", "accepted_correct_id", "accepted_wrong_id", "reject
 
 def _hash(data):
     return hashlib.sha256(data).hexdigest()
+
+
+def decoding_for(protocol):
+    return {**DECODING, "max_tokens": 384} if protocol["experiment"] == "review_routing" else DECODING
+
+
+def schema_for(rows, protocol):
+    if protocol["experiment"] == "review_routing":
+        from .review_business import ROUTING_SCHEMA as schema
+        return schema
+    return ANSWER_SCHEMA if rows[0]["task"] == "document_qa" else ROUTING_SCHEMA
 
 
 def validate_protocol(protocol):
@@ -76,7 +90,10 @@ def validate_requests(rows, protocol):
     if safety != (protocol["experiment"] in SAFETY_EXPERIMENTS):
         raise ValueError("task differs from declared experiment")
     if safety:
-        if protocol["experiment"] == "safety_robustness":
+        if protocol["experiment"] == "review_routing":
+            from .review_business import validate_business_requests
+            validate_business_requests(rows)
+        elif protocol["experiment"] == "safety_robustness":
             from .diagnostic_safety import validate_robustness_requests
             validate_robustness_requests(rows)
         else:
@@ -153,6 +170,9 @@ def load_request_file(path):
 
 
 def output_error(response, row):
+    if row.get("experiment") == "review_routing":
+        from .review_business import business_response_error
+        return business_response_error(response, row)
     return (response_error(response) if row["task"] == "document_qa"
             else production_response_error(response, row))
 
@@ -178,6 +198,11 @@ def _metrics(cases, safety):
             accepted_correct_id_rate=values["accepted_correct_id"] / len(positive) if positive else None,
             over_abstention_rate=values["over_abstention"] / len(positive) if positive else None,
             correct_abstention_rate=values["correct_abstention"] / len(negative) if negative else None)
+        if cases and "document_id" in cases[0]:
+            documents = {c["document_id"] for c in cases}
+            wrong_documents = {c["document_id"] for c in cases if c["accepted_wrong_id"]}
+            values.update(documents=len(documents), documents_with_wrong_approval=len(wrong_documents),
+                          document_wrong_approval_rate=len(wrong_documents) / len(documents))
     else:
         values.update(positive_exact=sum(r["correct"] for r in positive),
             positive_exact_rate=sum(r["correct"] for r in positive) / len(positive) if positive else None,
@@ -245,8 +270,18 @@ def grade_outputs(rows, outputs, protocol):
             "pack_injected": row.get("pack_injected", row.get("injected", False))}
         if diagnostic:
             case.update(family_id=row["family_id"], evaluation_split=row["evaluation_split"])
+        if protocol["experiment"] in REVIEW_CONDITION_COUNTS:
+            case.update(document_id=row.get("document_id", row["case_id"]),
+                        requires_terminology=row.get("requires_terminology", row.get("terminology_needed")))
+            for field in ("exact_core_detected", "gold_in_candidates"):
+                if field in row:
+                    case[field] = bool(row[field])
         if safety:
-            from .extended_safety import grade_safety
+            if protocol["experiment"] == "review_routing":
+                from .review_business import grade_business_response
+                grade_safety = lambda row, response: grade_business_response(response, row)
+            else:
+                from .extended_safety import grade_safety
             # Keep the complete response, including unexpected fields, at the guard boundary.
             result = grade_safety(row, output.get("response")) if not missing and not error else {}
             case.update({name: bool(valid and result.get(name, False)) for name in SAFETY_METRICS})
@@ -316,7 +351,8 @@ def run_benchmark(*, requests_file, endpoint, model, out_dir, code_revision, tim
             or type(timeout) not in (int, float) or not math.isfinite(timeout) or timeout <= 0):
         raise ValueError("loopback endpoint, model, code revision and positive timeout required")
     endpoint = endpoint.rstrip("/")
-    schema = ANSWER_SCHEMA if rows[0]["task"] == "document_qa" else ROUTING_SCHEMA
+    schema = schema_for(rows, protocol)
+    decoding = decoding_for(protocol)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=False, mode=0o700)
     (out_dir / "frozen_envelope.json").write_bytes(Path(requests_file).read_bytes())
@@ -324,7 +360,7 @@ def run_benchmark(*, requests_file, endpoint, model, out_dir, code_revision, tim
     manifest = {"protocol": PROTOCOL_ID, "track": "extended_suite", "experiment": protocol["experiment"],
         "declared_protocol": protocol, "request_provenance": provenance, "code_revision": code_revision,
         "started_at": datetime.now(timezone.utc).isoformat(), "endpoint": endpoint, "requested_model": model,
-        "request_count": len(rows), "decoding": DECODING, "answer_schema": schema,
+        "request_count": len(rows), "decoding": decoding, "answer_schema": schema,
         "schema_transport": "response_format.json_schema.strict", "timeout_seconds": timeout,
         "prompt_fields": ["system", "user"], "request_order": "frozen builder order; serial; stateless",
         "response_parser": "JSON object bare or one enclosing JSON code fence; no prose/repair", "retries": 0,
@@ -344,7 +380,7 @@ def run_benchmark(*, requests_file, endpoint, model, out_dir, code_revision, tim
         if manifest["setup_error"] is None:
             for row in rows:
                 payload = {"model": model, "messages": [{"role": "system", "content": row["system"]},
-                    {"role": "user", "content": row["user"]}], **DECODING,
+                    {"role": "user", "content": row["user"]}], **decoding,
                     "response_format": {"type": "json_schema", "json_schema": {
                         "name": "qa_answer" if row["task"] == "document_qa" else "routing_selection",
                         "strict": True, "schema": schema}}}
