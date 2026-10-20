@@ -301,3 +301,66 @@ def test_json_render_round_trips(snap):
     assert json.loads(render_context_pack(pack, "json")) == pack
     with pytest.raises(KtrfApiError):
         render_context_pack(pack, "yaml")
+
+
+def _long_definition_snapshot(definition, hints=()):
+    glossary = _glossary()
+    glossary.entity("E_FSS").grounding = {
+        "short_definition": definition, "disambiguation_hints": list(hints)}
+    return compile_snapshot(glossary, run_conformance=False)
+
+
+def test_definition_budget_preserves_trailing_exceptions_or_drops_whole_fact():
+    definition = ("내부 고객 요청을 접수하고 검토하는 업무 절차다. " * 4
+                  + "외부 고객 요청에는 적용하지 않으며 실행 권한을 의미하지 않는다.")
+    snapshot = _long_definition_snapshot(definition)
+    full = _prepare(snapshot, "금감원 발표", context_policy=ContextPolicy(
+        max_tokens=10000, max_description_chars=1000))
+    full_tokens = CharTokenCounter().count(full.prompt_fragment)
+    for budget in (full_tokens, full_tokens - 1, full_tokens - 30):
+        prepared = _prepare(snapshot, "금감원 발표", context_policy=ContextPolicy(
+            max_tokens=budget, max_description_chars=1000))
+        pack = prepared.context_pack
+        if pack["resolved_terms"]:
+            assert pack["resolved_terms"][0]["short_definition"] == definition
+        else:
+            assert pack["coverage"]["budget_truncated"]
+            assert not pack["coverage"]["complete"]
+            assert any(o["reason"] == "token_budget" for o in pack["omissions"])
+
+
+def test_initial_description_limit_omits_whole_fact_and_reports_it():
+    definition = "내부 요청만 검토한다. " * 20 + "외부 고객은 적용 대상이 아니다."
+    snapshot = _long_definition_snapshot(definition)
+    pack = _prepare(snapshot, "금감원 발표", context_policy=ContextPolicy(
+        max_tokens=10000, max_description_chars=80)).context_pack
+    assert not pack["resolved_terms"]
+    assert not pack["coverage"]["complete"]
+    assert pack["coverage"]["omitted"] == len(pack["omissions"]) == 1
+    assert pack["omissions"][0]["reason"] == "max_description_chars"
+    assert pack["omissions"][0]["action"] == "omit_whole_fact"
+    assert pack["omissions"][0]["original_chars"] == len(definition)
+
+
+def test_hints_removed_for_budget_are_recorded():
+    snapshot = _long_definition_snapshot("금융기관 감독 기관", ["예외 조건 " * 30])
+    full = _prepare(snapshot, "금감원 발표", context_policy=ContextPolicy(max_tokens=10000))
+    budget = CharTokenCounter().count(full.prompt_fragment) - 1
+    pack = _prepare(snapshot, "금감원 발표", context_policy=ContextPolicy(
+        max_tokens=budget)).context_pack
+    assert pack["resolved_terms"]
+    assert not pack["resolved_terms"][0]["disambiguation_hints"]
+    assert pack["resolved_terms"][0]["short_definition"] == "금융기관 감독 기관"
+    assert not pack["coverage"]["complete"]
+    assert pack["coverage"]["budget_truncated"]
+    assert pack["coverage"]["omitted"] == len(pack["omissions"])
+    assert any(o["reason"] == "token_budget_hints" for o in pack["omissions"])
+
+
+def test_ambiguous_definition_is_not_clipped_or_exposed_as_single_candidate(snap):
+    pack = _prepare(snap, "IR 발표", context_policy=ContextPolicy(
+        max_tokens=10000, max_description_chars=10)).context_pack
+    assert not pack["resolved_terms"]
+    assert not pack["ambiguous_mentions"]
+    assert not pack["coverage"]["complete"]
+    assert any(o["reason"] == "incomplete_candidate_facts" for o in pack["omissions"])

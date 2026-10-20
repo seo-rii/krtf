@@ -13,8 +13,8 @@ string. Design contract:
   mentions it has; surface variants merge into ``observed_as``.
 - **Deterministic, non-generative selection.** Query relevance is a fixed
   heuristic score — no LLM calls inside the context layer.
-- **Hard token budget.** Reduction follows a fixed order (descriptions →
-  hints → candidate counts → low-relevance entities) and every omission is
+- **Hard token budget.** Reduction follows a fixed order (hints →
+  candidate counts → low-relevance entities) and every omission is
   recorded in ``coverage``/``omissions``; statuses never change to fit.
 - **Safety.** All strings are control-char-stripped and length-capped at
   ingestion; renderers escape everything and never emit CDATA; the fixed
@@ -165,10 +165,12 @@ def _entity_ids(m: dict) -> list[dict]:
             if x.get("kind", "ENTITY") == "ENTITY" and x.get("entity_id")]
 
 
-def _short_definition(entity, max_chars: int) -> str:
+def _definition(entity) -> str:
     g = entity.grounding or {}
     base = g.get("short_definition") or entity.description or ""
-    return _clean(base)[:max_chars]
+    # A trailing exception can change the meaning of the whole definition.
+    # The builder drops an oversized fact rather than clipping its meaning.
+    return _CONTROL_CHARS.sub("", unicodedata.normalize("NFC", str(base)))
 
 
 def _classification(entity) -> str:
@@ -215,9 +217,11 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
     restricted_removed = False
 
     def _mention_ref(m: dict) -> dict:
+        core_span = m.get("span", {}).get("codepoint")
         ref = {"mention_id": m.get("mention_id"),
                "surface": _clean(m.get("surface")),
-               "span": m.get("span", {}).get("codepoint")}
+               "span": core_span,
+}
         # a card says "한전 = 한국전력공사"; if the surface actually read
         # 한전노조, a reader can carry the identity onto the derivative. The
         # resolver knows it is a different thing, so the pack has to say so
@@ -234,6 +238,34 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
                 note = ref["appears_inside"]
                 note["refers_to_entity_id"] = comp.get("entity_id")
         return ref
+
+    def _complete_definition(entity, mention: dict) -> str | None:
+        definition = _definition(entity)
+        limit = min(policy.max_description_chars, _MAX_FIELD_CHARS)
+        if len(definition) > limit:
+            omissions.append({"reason": "definition_hard_limit"
+                              if limit == _MAX_FIELD_CHARS
+                              else "max_description_chars",
+                              "entity_id": entity.entity_id,
+                              "mention_id": mention.get("mention_id"),
+                              "field": "short_definition",
+                              "original_chars": len(definition),
+                              "action": "omit_whole_fact"})
+            return None
+        return definition
+
+    def _hints(entity) -> list[str]:
+        hints = []
+        for hint in (entity.grounding or {}).get("disambiguation_hints", []):
+            clean = _CONTROL_CHARS.sub("", unicodedata.normalize("NFC", str(hint)))
+            if len(clean) > _MAX_FIELD_CHARS:
+                omissions.append({"reason": "hint_hard_limit",
+                                  "entity_id": entity.entity_id,
+                                  "field": "disambiguation_hints",
+                                  "action": "omit_whole_hint"})
+            else:
+                hints.append(clean)
+        return hints
 
     def _allowed(entity, as_fact: bool) -> bool:
         nonlocal restricted_removed
@@ -265,15 +297,14 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
                 omissions.append({"mention_id": m.get("mention_id"),
                                   "reason": "classification"})
                 continue
+            definition = _complete_definition(entity, m)
+            if definition is None:
+                continue
             card = resolved.setdefault(eid, {
                 "entity_id": eid,
                 "canonical": _clean(entity.canonical),
-                "short_definition": _short_definition(
-                    entity, policy.max_description_chars),
-                "disambiguation_hints": [
-                    _clean(h) for h in
-                    (entity.grounding or {}).get(
-                        "disambiguation_hints", [])[:4]],
+                "short_definition": definition,
+                "disambiguation_hints": _hints(entity),
                 "type_ids": list(entity.type_ids),
                 "domain_ids": list(entity.domain_ids),
                 "mentions": [],
@@ -316,25 +347,36 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
                                   "reason": "profile_excludes_ambiguous"})
                 continue
             cands = []
-            for member in _entity_ids(m)[:policy.max_candidates_per_mention]:
+            members = _entity_ids(m)
+            candidate_limit = len(members) > policy.max_candidates_per_mention
+            if candidate_limit:
+                omissions.append({"mention_id": m.get("mention_id"),
+                                  "reason": "max_candidates_per_mention"})
+            incomplete_definition = False
+            for member in members[:policy.max_candidates_per_mention]:
                 entity = glossary.entity(member["entity_id"])
                 if not _allowed(entity, as_fact=False):
+                    continue
+                definition = _complete_definition(entity, m)
+                if definition is None:
+                    incomplete_definition = True
                     continue
                 cand = {
                     "entity_id": member["entity_id"],
                     "canonical": _clean(entity.canonical),
-                    "short_definition": _short_definition(
-                        entity, policy.max_description_chars),
-                    "disambiguation_hints": [
-                        _clean(h) for h in
-                        (entity.grounding or {}).get(
-                            "disambiguation_hints", [])[:4]],
+                    "short_definition": definition,
+                    "disambiguation_hints": _hints(entity),
                 }
                 if policy.include_numeric_probabilities:
                     p = member.get("calibrated_probability")
                     if p is not None:
                         cand["probability"] = p
                 cands.append(cand)
+            if incomplete_definition:
+                omissions.append({"mention_id": m.get("mention_id"),
+                                  "reason": "incomplete_candidate_facts",
+                                  "action": "omit_whole_ambiguous_mention"})
+                continue
             if not cands:
                 continue
             ambiguous.append({
@@ -346,7 +388,7 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
                 "coverage_valid": pset.get("coverage_valid", False),
                 # a truncated conformal set no longer carries its coverage
                 # guarantee — surface that instead of hiding it
-                "set_valid": not pset.get("truncated", False)
+                "set_valid": not candidate_limit and not pset.get("truncated", False)
                 and pset.get("coverage_valid", False) is True,
                 "calibration_fallback":
                     bool(pset.get("calibration_fallback")),
@@ -453,6 +495,7 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
     pack["coverage"]["complete"] = (not pack["omissions"]
                                     and not pack["coverage"]
                                     ["budget_truncated"])
+    pack["coverage"]["omitted"] = len(pack["omissions"])
     # An empty pack must not be injected. Presenting a terminology block
     # that grounds nothing measurably degrades answers: the model treats
     # the empty context as authoritative evidence of absence and second-
@@ -510,6 +553,7 @@ def _apply_token_budget(pack: dict, policy: ContextPolicy,
     def note(reason: str, **kw) -> None:
         pack["omissions"].append({"reason": reason, **kw})
         pack["coverage"]["budget_truncated"] = True
+        pack["coverage"]["complete"] = False
 
     if not over():
         return
@@ -518,22 +562,23 @@ def _apply_token_budget(pack: dict, policy: ContextPolicy,
                   [c for a in pack["ambiguous_mentions"]
                    for c in a["candidates"]]):
         for card in group:
-            card["disambiguation_hints"] = []
-    # 2. shrink definitions
-    if over():
-        for card in pack["resolved_terms"]:
-            card["short_definition"] = card["short_definition"][:80]
-        for a in pack["ambiguous_mentions"]:
-            for c in a["candidates"]:
-                c["short_definition"] = c["short_definition"][:80]
-    # 3. reduce ambiguous candidate lists (floor of 2 — never down to 1,
+            if card.get("disambiguation_hints"):
+                count = len(card["disambiguation_hints"])
+                card["disambiguation_hints"] = []
+                note("token_budget_hints", entity_id=card["entity_id"],
+                     field="disambiguation_hints", removed_count=count)
+    # Definitions, including exceptions and scope restrictions, remain whole.
+    # 2. reduce ambiguous candidate lists (floor of 2 — never down to 1,
     #    which would read as an implicit resolution)
     if over():
         for a in pack["ambiguous_mentions"]:
             if len(a["candidates"]) > 2:
+                count = len(a["candidates"]) - 2
                 a["candidates"] = a["candidates"][:2]
                 a["set_valid"] = False
-    # 4. drop lowest-relevance ambiguous mentions, then resolved entities
+                note("token_budget_candidates", mention_id=a.get("mention_id"),
+                     removed_count=count)
+    # 3. drop lowest-relevance ambiguous mentions, then resolved entities
     while over() and pack["ambiguous_mentions"]:
         dropped = pack["ambiguous_mentions"].pop()
         note("token_budget", mention_id=dropped.get("mention_id"))
