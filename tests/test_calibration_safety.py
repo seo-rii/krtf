@@ -150,3 +150,125 @@ def test_explanation_uses_full_decision_margin_with_one_displayed_candidate(snap
     reason = _blocking_reason(mention, snap.policy)
     assert reason['reason'] == 'insufficient_margin'
     assert reason['margin'] == .01
+
+
+def _audit_components(n=40, *, observations=1, groups=('exact|multi',)):
+    return [TrainingExample(
+        .75 + .01 * j if label else .3, group, label,
+        event_id=f'event-{i}', document_id=f'doc-{i}-{j}',
+        request_id=f'request-{i}-{j}', mention_id='mention',
+        sample_source='random_audit')
+        for i in range(n) for j in range(observations)
+        for group in groups for label in [1, 0]]
+
+
+def test_event_connected_documents_do_not_manufacture_audit_units():
+    # Review reproduction: 30 distinct documents/requests still describe just
+    # one source event on each side of the split.
+    rows = _audit_components(2, observations=30)
+    cal = fit_calibrator(rows, n_min=1)
+    proof = cal.partition_manifest
+    assert len(proof['fit_component_ids']) == 1
+    assert len(proof['calibration_component_ids']) == 1
+    assert proof['calibration_positives'] == 30
+    assert proof['calibration_units'] == 1
+    assert list(proof['calibration_component_positive_counts'].values()) == [30]
+    assert cal.group_counts == {'exact|multi': 1}
+    assert proof['group_component_ids']['exact|multi'] == proof['calibration_component_ids']
+    assert not proof['independent_calibration_units']
+    assert not cal.coverage_valid
+    assert cal.global_quantile == 1.0  # finite-sample n=1, not n=30
+
+
+def test_component_quantile_uses_worst_positive_not_mention_multiplicity():
+    rows = _audit_components(2, observations=30)
+    cal = fit_calibrator(rows, alpha=.5, n_min=1)
+    _, conf = partition_examples(rows)
+    expected = max(1 - cal.calibrate_marginal(e.ranking_score)
+                   for e in conf if e.label)
+    assert cal.global_quantile == expected
+    assert cal.fallback_quantile == 1.0
+    assert cal.group_quantiles == {'exact|multi': expected}
+    assert not cal.coverage_valid  # aggregation alone does not grant eligibility
+
+
+def test_transitive_components_survive_through_scoring_and_counts():
+    rows = []
+    for i in range(40):
+        # A --document-- B --request-- C; A and C share no direct ID.
+        rows.extend([
+            TrainingExample(.9, 'exact|multi', 1, event_id=f'a{i}',
+                            document_id=f'doc{i}', sample_source='random_audit'),
+            TrainingExample(.4, 'exact|multi', 0, event_id=f'b{i}',
+                            document_id=f'doc{i}', request_id=f'req{i}',
+                            sample_source='random_audit'),
+            TrainingExample(.8, 'exact|multi', 1, event_id=f'c{i}',
+                            request_id=f'req{i}', sample_source='random_audit'),
+        ])
+    cal = fit_calibrator(rows, n_min=1)
+    proof = cal.partition_manifest
+    assert len(proof['fit_component_ids']) == 20
+    assert len(proof['calibration_component_ids']) == 20
+    assert not set(proof['fit_component_ids']) & set(proof['calibration_component_ids'])
+    assert proof['calibration_units'] == 20
+    assert proof['calibration_positives'] == 40
+    assert cal.group_counts == {'exact|multi': 20}
+    assert set(proof['calibration_component_positive_counts'].values()) == {2}
+    assert not cal.coverage_valid
+
+
+def test_weight_duplicates_keep_component_proof_and_counts():
+    rows = _audit_components(40, observations=2)
+    original = fit_calibrator(rows, n_min=1)
+    repeated = fit_calibrator(rows * 5, n_min=1)
+    assert repeated.group_counts == original.group_counts == {'exact|multi': 20}
+    for field in ('fit_component_ids', 'calibration_component_ids',
+                  'calibration_scored_component_ids', 'calibration_units',
+                  'calibration_positives', 'calibration_component_positive_counts',
+                  'group_component_ids'):
+        assert repeated.partition_manifest[field] == original.partition_manifest[field]
+    assert not repeated.coverage_valid
+
+
+def test_component_proof_and_fit_are_invariant_to_row_order():
+    import random
+    rows = _audit_components(40, observations=2)
+    expected = fit_calibrator(rows, n_min=1).to_dict()
+    random.Random(20261020).shuffle(rows)
+    assert fit_calibrator(rows, n_min=1).to_dict() == expected
+    assert fit_calibrator(list(reversed(rows)), n_min=1).to_dict() == expected
+
+
+def test_group_counts_cannot_double_pooled_independent_sample_size():
+    rows = _audit_components(40, groups=('exact|multi', 'fuzzy|multi'))
+    cal = fit_calibrator(rows, alpha=.025, n_min=1)
+    assert cal.group_counts == {'exact|multi': 20, 'fuzzy|multi': 20}
+    assert cal.partition_manifest['calibration_units'] == 20
+    assert cal.partition_manifest['independent_calibration_units']
+    assert not cal.coverage_valid  # 20 components, not 40 group appearances
+
+
+def test_valid_component_proof_roundtrip_and_legacy_claim_refusal():
+    cal = fit_calibrator(_audit_components(), n_min=1)
+    assert cal.coverage_valid
+    assert TunedCalibrator.from_dict(cal.to_dict()).coverage_valid
+    # Older artifacts remain usable for predictions, including artifacts that
+    # previously asserted independence using the erroneous document count.
+    legacy = cal.to_dict()
+    legacy['version'] = 'cal-2'
+    legacy['partition_manifest'] = {
+        'independent_calibration_units': True, 'calibration_positives': 30,
+        'fit_event_ids': ['event-1'], 'calibration_event_ids': ['event-2']}
+    restored = TunedCalibrator.from_dict(legacy)
+    assert restored.calibrate_marginal(.75) == cal.calibrate_marginal(.75)
+    assert restored.group_quantiles == cal.group_quantiles
+    assert not restored.coverage_valid
+
+
+def test_inconsistent_component_sample_count_cannot_certify_coverage():
+    cal = fit_calibrator(_audit_components(), n_min=1)
+    assert cal.coverage_valid
+    corrupted = cal.to_dict()
+    corrupted['partition_manifest'] = dict(corrupted['partition_manifest'],
+                                           calibration_units=100)
+    assert not TunedCalibrator.from_dict(corrupted).coverage_valid

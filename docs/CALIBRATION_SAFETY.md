@@ -30,9 +30,33 @@ label-independent deterministic split. IDs must be namespaced by corpus and
 tenant. Missing source IDs or insufficient independent groups/labels refuse
 fitting; there is no whole-data fallback. Extraction accepts only approved
 corrections and preserves source references. Verifier repetitions affect
-Platt fitting but positive calibration observations are deduplicated per
-source mention. Learned fusion trains on the same fitting partition as Platt,
-so its own training rows cannot leak into the conformal partition.
+Platt fitting, but repeated positive rows from the same source mention are
+deduplicated before scoring. Learned fusion trains on the same fitting
+partition as Platt, so its own training rows cannot leak into the conformal
+partition.
+
+The `cal-3` artifact preserves the **same connected component IDs** from
+partitioning through quantile computation and coverage checks. A component
+contributes one maximum positive nonconformity score to each represented
+group and one maximum score to the pooled quantile. `group_counts` counts
+components in that group, not documents, requests, repeated verifier rows,
+or mentions. `partition_manifest.calibration_units` counts distinct scored
+components across all groups; adding group counts cannot inflate this number.
+The manifest records component identities, per-component distinct positive
+observation counts, group membership, and the declared aggregation rule.
+Rows are sorted within components so row order cannot alter fitting or its
+provenance.
+
+This conservative aggregation does **not** assert coverage for a document or
+for all mentions in an event. Coverage eligibility currently requires exactly
+one audited positive mention per scored source component, in addition to
+random-audit provenance and adequate support. If one event contains 30
+documents with 30 distinct audited mentions, it is one scored unit and is
+ineligible for the one-mention coverage claim. Repeated weights of the same
+mention are still one observation. Multi-mention components remain useful for
+fitting, but require a separate cluster-aware audit protocol before any
+coverage claim. Component proof missing from old artifacts makes coverage
+invalid even if their old `independent_calibration_units` boolean was true.
 
 Fit and runtime use one stable, full-precision sigmoid. Probability clipping
 and rounding do not affect conformal boundaries. Old calibrator artifacts

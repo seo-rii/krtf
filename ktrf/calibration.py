@@ -67,7 +67,7 @@ def _sigmoid(value: float) -> float:
     return e / (1.0 + e)
 
 
-def partition_examples(examples: list[TrainingExample]) -> tuple[list, list]:
+def _partition_source_components(examples: list[TrainingExample]) -> tuple[list, list]:
     """Deterministic, label-independent split of connected source events.
 
     Shared document/request/correction/event IDs join rows transitively.
@@ -100,15 +100,26 @@ def partition_examples(examples: list[TrainingExample]) -> tuple[list, list]:
     for i, e in enumerate(examples):
         clusters.setdefault(root(i), []).append(e)
     def cluster_key(rows):
-        ids = sorted({f"{k}:{getattr(e, k)}" for e in rows for k in
+        ids = sorted({(k, getattr(e, k)) for e in rows for k in
                       ("event_id", "document_id", "request_id", "correction_id")
                       if getattr(e, k)})
-        return hashlib.sha256(json.dumps(ids).encode()).hexdigest()
-    groups = sorted(clusters.values(), key=cluster_key)
+        return hashlib.sha256(json.dumps(ids, separators=(",", ":")).encode()).hexdigest()
+    # Stable identities travel with the complete connected component. Sorting
+    # rows also makes floating-point fitting independent of caller row order.
+    groups = sorted((cluster_key(rows), sorted(rows, key=lambda e: (
+        e.group, e.ranking_score, e.label, e.event_id or "",
+        e.document_id or "", e.request_id or "", e.mention_id or "",
+        e.correction_id or "", e.sample_source))) for rows in clusters.values())
     if len(groups) < 2:
         raise InsufficientCalibrationData("insufficient calibration data: at least two independent source groups required")
-    return ([e for g in groups[::2] for e in g],
-            [e for g in groups[1::2] for e in g])
+    return groups[::2], groups[1::2]
+
+
+def partition_examples(examples: list[TrainingExample]) -> tuple[list, list]:
+    """Split complete source components, retaining the historical row API."""
+    fit_components, calibration_components = _partition_source_components(examples)
+    return ([e for _, rows in fit_components for e in rows],
+            [e for _, rows in calibration_components for e in rows])
 
 
 def _fit_platt(scores: list[float], labels: list[int],
@@ -152,7 +163,7 @@ class TunedCalibrator:
     fallback_quantile: float
     group_counts: dict[str, int]
     n_min: int
-    version: str = "cal-2"
+    version: str = "cal-3"
     sample_source: str = "approved_corrections"
     partition_manifest: dict = field(default_factory=dict)
 
@@ -161,9 +172,42 @@ class TunedCalibrator:
         # Fitting on user-reported errors is selection biased. This only
         # declares eligibility for candidate-conditional coverage; callers
         # must additionally validate group support and output truncation.
-        return (self.sample_source == "random_audit"
-                and self.partition_manifest.get("independent_calibration_units") is True
-                and sum(self.group_counts.values()) >= math.ceil(1 / self.alpha) - 1)
+        proof = self.partition_manifest
+        if (self.sample_source != "random_audit"
+                or proof.get("schema") != "source_components_v1"
+                or proof.get("calibration_unit") != "source_component"
+                or proof.get("quantile_score_aggregation") != "maximum_positive_nonconformity"
+                or proof.get("coverage_observation_scope") != "one_audited_mention_per_source_component"
+                or proof.get("independent_calibration_units") is not True):
+            return False
+        fit_ids = proof.get("fit_component_ids", [])
+        calibration_ids = proof.get("calibration_component_ids", [])
+        scored_ids = proof.get("calibration_scored_component_ids", [])
+        counts = proof.get("calibration_component_positive_counts", {})
+        group_ids = proof.get("group_component_ids", {})
+        # Historical artifacts with a true boolean but no component proof are
+        # loadable, but cannot inherit a coverage claim. Validate count/proof
+        # consistency without re-counting documents from the original rows.
+        if (not fit_ids or not scored_ids
+                or len(set(fit_ids)) != len(fit_ids)
+                or len(set(calibration_ids)) != len(calibration_ids)
+                or len(set(scored_ids)) != len(scored_ids)
+                or set(fit_ids) & set(calibration_ids)
+                or not set(scored_ids) <= set(calibration_ids)
+                or set(counts) != set(scored_ids)
+                or any(count != 1 for count in counts.values())
+                or set(group_ids) != set(self.group_counts)
+                or proof.get("calibration_units") != len(scored_ids)):
+            return False
+        grouped_ids = set()
+        for group, ids in group_ids.items():
+            if (len(set(ids)) != len(ids) or not set(ids) <= set(scored_ids)
+                    or self.group_counts[group] != len(ids)):
+                return False
+            grouped_ids.update(ids)
+        return (grouped_ids == set(scored_ids)
+                and 0 < self.alpha < 1
+                and len(scored_ids) >= math.ceil(1 / self.alpha) - 1)
 
     @property
     def set_confidence(self) -> float:
@@ -227,28 +271,50 @@ def fit_calibrator(examples: list[TrainingExample], alpha: float = 0.05,
         raise InsufficientCalibrationData("insufficient calibration data: need >=10 examples with positives")
     if any(e.label not in (0, 1) or not math.isfinite(e.ranking_score) for e in examples):
         raise ValueError("calibration scores must be finite and labels binary")
-    fit_half, conf_half = partition_examples(examples)
+    fit_components, calibration_components = _partition_source_components(examples)
+    fit_half = [e for _, rows in fit_components for e in rows]
+    conf_half = [e for _, rows in calibration_components for e in rows]
     if {e.label for e in fit_half} != {0, 1} or not any(e.label for e in conf_half):
         raise InsufficientCalibrationData("insufficient calibration data: fitting needs both labels and independent calibration needs positives")
     a, b = _fit_platt([e.ranking_score for e in fit_half],
                       [e.label for e in fit_half])
-    # Verifier weights train Platt, but must not manufacture calibration
-    # sample size. Deduplicate repeated positives from the same mention.
-    unique = {}
-    for e in conf_half:
-        if e.label == 1:
-            event = (e.request_id, e.mention_id) if e.request_id and e.mention_id else (e.event_id or e.correction_id or e.document_id,)
-            key = (event, e.group)
+    # Verifier weights train Platt, but do not manufacture conformal units.
+    # The score unit is the SAME transitive source component used for splitting.
+    # Multiple positive mentions are conservatively combined by maximum
+    # nonconformity. Such clusters remain useful for fitting, but V1 refuses a
+    # coverage claim until a cluster-aware audit protocol is supplied.
+    by_group: dict[str, list[float]] = {}
+    group_component_ids: dict[str, list[str]] = {}
+    all_scores = []
+    positive_counts = {}
+    for component_id, rows in calibration_components:
+        unique = {}
+        observation_ids = set()
+        for e in rows:
+            if e.label != 1:
+                continue
+            observation = ((e.request_id, e.mention_id)
+                           if e.request_id and e.mention_id else
+                           (e.event_id, e.document_id, e.request_id,
+                            e.mention_id, e.correction_id))
+            key = (observation, e.group)
             if key in unique and unique[key].ranking_score != e.ranking_score:
                 raise InsufficientCalibrationData("conflicting positives for the same source mention")
             unique[key] = e
-    positives = list(unique.values())
-    def marginal(score):
-        return _sigmoid(a * score + b)
-    by_group: dict[str, list[float]] = {}
-    for e in positives:
-        by_group.setdefault(e.group, []).append(1.0 - marginal(e.ranking_score))
-    all_scores = [s for lst in by_group.values() for s in lst]
+            observation_ids.add(observation)
+        if not unique:
+            continue
+        positive_counts[component_id] = len(observation_ids)
+        component_scores = {}
+        for e in unique.values():
+            score = 1.0 - _sigmoid(a * e.ranking_score + b)
+            component_scores[e.group] = max(score, component_scores.get(e.group, 0.0))
+        for group, score in sorted(component_scores.items()):
+            by_group.setdefault(group, []).append(score)
+            group_component_ids.setdefault(group, []).append(component_id)
+        # A source component contributes exactly one pooled observation, even
+        # when it contains positives from more than one calibration group.
+        all_scores.append(max(component_scores.values()))
     return TunedCalibrator(
         platt_a=a, platt_b=b, alpha=alpha,
         group_quantiles={g: _conformal_quantile(lst, alpha)
@@ -260,16 +326,24 @@ def fit_calibrator(examples: list[TrainingExample], alpha: float = 0.05,
         sample_source=("random_audit" if all(e.sample_source == "random_audit" for e in conf_half)
                        else "approved_corrections"),
         partition_manifest={
+            "schema": "source_components_v1",
+            "calibration_unit": "source_component",
+            "quantile_score_aggregation": "maximum_positive_nonconformity",
+            "coverage_observation_scope": "one_audited_mention_per_source_component",
+            "fit_component_ids": [cid for cid, _ in fit_components],
+            "calibration_component_ids": [cid for cid, _ in calibration_components],
+            "calibration_scored_component_ids": list(positive_counts),
+            "calibration_component_positive_counts": positive_counts,
+            "group_component_ids": group_component_ids,
+            "calibration_units": len(all_scores),
+            # Retained for readers of the historical metadata; these IDs and
+            # row counts no longer determine independent conformal sample size.
             "fit_event_ids": sorted({e.event_id or e.correction_id or e.request_id or e.document_id for e in fit_half}),
             "calibration_event_ids": sorted({e.event_id or e.correction_id or e.request_id or e.document_id for e in conf_half}),
-            "fit_rows": len(fit_half), "calibration_positives": len(positives),
-            # Multiple labeled mentions in a document/request cannot be
-            # counted as independent conformal observations. Preserve their
-            # useful fit, but refuse a coverage claim until cluster-aware
-            # calibration or one random audited mention per unit is supplied.
-            "independent_calibration_units": len({
-                e.document_id or e.request_id or e.event_id or e.correction_id
-                for e in positives}) == len(positives),
+            "fit_rows": len(fit_half),
+            "calibration_rows": len(conf_half),
+            "calibration_positives": sum(positive_counts.values()),
+            "independent_calibration_units": all(count == 1 for count in positive_counts.values()),
         },
     )
 
