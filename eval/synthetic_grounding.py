@@ -256,7 +256,7 @@ def grade_expanded_outputs(requests, outputs):
         raw = response.get(field)
         malformed = malformed_response_field(response, field)
         valid = validate_llm_grounding({"selections": [{"surface": row["target_surface"],
-            "entity_id": None if malformed else raw}]}, row["pack"], purpose="execution")["valid"] if field == "entity_id" else True
+            "entity_id": None if malformed else raw}]}, row["pack"], purpose="execution", execution_contract='legacy_surface_v1')["valid"] if field == "entity_id" else True
         observations[row["condition"]].append({"row": row, "correct": not malformed and raw == expected and valid,
             "semantic_match": not malformed and raw == expected, "malformed": malformed,
             "abstained": not malformed and raw is None, "valid": valid,

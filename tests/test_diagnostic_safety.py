@@ -178,9 +178,9 @@ def test_complete_malformed_raw_routing_response_still_reaches_execution_guard(p
            "answer": "a field that must not be projected away"}
     seen = []
     original = extended_safety.validate_llm_grounding
-    def observe(response, pack, *, purpose):
+    def observe(response, pack, *, purpose, execution_contract):
         seen.append(response)
-        return original(response, pack, purpose=purpose)
+        return original(response, pack, purpose=purpose, execution_contract=execution_contract)
     monkeypatch.setattr(extended_safety, "validate_llm_grounding", observe)
     result = extended_safety.grade_safety(row, raw)
     assert seen == [raw] and seen[0] is raw

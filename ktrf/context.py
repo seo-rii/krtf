@@ -41,7 +41,7 @@ from .glossary import Glossary
 from .resolver import resolve
 from .snapshot import Snapshot
 
-SCHEMA_VERSION = "1"
+SCHEMA_VERSION = "2"
 PROFILES = ("qa_grounding", "summarization", "rag_query_expansion",
             "automation")
 CLASSIFICATION_ORDER = {"public": 0, "internal": 1, "restricted": 2}
@@ -65,8 +65,11 @@ KNOWLEDGE_ASSISTANCE_POLICY = TERMINOLOGY_POLICY + """
 연결로 표시하지 않는다. 후보와 일반 지식은 실행 권한을 부여하지 않는다.
 """
 EXECUTION_POLICY = TERMINOLOGY_POLICY + """
-자동 실행·치환·구조화 필드에는 해당 surface에 대해 resolved_terms에서
+자동 실행·치환·구조화 필드에는 요청한 발생 위치에 대해 resolved_terms에서
 검증된 entity_id만 사용한다. 후보 또는 일반 지식으로 ID를 선택하지 않는다.
+각 selections 항목은 surface, document_hash, snapshot_id, mention_id,
+core_span, full_span, entity_id를 해당 occurrence와 정확히 일치시킨다.
+span은 codepoint 기준 start/end 객체이며 서로 다른 발생 위치의 승인을 빌리지 않는다.
 검증된 연결이 없으면 null을 반환하고 질문하거나 검토를 요청한다.
 """
 
@@ -81,6 +84,7 @@ AMBIGUOUS 후보의 제공된 정의(definition 또는 short_definition)를 설�
 이 설명은 resolver가 검증한 연결이나 확정 사실로 승격되지 않으며 실행 권한을 부여하지 않는다.
 QA 응답에는 answer만 작성하고 entity_id나 selections는 출력하지 않는다.
 """
+
 
 _MAX_FIELD_CHARS = 2000  # ingestion hard cap for any single string field
 _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
@@ -120,7 +124,7 @@ class ContextPolicy:
     include_numeric_probabilities: bool = False
     allow_degraded_resolved: bool = False
     classification_clearance: str = "internal"
-    version: str = "ctxpol-1"
+    version: str = "ctxpol-2"
     answer_policy: str = "evidence_only"
 
     def __post_init__(self):
@@ -200,7 +204,7 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
                        query: str | None = None,
                        policy: ContextPolicy | None = None,
                        token_counter: TokenCounter | None = None,
-                       metrics=None) -> dict:
+                       metrics=None, *, document_text: str | None = None) -> dict:
     """Build a ContextPack dict (canonical JSON form) from a resolver
     response produced with ``return_all_mentions=True``."""
     policy = policy or ContextPolicy()
@@ -221,7 +225,8 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
         ref = {"mention_id": m.get("mention_id"),
                "surface": _clean(m.get("surface")),
                "span": core_span,
-}
+               "core_span": core_span,
+               "full_span": m.get("full_span", m.get("span", {})).get("codepoint")}
         # a card says "한전 = 한국전력공사"; if the surface actually read
         # 한전노조, a reader can carry the identity onto the derivative. The
         # resolver knows it is a different thing, so the pack has to say so
@@ -457,6 +462,9 @@ def build_context_pack(snapshot: Snapshot, resolve_response: dict,
 
     pack = {
         "schema_version": SCHEMA_VERSION,
+        "execution_contract": "occurrence_v1",
+        "document_hash": (hashlib.sha256(document_text.encode("utf-8")).hexdigest()
+                          if document_text is not None else None),
         "profile": policy.profile,
         "answer_policy": ("evidence_only" if policy.profile == "automation"
                           else policy.answer_policy),
@@ -629,10 +637,14 @@ def _render_xml(pack: dict) -> str:
     snap = pack.get("snapshot", {})
     header = f"{snap.get('glossary_id')}:{snap.get('glossary_version')}"
     cov = pack["coverage"]
+    binding = (f" document_hash={_attr(pack.get('document_hash'))}"
+               f" snapshot_id={_attr(snap.get('snapshot_id'))}"
+               f" execution_contract={_attr(pack.get('execution_contract'))}"
+               if pack.get("profile") == "automation" else "")
     lines = [
         f"<terminology_context schema_version={_attr(pack['schema_version'])}"
         f" snapshot={_attr(header)} data_only=\"true\""
-        f" complete={_attr(str(cov['complete']).lower())}>"]
+        f"{binding} complete={_attr(str(cov['complete']).lower())}>"]
     if pack["resolved_terms"]:
         lines.append("  <resolved_terms>")
         for c in pack["resolved_terms"]:
@@ -644,6 +656,15 @@ def _render_xml(pack: dict) -> str:
             if pack.get("expose_entity_ids", True):
                 attrs.insert(0, f"entity_id={_attr(c['entity_id'])}")
             lines.append(f"    <term {' '.join(attrs)}>")
+            if pack.get("profile") == "automation":
+                for occurrence in c["mentions"]:
+                    core = occurrence.get("core_span") or {}
+                    full = occurrence.get("full_span") or {}
+                    lines.append(
+                        f"      <occurrence mention_id={_attr(occurrence.get('mention_id'))}"
+                        f" surface={_attr(occurrence['surface'])}"
+                        f" core_span={_attr(json.dumps(core, sort_keys=True))}"
+                        f" full_span={_attr(json.dumps(full, sort_keys=True))} />")
             lines.append("      <definition>"
                          + escape(_clean(c["short_definition"]))
                          + "</definition>")
@@ -696,6 +717,10 @@ def _render_xml(pack: dict) -> str:
 
 def _render_text(pack: dict) -> str:
     out = []
+    if pack.get("profile") == "automation":
+        out.append("execution_contract=occurrence_v1 "
+                   f"document_hash={pack.get('document_hash')} "
+                   f"snapshot_id={pack.get('snapshot', {}).get('snapshot_id')}")
     for c in pack["resolved_terms"]:
         observed = ", ".join(dict.fromkeys(
             m["surface"] for m in c["mentions"]))
@@ -705,6 +730,13 @@ def _render_text(pack: dict) -> str:
             inside = ", ".join(n["surface"] for n in notes)
             line += f" [주의: {inside} 안에 나타남 — 같은 대상이 아님]"
         out.append(line)
+        if pack.get("profile") == "automation":
+            for mention in c["mentions"]:
+                out.append("  occurrence=" + json.dumps({
+                    "entity_id": c["entity_id"],
+                    **{key: mention.get(key) for key in
+                       ("surface", "mention_id", "core_span", "full_span")}},
+                    ensure_ascii=False, sort_keys=True))
     for a in pack["ambiguous_mentions"]:
         cands = " | ".join(f"{c['canonical']}: {c['short_definition']}"
                            for c in a["candidates"])
@@ -766,7 +798,8 @@ def prepare_llm_context(snapshot: Snapshot, text: str,
                    options={"return_all_mentions": True}, metrics=metrics)
     pack = build_context_pack(snapshot, resp, query=query,
                               policy=context_policy,
-                              token_counter=token_counter, metrics=metrics)
+                              token_counter=token_counter, metrics=metrics,
+                              document_text=text)
     return PreparedContext(
         resolve_response=resp, context_pack=pack,
         prompt_fragment=render_context_pack(pack, "xml"),
@@ -779,7 +812,8 @@ def prepare_llm_context(snapshot: Snapshot, text: str,
 
 
 def validate_llm_grounding(llm_output: dict, context_pack: dict, *,
-                           purpose: str = "grounding") -> dict:
+                           purpose: str = "grounding",
+                           execution_contract: str = "occurrence_v1") -> dict:
     """Check a structured LLM grounding answer against its context pack.
 
     ``llm_output`` shape: ``{"selections": [{"surface": ..,
@@ -787,8 +821,13 @@ def validate_llm_grounding(llm_output: dict, context_pack: dict, *,
     out-of-candidate-set picks for ambiguous mentions, and silent overrides
     of RESOLVED facts. Not a full guarantee — a gate before downstream
     automation consumes LLM output. ``purpose="execution"`` additionally
-    requires a resolved binding for the exact surface, and rejects degraded
-    facts. Candidate membership alone never grants execution authority.
+    requires a resolved binding for the exact document, snapshot and occurrence,
+    and rejects degraded facts. Candidate membership alone never grants authority.
+    Non-null execution selections contain ``document_hash``, ``snapshot_id``,
+    ``mention_id``, ``core_span``, ``full_span``, ``surface`` and ``entity_id``.
+    The spans are codepoint ``{start, end}`` objects. Historical raw responses
+    can be explicitly regraded with ``execution_contract='legacy_surface_v1'``;
+    that compatibility mode still validates any supplied occurrence fields.
     An automation pack always applies that stricter contract.
     Execution requires an explicit selections list from a separate execution
     request; raw or mixed QA answers are rejected. Hosts must never project
@@ -797,6 +836,8 @@ def validate_llm_grounding(llm_output: dict, context_pack: dict, *,
     Callers must authenticate the pack's tenant/snapshot separately."""
     if purpose not in ("grounding", "execution"):
         raise KtrfApiError("INVALID_REQUEST", "unknown grounding purpose")
+    if execution_contract not in ("occurrence_v1", "legacy_surface_v1"):
+        raise KtrfApiError("INVALID_REQUEST", "unknown execution contract")
     execution = purpose == "execution" or context_pack.get("profile") == "automation"
     if execution:
         if not isinstance(llm_output, dict):
@@ -835,9 +876,20 @@ def validate_llm_grounding(llm_output: dict, context_pack: dict, *,
             facts = [c for c in context_pack["resolved_terms"]
                      if any(m["surface"] == surface for m in c["mentions"])
                      and not c["resolution"].get("degraded")]
-            if {c["entity_id"] for c in facts} != {eid}:
+            occurrence_fields = ("document_hash", "snapshot_id", "mention_id",
+                                 "core_span", "full_span", "span")
+            occurrence_bound = execution_contract == "occurrence_v1" or any(
+                key in sel for key in occurrence_fields)
+            if occurrence_bound:
+                verified = _verified_occurrence(sel, context_pack, facts)
+            else:
+                verified = {c["entity_id"] for c in facts} == {eid}
+            if not verified:
                 violations.append({"kind": "unverified_execution",
                                    "entity_id": eid, "surface": surface})
+            # Entity-wide surface maps can conflate two distinct occurrences.
+            # The exact occurrence match above is authoritative for execution.
+            continue
         if eid not in known:
             violations.append({"kind": "unknown_entity_id",
                                "entity_id": eid, "surface": surface})
@@ -850,3 +902,37 @@ def validate_llm_grounding(llm_output: dict, context_pack: dict, *,
             violations.append({"kind": "resolved_override",
                                "entity_id": eid, "surface": surface})
     return {"valid": not violations, "violations": violations}
+
+
+def _verified_occurrence(selection: dict, pack: dict, facts: list[dict]) -> bool:
+    """Bind one execution choice to a complete, non-degraded fact occurrence."""
+    document_hash = pack.get("document_hash")
+    snapshot_id = pack.get("snapshot", {}).get("snapshot_id")
+    if (not isinstance(document_hash, str)
+            or re.fullmatch(r"[0-9a-f]{64}", document_hash) is None
+            or not isinstance(snapshot_id, str) or not snapshot_id
+            or selection.get("document_hash") != document_hash
+            or selection.get("snapshot_id") != snapshot_id
+            or not isinstance(selection.get("mention_id"), str)
+            or not selection["mention_id"]):
+        return False
+    for key in ("core_span", "full_span"):
+        span = selection.get(key)
+        if (not isinstance(span, dict) or set(span) != {"start", "end"}
+                or any(type(span.get(k)) is not int for k in ("start", "end"))
+                or not 0 <= span["start"] < span["end"]):
+            return False
+    core, full = selection["core_span"], selection["full_span"]
+    if not full["start"] <= core["start"] < core["end"] <= full["end"]:
+        return False
+    if "span" in selection and selection["span"] != core:
+        return False
+    matched_ids = set()
+    for card in facts:
+        for mention in card["mentions"]:
+            if (mention.get("surface") == selection["surface"]
+                    and mention.get("mention_id") == selection["mention_id"]
+                    and mention.get("core_span") == core
+                    and mention.get("full_span") == full):
+                matched_ids.add(card["entity_id"])
+    return matched_ids == {selection["entity_id"]}

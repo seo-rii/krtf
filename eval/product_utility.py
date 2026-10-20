@@ -152,7 +152,7 @@ def grade_outputs(requests, outputs):
         correct = not malformed and response[field] == expected
         if field == "entity_id":
             gate = validate_llm_grounding({"selections": [{"surface": req.get("target_surface", "ABC"),
-                "entity_id": None if malformed else response.get("entity_id")}]}, req["pack"], purpose="execution")
+                "entity_id": None if malformed else response.get("entity_id")}]}, req["pack"], purpose="execution", execution_contract='legacy_surface_v1')
             correct = correct and gate["valid"]
         scored[key] = {"correct": correct, "safe_abstention": expected is None and abstained,
                       "over_abstention": expected is not None and abstained,

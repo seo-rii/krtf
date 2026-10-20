@@ -371,7 +371,7 @@ def grade_outputs(requests, outputs):
         if qa:
             valid, violations = None, None
         elif row["condition"] in EXECUTION_CONDITIONS:
-            guard = validate_llm_grounding(response, row["pack"], purpose="execution")
+            guard = validate_llm_grounding(response, row["pack"], purpose="execution", execution_contract='legacy_surface_v1')
             valid, violations = guard["valid"], guard["violations"]
         else:
             valid = not malformed and (raw is None or raw in row["candidate_entity_ids"])

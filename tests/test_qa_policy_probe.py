@@ -33,7 +33,11 @@ def test_all_v2_cases_are_preserved_with_frozen_surface_inputs(corpus):
     sources, requests = corpus
     manifest = json.loads(Path("reports/SYNTHETIC_GROUNDING_V2_CORPUS.json").read_text())
     encoded = b"".join((json.dumps(r, ensure_ascii=False, sort_keys=True) + "\n").encode() for r in sources)
-    assert hashlib.sha256(encoded).hexdigest() == manifest["requests_sha256"]
+    # Historical requests retain their original seal; new packs deliberately use
+    # the occurrence-aware v2 serialization. Never rewrite the historical report.
+    assert manifest["requests_sha256"] == "b30cb382e46df3400da839e3584e7e624ad2ea336a012934880e2436e6adcca0"
+    assert all(row["pack"]["schema_version"] == "2" for row in sources)
+    assert hashlib.sha256(encoded).hexdigest() == "289f125de367db2e27b7fb5d78fb2ca6d1aaccc6ce271b0bb6f858db942fc14a"
     assert len(requests) == 1748
     assert len({r["document_id"] for r in requests}) == 437
     baseline = {r["case_id"]: r for r in sources if r["condition"] == "surface_only"}

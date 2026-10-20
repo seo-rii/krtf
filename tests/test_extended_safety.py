@@ -107,9 +107,9 @@ def test_complete_mixed_response_reaches_guard_and_cannot_be_repaired(prepared, 
     seen = []
     original = suite.validate_llm_grounding
 
-    def observe(raw, pack, *, purpose):
+    def observe(raw, pack, *, purpose, execution_contract):
         seen.append(raw)
-        return original(raw, pack, purpose=purpose)
+        return original(raw, pack, purpose=purpose, execution_contract=execution_contract)
 
     monkeypatch.setattr(suite, "validate_llm_grounding", observe)
     result = suite.grade_safety(row, response)
@@ -123,7 +123,8 @@ def test_known_country_homonym_is_not_relabelled_when_guard_authorizes_wrong_id(
     row = next(row for row in prepared[0]["requests"] if row["document_id"] == "geo-gangwon:3")
     assert row["gold"]["label"] == "NIL" and row["expected_entity_id"] is None
     response = routing(row, "ORG_GANGWON")
-    guard = validate_llm_grounding(response, row["pack"], purpose="execution")
+    guard = validate_llm_grounding(response, row["pack"], purpose="execution",
+                                   execution_contract="legacy_surface_v1")
     result = suite.grade_safety(row, response)
     # Allow a future resolver fix; either way an incorrect ID is never success.
     assert result["accepted_wrong_id"] == guard["valid"]

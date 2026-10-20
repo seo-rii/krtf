@@ -301,7 +301,7 @@ def grade_production_outputs(requests, outputs):
         selection = response.get("selections", [])
         raw = response.get("answer") if qa else (selection[0].get("entity_id")
             if isinstance(selection, list) and len(selection) == 1 and isinstance(selection[0], dict) else None)
-        guard = validate_llm_grounding(response, row["pack"], purpose="execution") if not qa else None
+        guard = validate_llm_grounding(response, row["pack"], purpose="execution", execution_contract='legacy_surface_v1') if not qa else None
         semantic_match = not malformed and raw == expected
         item.update(malformed=malformed, semantic_match=semantic_match,
             correct=semantic_match and (qa or guard["valid"]),

@@ -54,7 +54,7 @@ def _correct(row, record):
     if field == "entity_id":
         return validate_llm_grounding({"selections": [{
             "surface": row["target_surface"], "entity_id": value}]},
-            row["pack"], purpose="execution")["valid"]
+            row["pack"], purpose="execution", execution_contract='legacy_surface_v1')["valid"]
     return True
 
 
@@ -153,7 +153,7 @@ def _shortcut_diagnostics(rows):
                 stats["routing_cases"] += 1
                 stats["semantic_id_matches"] += eid == routing["expected_entity_id"]
                 valid = validate_llm_grounding({"selections": [{"surface": routing["target_surface"],
-                    "entity_id": eid}]}, routing["pack"], purpose="execution")["valid"]
+                    "entity_id": eid}]}, routing["pack"], purpose="execution", execution_contract='legacy_surface_v1')["valid"]
                 stats["guard_accepted_semantic_id_matches"] += valid and eid == routing["expected_entity_id"]
                 stats["guard_rejected_nonnull_ids"] += eid is not None and not valid
         cases.append({"document_id": document_id, "family_id": row["family_id"],

@@ -120,7 +120,7 @@ def grade_contract_outputs(requests, outputs):
         gate_valid = True
         if field == "entity_id":
             gate_valid = validate_llm_grounding({"selections": [{"surface": "ABC",
-                "entity_id": raw}]}, req["pack"], purpose="execution")["valid"]
+                "entity_id": raw}]}, req["pack"], purpose="execution", execution_contract='legacy_surface_v1')["valid"]
         observed[key] = {"correct": not malformed and raw == expected and gate_valid,
             "answerable": expected is not None, "task": req["task"],
             "malformed": malformed, "abstained": not malformed and raw is None,

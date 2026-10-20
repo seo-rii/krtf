@@ -104,9 +104,9 @@ def test_raw_complete_response_reaches_guard_without_projection(rows, monkeypatc
     seen = []
     guard = suite.validate_llm_grounding
 
-    def observe(response, pack, *, purpose):
+    def observe(response, pack, *, purpose, execution_contract):
         seen.append(response)
-        return guard(response, pack, purpose=purpose)
+        return guard(response, pack, purpose=purpose, execution_contract=execution_contract)
 
     monkeypatch.setattr(suite, "validate_llm_grounding", observe)
     result = suite.grade_production_outputs([execution], [_output(execution, mixed)])

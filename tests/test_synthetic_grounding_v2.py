@@ -28,12 +28,15 @@ def balanced(source):
     return families, suite.build_balanced_requests(families)
 
 
-def test_v1_source_and_generated_requests_stay_byte_identical(source):
+def test_v1_source_stays_frozen_and_context_v2_requests_have_an_explicit_new_seal(source):
     manifest = json.loads(Path("reports/SYNTHETIC_GROUNDING_CORPUS.json").read_text())
     assert digest(source[0]) == suite.V1_SOURCE_SHA256 == manifest["source_semantic_sha256"]
     encoded = b"".join((json.dumps(r, ensure_ascii=False, sort_keys=True) + "\n").encode()
                        for r in build_expanded_requests())
-    assert hashlib.sha256(encoded).hexdigest() == manifest["requests_sha256"]
+    # Source gold and old reports stay frozen while the strengthened context
+    # schema intentionally changes newly generated request bytes.
+    assert manifest["requests_sha256"] == "37b8ed8537fb955ed40ac1dc64c9d52958441d662d7b671ac3d8ebe7008d57bf"
+    assert hashlib.sha256(encoded).hexdigest() == "cce48b52334e2c6e8090750164e1a3e5ef24b0cb0c1b66eb5aac469b77465e3f"
 
 
 def test_transform_preserves_sources_and_uses_opaque_model_ids(source, balanced):

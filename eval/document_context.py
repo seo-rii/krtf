@@ -381,7 +381,7 @@ def grade_document_context_outputs(requests, outputs):
         if qa:
             valid, violations = None, None
         elif row["knowledge_mode"] == "ktrf":
-            guard = validate_llm_grounding(response, row["pack"], purpose="execution")
+            guard = validate_llm_grounding(response, row["pack"], purpose="execution", execution_contract='legacy_surface_v1')
             valid, violations = guard["valid"], guard["violations"]
         else:
             valid = not malformed and (raw is None or raw in row["visible_entity_ids"])

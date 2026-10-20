@@ -26,6 +26,16 @@ def mention(response):
     return next(m for m in response['mentions'] if m['surface'] == '공통')
 
 
+def execution_selection(pack, surface, entity_id):
+    refs = [m for card in pack['resolved_terms'] for m in card['mentions']
+            if card['entity_id'] == entity_id and m['surface'] == surface]
+    identity = ({key: refs[0][key] for key in ('mention_id', 'core_span', 'full_span')}
+                if refs else {})
+    return {'surface': surface, 'entity_id': entity_id,
+            'document_hash': pack['document_hash'], 'snapshot_id': pack['snapshot']['snapshot_id'],
+            **identity}
+
+
 def test_default_stays_ambiguous_and_enabled_self_definition_is_executable():
     text = '공통은 월별 청구 오류를 검토하는 조직이다.'
     off, on = snapshot(), snapshot(True)
@@ -42,7 +52,7 @@ def test_default_stays_ambiguous_and_enabled_self_definition_is_executable():
     assert result['prediction_set']['coverage_valid'] is False
     prepared = prepare_llm_context(on, text, query='공통', context_policy=ContextPolicy(profile='automation'))
     assert prepared.should_inject
-    guard = validate_llm_grounding({'selections': [{'surface': '공통', 'entity_id': 'global:billing'}]},
+    guard = validate_llm_grounding({'selections': [execution_selection(prepared.context_pack, '공통', 'global:billing')]},
                                    prepared.context_pack, purpose='execution')
     assert guard['valid']
     assert prepared.context_pack['resolved_terms'][0]['resolution']['contextual_evidence']['support_quote']
@@ -148,12 +158,12 @@ def test_fresh_authored_corpus_preserves_negative_guards_and_authorizes_supporte
             prepared=prepare_llm_context(snap,document['text'],query=document['target_surface'],
                                          context_policy=ContextPolicy(profile='automation'))
             expected=document['gold']['entity_ref']
-            proposed={'selections':[{'surface':document['target_surface'],'entity_id':expected}]}
+            proposed={'selections':[execution_selection(prepared.context_pack, document['target_surface'], expected)]}
             if expected is not None and validate_llm_grounding(proposed,prepared.context_pack,purpose='execution')['valid']:
                 accepted+=1
             if expected is None:
                 for entity in glossary.entities:
-                    response={'selections':[{'surface':document['target_surface'],'entity_id':entity.entity_id}]}
+                    response={'selections':[execution_selection(prepared.context_pack, document['target_surface'], entity.entity_id)]}
                     assert not validate_llm_grounding(response,prepared.context_pack,purpose='execution')['valid']
     assert accepted==15  # One valid short canonical intentionally remains outside this evidence rule.
 

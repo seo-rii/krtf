@@ -201,7 +201,7 @@ def grade_safety(row, response):
         raise ValueError("semantic safety requires the separate production routing task")
     malformed = production_response_error(response, row) is not None
     # Never project, repair, strip answer fields, or manufacture selections.
-    guard = validate_llm_grounding(response, row["pack"], purpose="execution")
+    guard = validate_llm_grounding(response, row["pack"], purpose="execution", execution_contract='legacy_surface_v1')
     selections = response.get("selections") if isinstance(response, dict) else None
     selected = (selections[0].get("entity_id") if isinstance(selections, list)
         and len(selections) == 1 and isinstance(selections[0], dict) else None)

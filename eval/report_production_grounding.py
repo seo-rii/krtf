@@ -92,7 +92,7 @@ def _routing_diagnostics(requests, cases):
         counts["planned"] += 1
         expected = row["expected_entity_id"]
         permitted = validate_llm_grounding({"selections": [{"surface": row["target_surface"],
-            "entity_id": expected}]}, row["pack"], purpose="execution")["valid"]
+            "entity_id": expected}]}, row["pack"], purpose="execution", execution_contract='legacy_surface_v1')["valid"]
         counts["semantic_oracle_success_ceiling"] += permitted
         case = by_case[row["case_id"]]
         if expected is not None:

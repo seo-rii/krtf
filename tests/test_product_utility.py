@@ -7,6 +7,17 @@ from ktrf.context import (ContextPolicy, EXECUTION_POLICY,
                           validate_llm_grounding)
 
 
+def _execution_selection(pack, surface, entity_id):
+    """Copy the authoritative occurrence identity rather than inventing one."""
+    mention = next((m for c in pack["resolved_terms"] for m in c["mentions"]
+                    if m["surface"] == surface), {})
+    return {"surface": surface, "entity_id": entity_id,
+            "document_hash": pack["document_hash"],
+            "snapshot_id": pack["snapshot"]["snapshot_id"],
+            **{key: mention.get(key) for key in
+               ("mention_id", "core_span", "full_span")}}
+
+
 def test_counterfactual_glossary_scope_restoration():
     checks = local_swap_checks()
     assert checks["passed"]
@@ -28,7 +39,8 @@ def test_execution_rejects_candidate_and_unbound_surface():
                                 ("unmentioned", "global:billing", False),
                                 ("ABC", "global:access", False),
                                 ("ABC", None, True)]:
-        result = validate_llm_grounding({"selections": [{"surface": surface, "entity_id": eid}]},
+        result = validate_llm_grounding({"selections": [
+            _execution_selection(resolved, surface, eid)]},
                                         resolved, purpose="execution")
         assert result["valid"] is valid
     resolved["resolved_terms"][0]["resolution"]["degraded"] = True
@@ -154,6 +166,10 @@ def test_execution_rejects_malformed_selections_without_crashing(
 ])
 def test_execution_retains_explicit_abstention_and_verified_selection(
         resolved_qa_pack, selections):
+    selections = [(_execution_selection(resolved_qa_pack, sel["surface"],
+                                       sel["entity_id"])
+                   if sel.get("entity_id") is not None else sel)
+                  for sel in selections]
     result = validate_llm_grounding(
         {"selections": selections}, resolved_qa_pack, purpose="execution")
     assert result == {"valid": True, "violations": []}

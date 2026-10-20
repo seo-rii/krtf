@@ -1,6 +1,8 @@
 """Context-pack tests: status-separation invariants, dedup, token budget,
 query-aware selection, injection safety, output validation."""
 
+import copy
+import hashlib
 import json
 import xml.etree.ElementTree as ET
 
@@ -364,3 +366,72 @@ def test_ambiguous_definition_is_not_clipped_or_exposed_as_single_candidate(snap
     assert not pack["ambiguous_mentions"]
     assert not pack["coverage"]["complete"]
     assert any(o["reason"] == "incomplete_candidate_facts" for o in pack["omissions"])
+
+
+def _occurrence_selection(pack, card=None, mention=None):
+    card = card or pack["resolved_terms"][0]
+    mention = mention or card["mentions"][0]
+    return {"surface": mention["surface"], "entity_id": card["entity_id"],
+            "document_hash": pack["document_hash"],
+            "snapshot_id": pack["snapshot"]["snapshot_id"],
+            **{key: copy.deepcopy(mention[key]) for key in
+               ("mention_id", "core_span", "full_span")}}
+
+
+def test_execution_binds_document_snapshot_and_exact_occurrence(snap):
+    text = "금감원이 발표했다. 금감원ICT가 별도로 발표했다."
+    prepared = _prepare(snap, text, context_policy=ContextPolicy(
+        profile="automation", max_tokens=3000))
+    pack = prepared.context_pack
+    assert pack["schema_version"] == "2"
+    assert pack["execution_contract"] == "occurrence_v1"
+    assert pack["document_hash"] == hashlib.sha256(text.encode()).hexdigest()
+    selection = _occurrence_selection(pack)
+    assert validate_llm_grounding({"selections": [selection]}, pack)["valid"]
+    unresolved = next(m for m in prepared.resolve_response["mentions"]
+                      if m["surface"] == "금감원" and m["link_decision"] != "RESOLVED")
+    wrong = {**selection, "mention_id": unresolved["mention_id"],
+             "core_span": unresolved["span"]["codepoint"],
+             "full_span": unresolved.get("full_span", unresolved["span"])["codepoint"]}
+    assert not validate_llm_grounding({"selections": [wrong]}, pack)["valid"]
+    assert f'mention_id="{selection["mention_id"]}"' in prepared.prompt_fragment
+    assert selection["document_hash"] in prepared.prompt_fragment
+
+
+@pytest.mark.parametrize("field,replacement", [
+    ("document_hash", "0" * 64), ("snapshot_id", "different-snapshot"),
+    ("mention_id", "another-occurrence"),
+    ("core_span", {"start": 1, "end": 3}),
+    ("full_span", {"start": 0, "end": 99}),
+    ("core_span", {"start": False, "end": 3}),
+    ("span", {"start": 9, "end": 12}),
+])
+def test_execution_rejects_every_mismatched_occurrence_component(snap, field, replacement):
+    pack = _prepare(snap, "금감원 발표").context_pack
+    selection = _occurrence_selection(pack)
+    selection[field] = replacement
+    for contract in ("occurrence_v1", "legacy_surface_v1"):
+        result = validate_llm_grounding({"selections": [selection]}, pack,
+                                        purpose="execution", execution_contract=contract)
+        assert not result["valid"]
+
+
+def test_surface_only_execution_requires_explicit_legacy_regrading(snap):
+    pack = _prepare(snap, "금감원 발표").context_pack
+    selection = {"surface": "금감원", "entity_id": "E_FSS"}
+    output = {"selections": [selection]}
+    assert not validate_llm_grounding(output, pack, purpose="execution")["valid"]
+    assert validate_llm_grounding(output, pack, purpose="execution",
+                                  execution_contract="legacy_surface_v1")["valid"]
+    selection["mention_id"] = "m1"
+    assert not validate_llm_grounding(output, pack, purpose="execution",
+                                      execution_contract="legacy_surface_v1")["valid"]
+
+
+def test_lowlevel_pack_without_document_identity_cannot_authorize_execution(snap):
+    prepared = _prepare(snap, "금감원 발표")
+    pack = build_context_pack(snap, prepared.resolve_response)
+    assert pack["document_hash"] is None
+    selection = _occurrence_selection(pack)
+    assert not validate_llm_grounding({"selections": [selection]}, pack,
+                                      purpose="execution")["valid"]

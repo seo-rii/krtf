@@ -206,9 +206,9 @@ def test_mixed_raw_response_is_passed_whole_to_execution_guard(envelope, monkeyp
     seen = []
     original = suite.validate_llm_grounding
 
-    def observe(raw, pack, *, purpose):
+    def observe(raw, pack, *, purpose, execution_contract):
         seen.append(raw)
-        return original(raw, pack, purpose=purpose)
+        return original(raw, pack, purpose=purpose, execution_contract=execution_contract)
 
     monkeypatch.setattr(suite, "validate_llm_grounding", observe)
     case = suite.grade_outputs([row], [output(row, response)])["cases"][0]

@@ -28,7 +28,7 @@ def _valid_value(record, field):
 def _guard(row, value):
     return validate_llm_grounding({"selections": [{
         "surface": row["target_surface"], "entity_id": value}]},
-        row["pack"], purpose="execution")["valid"]
+        row["pack"], purpose="execution", execution_contract='legacy_surface_v1')["valid"]
 
 
 def _validate_requests(requests):

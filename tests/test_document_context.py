@@ -161,9 +161,9 @@ def test_complete_raw_execution_response_reaches_guard(envelope, monkeypatch):
     mixed = {**selection(row, row["expected_entity_id"]), "answer": row["expected_answer"]}
     seen = []
     original = suite.validate_llm_grounding
-    def observe(response, pack, *, purpose):
+    def observe(response, pack, *, purpose, execution_contract):
         seen.append(response)
-        return original(response, pack, purpose=purpose)
+        return original(response, pack, purpose=purpose, execution_contract=execution_contract)
     monkeypatch.setattr(suite, "validate_llm_grounding", observe)
     result = suite.grade_document_context_outputs([row], [output(row, mixed)])
     assert seen[0] is mixed

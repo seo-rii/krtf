@@ -93,7 +93,7 @@ def _observation(row, output):
     entity_id = response.get("entity_id")
     guard_valid = (not id_absent and not id_malformed and validate_llm_grounding(
         {"selections": [{"surface": row["target_surface"], "entity_id": entity_id}]},
-        row["pack"], purpose="execution")["valid"])
+        row["pack"], purpose="execution", execution_contract='legacy_surface_v1')["valid"])
     return {"row": row, "missing": False, "malformed": malformed,
         "correct": not malformed and value == expected and (qa or guard_valid),
         "null": not malformed and value is None,
