@@ -1,6 +1,6 @@
 # KTRF Roadmap & Status
 
-**기준일:** 2026-10-13 · **스펙:** PLAN.md v0.3 · 본 문서는 계획/현황 문서이며 규범이 아니다.
+**기준일:** 2026-10-20 · **스펙:** PLAN.md v0.3 · 본 문서는 계획/현황 문서이며 규범이 아니다.
 수치의 단일 출처는 `reports/`의 생성 리포트다 — 본 문서와 리포트가 어긋나면 리포트가 맞다.
 
 ## 문서 지도
@@ -45,7 +45,31 @@
 | G2 | Stage B/C 학습 파이프라인 (torch, KLUE-RoBERTa) | ✅ GPU 전 루프 검증 (train→ONNX→runtime); **본 학습은 라벨 ≥5k 게이트 대기** |
 | G3 | 멀티테넌트 adapter GPU 상주 (§32.3) | ✅ residency manager 구현 (`ktrf/adapters.py`) |
 
-## 핵심 실측 (요약)
+## 최근 완료와 다음 검증 (2026-10-20)
+
+| 완료 단위 | 호출 수·산출물 | 해석 |
+|---|---|---|
+| BM25·pack·JSON 결합 | [3,072회](../reports/combined_queue_20261018/RESULTS.md) | 기존 질문을 활용한 조합 진단 |
+| 새 TyDiQA 기사 | [864회](../reports/fresh_holdout_queue_20261018/RESULTS.md) | 같은 코퍼스의 새 기사 표본 |
+| 다섯 확장 실험 | [5,568회](../reports/extended_queue_20261019/RESULTS.md) | 이전·예산·512문맥 검색·정책·안전성 |
+| 원문·compact·의미 확인 | [3,584회](../reports/diagnostic_queue_20261020/RESULTS.md) | 기존/신규 문맥·family를 분리 |
+| 봉인 원시 응답 재분석·실제 후보 통합 | [CPU 보고서](../reports/review_cpu_20261020/ANALYSIS.md) | 새 LLM 호출 없음, 노출된 진단 자료 |
+
+호출에는 반복과 조건 비교가 포함되며 독립 질문 수로 합산하지 않는다. 일반 문서
+QA의 일관된 pack 개선이나 무검토 실행 안전성은 입증되지 않았다.
+
+2026-10-20 리뷰 보강은 source component 기반 `cal-3` 보정, 정의·예외를 자르지
+않는 fact 생략, 기본 `occurrence_v1` 실행 검증, dense 벡터 내용·행·차원·파일
+무결성, 일반 `document_qa` 정책이다. [계약과 마이그레이션](REVIEW_SAFETY.md).
+현재 코드는 Python reference library이며 Rust 코어·HTTP 서비스·Pi 호스트 배포는
+각각의 별도 과제다.
+
+다음 GPU 비교의 설계는 [REVIEW_EXPERIMENTS.md](REVIEW_EXPERIMENTS.md)에 있다.
+새 실제 업무 분포의 사람 gold는 여전히 확보해야 한다. AI 작성 업무 사례와
+공개 근거 존재 자료의 실험을 실제 사내 문서나 독립 사람 감사로 바꾸어 읽지 않는다.
+준비·큐 등록·완료 결과는 구분하며 새 실험의 성능 수치는 완료 전 주장하지 않는다.
+
+## 이전 보고서의 핵심 실측 (각 측정 revision 기준)
 
 - Conformance: 0 실패 (Level A 결정적 보장, release blocker 기준)
 - 적대적 매트릭스: hard gate 위반 0 (9 base + 4 dense runs, 200–3000 entities × 3 seeds)
@@ -84,13 +108,16 @@
   | known_abbrev (공개·등록) | 0.61 → 0.94 | 0.89 → 0.80 |
   | unseen_abbrev (공개·후보만) | 0.79 → 0.95 | 0.85 → **0.34** |
 
-  ① 모델이 알 수 없는 **사내 용어에서 KTRF는 대체 불가능**하다 —
-  0% → 92~100%, harmful flip 0. ② 모델이 이미 아는 공개 용어에서는 잘해야
+  ① 모델이 알 수 없는 사내 용어에 사전 정보를 주는 가치가 크다 —
+  KTRF는 0%→92~100%였지만 단순 사전 검색 B도 두 모델 모두 150/150이었다.
+  이 표만으로 KTRF 방식 자체가 일반 검색보다 우수하다고 결론 내리지 않는다.
+  ② 모델이 이미 아는 공개 용어에서는 잘해야
   본전이고, KTRF가 **확정 못 하고 후보만 제시하면 지시 준수형 모델은
   기권**해 크게 손해다(gemma4 harmful 109건 중 106건이 `canonical: null`
   기권, 같은 사례 무맥락 정답률 100%). ③ 대조군 B(검색 덤프)가 known에서
   C보다 높은 것은 B가 "임의 확정 금지" 안전 계약을 지지 않기 때문이다
-- 테스트: 218 (traceability: 56/61 REQ 구현+매핑, 5 deferred 사유 명시)
+- 당시 테스트·traceability 수치는 해당 측정 시점의 기록이다. 2026-10-20 리뷰
+  기준 `6164ef6`은 1,721개 테스트가 통과했으며 이후 변경의 검증은 새 실행 기록을 본다.
 
 ## 무결성·평가 하드닝 (외부 코드 리뷰 반영)
 
@@ -137,20 +164,19 @@ M1 작업 중 드러난 세 가지는 resolver가 아니라 **평가 쪽 결함*
 0. `WILD_CORPUS.md` 전체 재생성 (114,605문장 ×6 pass ≈ 6시간). 현재는
    20,000문장 표본 쌍 비교(`eval.run_wild_regression`)로 대체했고
    리포트 상단에 경고를 붙였다
-1. snapshot 중첩 구조의 깊은 불변화 — 2026-10-13 구현, backend/cache는 별도 runtime
-2. human-gold 평가셋: 문서 단위 exhaustive annotation, 2인 주석 + adjudication,
+1. human-gold 평가셋: 문서 단위 exhaustive annotation, 2인 주석 + adjudication,
    slice당 n≥200 — silver 근사와 분리 보고
-3. latency/memory hard gate (p95/p99, 문서 크기·entity 규모별 SLO), 동시성·
+2. latency/memory hard gate (p95/p99, 문서 크기·entity 규모별 SLO), 동시성·
    hot-swap·rollback 부하 테스트
-4. 평가 데이터/모델 버전 고정 — 신규 blind/rerank manifest 도구 구현;
+3. 평가 데이터/모델 버전 고정 — 신규 blind/rerank manifest 도구 구현;
    실제 주석 확보 후 문서/entity 단위 bootstrap 및 독립 위험 검증 실행 필요
-5. 원격 배포 시 manifest 서명, 1-byte tamper sweep의 hard-gate 편입
+4. 원격 배포 시 manifest 서명, 1-byte tamper sweep의 hard-gate 편입
 
 ## LLM Grounding — Terminology Context Pack (`ktrf/context.py`)
 
 LLM 앞단 통합 설계 리뷰 반영. **구현 완료 (2026-08-25):** ContextPack schema
 v1 (RESOLVED/AMBIGUOUS/document-definition/unknown 4분리, coverage·omission
-metadata), `ContextPolicy` (profile 4종·budget·clearance 검증),
+metadata), `ContextPolicy` (기존 4종 + 2026-10-20 `document_qa`·budget·clearance 검증),
 entity dedup(`observed_as`), query-aware 결정적 선별(생성형 호출 없음),
 hard token budget(고정 축소 순서, 상태 불변 보장), 안전 XML/JSON/text
 renderer(제어문자 제거·CDATA 금지), 코드 고정 `TERMINOLOGY_POLICY`,
@@ -178,14 +204,16 @@ clearance 필터·validator).
    `coverage.query_grounded`, `PreparedContext.should_inject` —
    **pack이 질문 대상을 grounding하지 못하면 주입하지 않는다.**
    (호스트가 gold 없이 판단 가능한 규칙이며, PLAN_PI 의사코드의
-   `if (pack.isEmpty) return`을 일반화한 것.) 두 모델 재측정 진행 중.
+   `if (pack.isEmpty) return`을 일반화한 것.) 이후 두 모델의 비교와 재측정은
+   위 최근 완료 보고서에 기록했다. 관련 pack도 답변을 악화할 수 있어 주입 판단과
+   정책을 별도로 평가한다.
 
    나머지 harmful flip: 잘못된 RESOLVED 2건(dense/fuzzy 오연결 —
    계속 감시할 잔여 위험), 후보로만 존재 2건.
 
-   남은 확장: 정식 규모 1,000+ 사례와 문서 단위 cluster bootstrap /
-   McNemar, Track 2(문서 QA)·Track 3(요약), counterfactual 오류 주입
-   (잘못된 RESOLVED, gold 후보 제거, irrelevant flood)
+   문서 QA·사전 교체·의미 오류·정책·예산·bootstrap 도구와 후속 진단은 완료했다.
+   남은 핵심은 충분한 독립 실제 업무 gold, 사전에 주석한 용어 필요 층,
+   운영 후보를 사용하는 신경 모델의 확정률·오류율, 최종 독립 위험 감사와 요약 품질이다.
 2. relation 확장(allowlist·depth 1·entity당 2개 상한), semantic relevance
    (기존 encoder 재사용), multi-turn context delta, 2단계 캐시
    (resolve cache + pack cache)
@@ -308,11 +336,12 @@ KTRF를 Pi Coding Agent의 terminology grounding 레이어로 배포하는 계�
 - 테스트 36종(`tests/test_registry_and_sidecar.py`), 실제 서브프로세스
   왕복 테스트 포함 (총 254)
 
-## 리뷰 후 작업과 다음 검증 순서 (2026-10-13)
+## 리뷰 후 작업과 다음 검증 순서 (2026-10-20 갱신)
 
 1. **확정 안전성**: 출력 축소 이전 전체 유효 후보의 경쟁·margin으로 판단한다.
    원천 사건 단위 Platt/fusion–conformal 분리, 데이터 재사용 없는 부족 처리,
-   동일한 내부 sigmoid, 보정 상태·coverage 범위 표시를 구현했다.
+   동일한 내부 sigmoid, 보정 상태·coverage 범위 표시를 구현했다. `cal-3`는
+   분할에 사용한 전이적 component를 quantile·표본 수·보장 적격성까지 유지한다.
    [계약과 회귀 검사](CALIBRATION_SAFETY.md)를 기준으로 유지한다.
 2. **평가 기반**: 문서/row/revision/해시 보존, blind 2인 주석·이견 조정,
    document/family 연결 split, 봉인된 test와 보고서 해시,

@@ -115,8 +115,8 @@ deterministic path always runs on CPU (see
 A compiled snapshot is immutable and content-addressed: its `snapshot_id` is
 a 128-bit digest over the complete manifest — full glossary serialization,
 runtime policy, morphology catalogs, normalizer version, encoder/reranker
-digests, and the conformance record. Any semantically meaningful change
-produces a different identity.
+digests, dense vector contents and row order, and the conformance record.
+Changing a sealed artifact produces a different identity or refuses loading.
 
 ```python
 from ktrf import save_snapshot, load_snapshot
@@ -128,13 +128,19 @@ snapshot = load_snapshot("artifacts/demo-org")
 Loading recompiles the indexes deterministically from the bundled glossary
 and re-verifies every content hash plus the manifest/id equation — a
 tampered `glossary.yaml`, `policy.json`, or `manifest.json` refuses to load.
-Activation through `SnapshotRegistry` additionally requires a passing
-conformance record.
+Dense bundles also require a matching encoder, sealed `entity-vectors.json`,
+valid dimensions, and entity rows in glossary order. Old dense bundles lacking
+`entity_vectors_hash` must be rebuilt from a trusted glossary and encoder;
+editing their manifest to bypass verification is not a migration. Activation
+through `SnapshotRegistry` additionally requires a passing conformance record.
 
 ## Adaptation without retraining
 
-Fitting partitions complete source events, and refuses insufficient independent
-data. Approved corrections provide selected training signals, not a random
+Fitting partitions complete transitive source components and refuses
+insufficient independent data. The `cal-3` artifact keeps those component IDs
+through quantiles and sample counts: 30 documents of one event are one unit.
+Multi-mention components do not qualify for the one-audited-mention coverage
+claim. Approved corrections provide selected training signals, not a random
 coverage audit. Heuristic responses have `set_confidence=null`; use
 `calibration_status`, `coverage_scope`, `coverage_valid`, and
 `target_set_confidence` to interpret prediction sets. Output budgets never
@@ -191,6 +197,12 @@ It abstains if the context cannot distinguish the candidates; it does not add
 outside knowledge or promote that answer to a resolver-confirmed link.
 `answer_policy="knowledge"` remains an explicit opt-in to broader assistance.
 
+For general document QA, use `ContextPolicy(profile="document_qa")`: a missing
+term definition does not require abstaining from a date or fact supported by
+the source. `qa_grounding` is the separate term-definition QA contract. The
+new document-QA policy is implemented; its quality difference is a planned
+comparison, not a measured improvement.
+
 For automation, make a **separate model call and conversation**, using the
 execution profile and a selections-only output schema. Never reuse QA output
 or its conversation history as execution input:
@@ -202,10 +214,14 @@ automation = prepare_llm_context(
 execution_output = call_llm_json(
     system=automation.policy_fragment,
     user=automation.prompt_fragment + "\n" + document
-         + '\n금감원을 연결하라. JSON {"selections": '
-           '[{"surface": "금감원", "entity_id": string or null}]}만 반환.')
+         + '\n요청한 발생 위치만 선택하라. JSON {"selections": [...]} 객체 하나만 반환하라. '
+           '각 항목은 surface, document_hash, snapshot_id, mention_id, '
+           'core_span, full_span, entity_id를 해당 occurrence에서 복사하라. '
+           'span은 {"start": int, "end": int} codepoint 객체다. '
+           '승인 가능한 발생 위치가 없으면 selections는 빈 배열이다.')
 check = validate_llm_grounding(
-    execution_output, automation.context_pack, purpose="execution")
+    execution_output, automation.context_pack, purpose="execution",
+    execution_contract="occurrence_v1")
 if check["valid"]:
     approved = [s for s in execution_output["selections"]
                 if s["entity_id"] is not None]
@@ -213,10 +229,17 @@ if check["valid"]:
 ```
 
 The execution guard rejects raw QA envelopes, malformed selections and IDs
-without a non-degraded resolved binding for the exact surface. Empty selections
+without a non-degraded resolved binding for the exact document, snapshot and
+occurrence. `occurrence_v1` is the default: a selection copies `document_hash`
+from the pack, `snapshot_id` from `pack["snapshot"]["snapshot_id"]`, and
+`mention_id`, `core_span`, `full_span` from the requested fact occurrence.
+Another occurrence of the same string cannot lend its approval. Empty selections
 and null IDs are abstentions. The host must keep the calls separate: the guard
 cannot detect an ID copied out of QA and repackaged as an execution selection.
-See [policy contracts and measured evidence](docs/PRODUCT_UTILITY.md).
+`execution_contract="legacy_surface_v1"` exists only for explicit historical
+regrading, and validates any occurrence fields supplied. It should not be used
+for new automation. See [review safety and migration](docs/REVIEW_SAFETY.md)
+and [policy contracts and measured evidence](docs/PRODUCT_UTILITY.md).
 
 The builder keeps RESOLVED facts, AMBIGUOUS candidate sets,
 document-asserted definitions, and unknown mentions structurally separate
@@ -229,7 +252,9 @@ everything at render time, and selects a fixed policy fragment from code for
 the task so glossary content can never rewrite the rules. Glossary entities
 can carry an optional `grounding:` block (`short_definition`,
 `disambiguation_hints`, `injection_policy`, `classification`) for
-prompt-ready definitions and clearance filtering.
+prompt-ready definitions and clearance filtering. Definitions, including
+exceptions and scope restrictions, remain whole; an oversized fact is omitted
+rather than clipped, with an explicit omission record.
 
 ## Agent integration (layered terminology + sidecar)
 
@@ -326,7 +351,24 @@ verify all 4,096 calls. On 48 new answerable questions, BM25 raises Gemma exact
 match from 22 to 25 and Qwen from 25 to 29, while using about 22% more prompt
 tokens. Schema-constrained generation removes the 12 repeated Qwen pack format
 errors and preserves answerable exact match. These are experimental comparisons;
-the combined BM25 + pack + schema configuration has not been evaluated.
+BM25, pack and JSON schema were later
+measured together. As of **2026-10-20**, the following queues are complete:
+
+| Completed comparison | Model calls | Evidence |
+|---|---:|---|
+| BM25 × pack × JSON schema | 3,072 | [combined queue](reports/combined_queue_20261018/RESULTS.md) |
+| Fresh TyDiQA article comparison | 864 | [fresh holdout queue](reports/fresh_holdout_queue_20261018/RESULTS.md) |
+| Transfer, budget, corpus retrieval, pack and semantic safety | 5,568 | [extended queue](reports/extended_queue_20261019/RESULTS.md) |
+| Source amount, compact pack and semantic-check diagnostics | 3,584 | [diagnostic queue](reports/diagnostic_queue_20261020/RESULTS.md) |
+
+Calls include paired conditions and repeats; they are not independent new
+questions. General Korean QA still shows no consistent pack advantage, and
+small total-input budgets can lose source evidence to the pack. The latest
+[CPU reanalysis](reports/review_cpu_20261020/ANALYSIS.md) verifies the historical
+sealed runs and integrates occurrence ranking with actual resolver candidates.
+Its synthetic cohorts are exposed diagnostics, with no execution authorization
+or independent risk guarantee. [Review followup experiments](docs/REVIEW_EXPERIMENTS.md)
+are a separate plan; new policy or budget improvements have no result claim yet.
 
 The unit most of these count is the *occurrence*, which the frequent terms
 decide. Two of them count the *registered term* instead — the question a
