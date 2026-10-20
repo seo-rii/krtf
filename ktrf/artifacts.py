@@ -77,12 +77,31 @@ def save_snapshot(snapshot: Snapshot, out_dir: str | Path) -> Path:
                                              encoding="utf-8")
         manifest["calibrator_hash"] = _hash(cal)
     if snapshot.dense is not None:
+        from .dense import DenseArtifacts, VectorIndex
+
         vec = snapshot.dense.index.to_dict()
+        try:
+            checked_index = VectorIndex.from_dict(vec)
+            DenseArtifacts(snapshot.dense.encoder, checked_index)
+            if checked_index.entity_ids != [e.entity_id for e in snapshot.glossary.entities]:
+                raise ValueError("vector entity row order does not match the glossary")
+        except (ValueError, TypeError, KeyError) as exc:
+            raise KtrfApiError("SNAPSHOT_UNAVAILABLE",
+                               f"cannot save invalid dense index: {exc}") from exc
         (out / "entity-vectors.json").write_text(json.dumps(vec),
                                                  encoding="utf-8")
         manifest["entity_encoder_hash"] = snapshot.dense.encoder_id
         manifest["vector_dimension"] = snapshot.dense.index.dim
         manifest["index_type"] = "flat_ip"
+        manifest["entity_vectors_hash"] = _hash(vec)
+    elif any(manifest.get(key) is not None for key in
+             ("entity_encoder_hash", "vector_dimension", "index_type", "entity_vectors_hash")):
+        raise KtrfApiError("SNAPSHOT_UNAVAILABLE",
+                           "dense manifest has no dense runtime; recompile and save the snapshot")
+    elif (out / "entity-vectors.json").exists():
+        # Reusing an output directory must not leave a stale dense artifact
+        # attached to a newly saved symbolic bundle.
+        (out / "entity-vectors.json").unlink()
     if snapshot.fusion is not None:
         fus = snapshot.fusion.to_dict()
         (out / "fusion.json").write_text(json.dumps(fus, indent=2),
@@ -158,7 +177,18 @@ def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False,
                                "bundle verification failed: calibrator_hash mismatch")
         snap = dataclasses.replace(snap, calibrator=TunedCalibrator.from_dict(cal_dict))
     vec_path = d / "entity-vectors.json"
-    if vec_path.exists():
+    dense_expected = any(manifest.get(key) is not None for key in
+                         ("entity_encoder_hash", "vector_dimension", "index_type", "entity_vectors_hash"))
+    if dense_expected:
+        if not manifest.get("entity_vectors_hash"):
+            raise KtrfApiError(
+                "SNAPSHOT_UNAVAILABLE",
+                "dense bundle has no entity_vectors_hash seal; recompile from "
+                "the trusted glossary with the matching encoder and save a new snapshot",
+            )
+        if not vec_path.is_file():
+            raise KtrfApiError("SNAPSHOT_UNAVAILABLE",
+                               "dense bundle is missing required entity-vectors.json")
         # §11.3: vectors are only reusable under the exact same encoder
         if encoder is None:
             raise KtrfApiError(
@@ -174,12 +204,26 @@ def load_snapshot(bundle_dir: str | Path, run_conformance: bool = False,
             )
         from .dense import DenseArtifacts, VectorIndex
 
-        dense = DenseArtifacts(
-            encoder,
-            VectorIndex.from_dict(
-                json.loads(vec_path.read_text(encoding="utf-8"))),
-        )
+        try:
+            vec = json.loads(vec_path.read_text(encoding="utf-8"))
+            if manifest["entity_vectors_hash"] != _hash(vec):
+                raise ValueError("entity_vectors_hash mismatch")
+            index = VectorIndex.from_dict(vec)
+            if index.entity_ids != [e.entity_id for e in snap.glossary.entities]:
+                raise ValueError("vector entity row order does not match the glossary")
+            if (type(manifest.get("vector_dimension")) is not int or
+                    index.dim != manifest.get("vector_dimension") or
+                    vec["index_type"] != manifest.get("index_type")):
+                raise ValueError("vector dimensions or index_type do not match the manifest")
+            dense = DenseArtifacts(encoder, index)
+        except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
+            raise KtrfApiError("SNAPSHOT_UNAVAILABLE",
+                               f"bundle vector verification failed: {exc}") from exc
         snap = dataclasses.replace(snap, runtime=dataclasses.replace(snap.runtime, dense=dense))
+    elif vec_path.exists():
+        raise KtrfApiError("SNAPSHOT_UNAVAILABLE",
+                           "unexpected entity-vectors.json without a dense manifest seal; "
+                           "recompile and save the snapshot")
     fus_path = d / "fusion.json"
     if fus_path.exists():
         from .fusion import FusionModel

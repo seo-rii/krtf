@@ -310,6 +310,10 @@ def compile_snapshot(
         manifest["entity_encoder_hash"] = encoder.encoder_id
         manifest["vector_dimension"] = snapshot.dense.index.dim
         manifest["index_type"] = "flat_ip"
+        # Includes row/entity correspondence, float32 values, dimensions and
+        # index format. Encoder identity alone does not identify its output.
+        # Dense-only key preserves identities of existing symbolic snapshots.
+        manifest["entity_vectors_hash"] = _hash(snapshot.dense.index.to_dict())
     if reranker is not None:
         snapshot = dataclasses.replace(snapshot, runtime=dataclasses.replace(
             snapshot.runtime, reranker=reranker))

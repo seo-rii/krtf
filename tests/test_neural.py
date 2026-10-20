@@ -81,6 +81,71 @@ def test_vector_index_top1():
     assert hits[0][1] >= hits[1][1]
 
 
+@pytest.mark.parametrize("ids,vectors", [
+    (["A"], []),
+    (["A", "A"], [[1.0], [2.0]]),
+    ([""], [[1.0]]),
+    ([None], [[1.0]]),
+    (["A"], [[]]),
+    (["A", "B"], [[1.0], [1.0, 2.0]]),
+    (["A"], [[float("nan")]]),
+    (["A"], [[float("inf")]]),
+    (["A"], [[1e100]]),
+    (["A"], [["1.0"]]),
+    (["A"], [[True]]),
+])
+def test_vector_index_rejects_invalid_rows(ids, vectors):
+    with pytest.raises(ValueError):
+        VectorIndex(ids, vectors)
+
+
+@pytest.mark.parametrize("fallback", [False, True])
+@pytest.mark.parametrize("query", [[1.0], [1.0, 0.0, 0.0],
+                                   [float("nan"), 0.0],
+                                   [0.0, float("inf")], [1e100, 0.0]])
+def test_query_shape_and_finiteness_match_in_both_backends(monkeypatch, fallback, query):
+    import ktrf.dense as dense_module
+
+    if fallback:
+        monkeypatch.setattr(dense_module, "_np", None)
+    index = VectorIndex(["A"], [[0.25, 0.75]])
+    with pytest.raises(ValueError):
+        index.search(query)
+
+
+def test_vector_float32_payload_is_identical_without_numpy(monkeypatch):
+    import ktrf.dense as dense_module
+
+    values = [[0.1, 1.0 / 3.0], [0.9, -0.2]]
+    accelerated = VectorIndex(["A", "B"], values)
+    payload = accelerated.to_dict()
+    monkeypatch.setattr(dense_module, "_np", None)
+    fallback = VectorIndex(["A", "B"], values)
+    assert fallback.to_dict() == payload
+    assert VectorIndex.from_dict(payload).to_dict() == payload
+    assert fallback.search([0.0, 1.0])[0][0] == "A"
+
+
+@pytest.mark.parametrize("field,value", [
+    ("format_version", "unknown"), ("index_type", "cosine"),
+    ("dim", 3), ("dim", True),
+])
+def test_vector_payload_metadata_checked(field, value):
+    payload = VectorIndex(["A"], [[0.1, 0.2]]).to_dict()
+    payload[field] = value
+    with pytest.raises(ValueError):
+        VectorIndex.from_dict(payload)
+
+
+def test_dense_compile_rejects_encoder_output_dimension_mismatch():
+    class BrokenEncoder(HashEncoder):
+        def encode_passages(self, texts):
+            return [[0.1, 0.2] for _ in texts]
+
+    with pytest.raises(ValueError, match="dimension does not match the encoder"):
+        compile_snapshot(_glossary(), encoder=BrokenEncoder(dim=3), run_conformance=False)
+
+
 def test_load_encoder_specs():
     assert load_encoder(None) is None
     assert load_encoder("hash").dim == 256
