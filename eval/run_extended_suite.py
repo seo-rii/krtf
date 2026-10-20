@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import argparse
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 import hashlib
 import ipaddress
@@ -22,11 +22,13 @@ from .run_product_llm import _request_json, parse_model_json
 PROTOCOL_ID = "ktrf_extended_v1"
 REVIEW_CONDITION_COUNTS = {"review_abcd": 8, "review_policy": 6,
                            "review_budget": 6, "review_nomiracl": 3, "review_routing": 8}
+CONFIRMATION_CONDITION_COUNTS = {"routing_confirmation": 6}
+AUDITED_CONDITION_COUNTS = REVIEW_CONDITION_COUNTS | CONFIRMATION_CONDITION_COUNTS
 DIAGNOSTIC_CONDITION_COUNTS = {"source_pack_factorial": 6, "fresh_compact": 3,
-                               "safety_robustness": 4, **REVIEW_CONDITION_COUNTS}
+                               "safety_robustness": 4, **AUDITED_CONDITION_COUNTS}
 DIAGNOSTIC_EXPERIMENTS = set(DIAGNOSTIC_CONDITION_COUNTS)
 EXPERIMENTS = {"transfer", "budget", "corpus", "pack", "semantic_safety"} | DIAGNOSTIC_EXPERIMENTS
-SAFETY_EXPERIMENTS = {"semantic_safety", "safety_robustness", "review_routing"}
+SAFETY_EXPERIMENTS = {"semantic_safety", "safety_robustness", "review_routing", "routing_confirmation"}
 ROUTING_SCHEMA = {"type": "object", "properties": {"selections": {
     "type": "array", "minItems": 1, "maxItems": 1, "items": {
         "type": "object", "properties": {"surface": {"type": "string"},
@@ -43,14 +45,26 @@ def _hash(data):
 
 
 def decoding_for(protocol):
+    if protocol["experiment"] == "routing_confirmation":
+        return {**DECODING, "max_tokens": 768}
     return {**DECODING, "max_tokens": 384} if protocol["experiment"] == "review_routing" else DECODING
 
 
 def schema_for(rows, protocol):
+    if protocol["experiment"] == "routing_confirmation":
+        from .routing_confirmation import confirmation_schema
+        return {row["condition"]: confirmation_schema(row) for row in rows}
     if protocol["experiment"] == "review_routing":
         from .review_business import ROUTING_SCHEMA as schema
         return schema
     return ANSWER_SCHEMA if rows[0]["task"] == "document_qa" else ROUTING_SCHEMA
+
+
+def request_schema_for(row, protocol):
+    if protocol["experiment"] == "routing_confirmation":
+        from .routing_confirmation import confirmation_schema
+        return confirmation_schema(row)
+    return schema_for([row], protocol)
 
 
 def validate_protocol(protocol):
@@ -90,7 +104,10 @@ def validate_requests(rows, protocol):
     if safety != (protocol["experiment"] in SAFETY_EXPERIMENTS):
         raise ValueError("task differs from declared experiment")
     if safety:
-        if protocol["experiment"] == "review_routing":
+        if protocol["experiment"] == "routing_confirmation":
+            from .routing_confirmation import validate_confirmation_requests
+            validate_confirmation_requests(rows)
+        elif protocol["experiment"] == "review_routing":
             from .review_business import validate_business_requests
             validate_business_requests(rows)
         elif protocol["experiment"] == "safety_robustness":
@@ -170,6 +187,9 @@ def load_request_file(path):
 
 
 def output_error(response, row):
+    if row.get("experiment") == "routing_confirmation":
+        from .routing_confirmation import confirmation_response_error
+        return confirmation_response_error(response, row)
     if row.get("experiment") == "review_routing":
         from .review_business import business_response_error
         return business_response_error(response, row)
@@ -203,6 +223,15 @@ def _metrics(cases, safety):
             wrong_documents = {c["document_id"] for c in cases if c["accepted_wrong_id"]}
             values.update(documents=len(documents), documents_with_wrong_approval=len(wrong_documents),
                           document_wrong_approval_rate=len(wrong_documents) / len(documents))
+        if cases and "wire_valid" in cases[0]:
+            values["validation_failures"] = {
+                field: sum(case.get(field) is False for case in cases)
+                for field in ("wire_valid", "base_guard_valid", "evidence_gate_valid")
+            }
+            values["evidence_rejection_reasons"] = dict(Counter(
+                violation["kind"] for case in cases
+                for violation in case.get("evidence_gate_violations", [])
+            ))
     else:
         values.update(positive_exact=sum(r["correct"] for r in positive),
             positive_exact_rate=sum(r["correct"] for r in positive) / len(positive) if positive else None,
@@ -270,14 +299,17 @@ def grade_outputs(rows, outputs, protocol):
             "pack_injected": row.get("pack_injected", row.get("injected", False))}
         if diagnostic:
             case.update(family_id=row["family_id"], evaluation_split=row["evaluation_split"])
-        if protocol["experiment"] in REVIEW_CONDITION_COUNTS:
+        if protocol["experiment"] in AUDITED_CONDITION_COUNTS:
             case.update(document_id=row.get("document_id", row["case_id"]),
                         requires_terminology=row.get("requires_terminology", row.get("terminology_needed")))
             for field in ("exact_core_detected", "gold_in_candidates"):
                 if field in row:
                     case[field] = bool(row[field])
         if safety:
-            if protocol["experiment"] == "review_routing":
+            if protocol["experiment"] == "routing_confirmation":
+                from .routing_confirmation import grade_confirmation_response
+                grade_safety = lambda row, response: grade_confirmation_response(response, row)
+            elif protocol["experiment"] == "review_routing":
                 from .review_business import grade_business_response
                 grade_safety = lambda row, response: grade_business_response(response, row)
             else:
@@ -288,6 +320,10 @@ def grade_outputs(rows, outputs, protocol):
             for metric in ("attempted_nonnull", "guard_valid"):
                 case[metric] = bool(result.get(metric, False))
             case["guard_violations"] = result.get("guard_violations")
+            if protocol["experiment"] == "routing_confirmation":
+                case["evidence_gate_violations"] = result.get("evidence_gate_violations", [])
+                for field in ("wire_valid", "base_guard_valid", "evidence_gate_valid"):
+                    case[field] = result.get(field)
             case["positive_gold"] = row["expected_entity_id"] is not None
         else:
             value = output["response"]["answer"] if valid else None
@@ -383,7 +419,7 @@ def run_benchmark(*, requests_file, endpoint, model, out_dir, code_revision, tim
                     {"role": "user", "content": row["user"]}], **decoding,
                     "response_format": {"type": "json_schema", "json_schema": {
                         "name": "qa_answer" if row["task"] == "document_qa" else "routing_selection",
-                        "strict": True, "schema": schema}}}
+                        "strict": True, "schema": request_schema_for(row, protocol)}}}
                 record = {"case_id": row["case_id"], "condition": row["condition"], "status": "RECEIVED",
                     "response": {}, "raw_text": None, "raw_response": None, "parse_error": None,
                     "error": None, "finish_reason": None, "usage": None}
@@ -402,6 +438,12 @@ def run_benchmark(*, requests_file, endpoint, model, out_dir, code_revision, tim
                     invalid = output_error(record["response"], row)
                     if invalid:
                         raise ValueError(invalid)
+                    if protocol["experiment"] == "routing_confirmation":
+                        from .routing_confirmation import grade_confirmation_response
+                        guard_started = time.perf_counter()
+                        grade_confirmation_response(record["response"], row)
+                        record["execution_validation_ms"] = round(
+                            (time.perf_counter() - guard_started) * 1000, 6)
                 except HTTPError as error:
                     record["status"] = "HTTP_ERROR"
                     record["error"] = {"type": type(error).__name__, "http_status": error.code, "message": str(error)}

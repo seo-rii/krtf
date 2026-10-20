@@ -12,7 +12,7 @@ from .hf_qa import canonical
 from .report_synthetic_grounding import _distribution
 from .run_extended_suite import (ANSWER_SCHEMA, ARTIFACTS, DECODING, PROTOCOL_ID,
                                  ROUTING_SCHEMA, grade_outputs, load_request_file,
-                                 output_error, decoding_for, schema_for, validate_protocol, REVIEW_CONDITION_COUNTS,
+                                 output_error, decoding_for, schema_for, validate_protocol, AUDITED_CONDITION_COUNTS,
                                  _metrics)
 from .run_product_llm import parse_model_json
 
@@ -62,6 +62,10 @@ def read_run(run_dir):
         latency = record.get("latency_ms")
         if type(latency) not in (int, float) or not math.isfinite(latency) or latency < 0:
             raise ValueError("invalid recorded latency")
+        if protocol["experiment"] == "routing_confirmation" and status == "RECEIVED":
+            cost = record.get("execution_validation_ms")
+            if type(cost) not in (int, float) or not math.isfinite(cost) or cost < 0:
+                raise ValueError("confirmation execution validation timing required")
         if is_error:
             if any(record.get(field) is not None for field in ("raw_response", "raw_text", "usage", "finish_reason")):
                 raise ValueError("transport errors cannot contain successful response fields")
@@ -116,6 +120,10 @@ def _with_observations(variants, records):
             "finish_reason_counts": dict(Counter(record["finish_reason"] if record.get("finish_reason") in
                 ("stop", "length", "content_filter", "tool_calls", "function_call") else
                 "missing" if record.get("finish_reason") is None else "other" for record in calls))}
+        validation_times = [record["execution_validation_ms"] for record in calls
+                            if "execution_validation_ms" in record]
+        if validation_times:
+            by_variant[condition]["execution_validation_ms"] = _distribution(validation_times)
     return by_variant
 
 
@@ -148,7 +156,7 @@ def prepare_report(run_dir):
                 labels = sorted({row[field] for row in condition_rows if field in row})
                 if labels:
                     values[field + "s"] = labels
-    if manifest["experiment"] in REVIEW_CONDITION_COUNTS:
+    if manifest["experiment"] in AUDITED_CONDITION_COUNTS:
         from .review_cpu import paired_cluster_bootstrap
         indexed = {(c["case_id"], c["condition"]): c for c in graded["cases"]}
         summary["paired_cluster_bootstrap"] = {}
@@ -178,6 +186,32 @@ def prepare_report(run_dir):
             "Normalized answer EM and separate source/terminology-need strata; character overlap is not semantic entailment."
             if rows[0]["task"] == "document_qa" else
             "Raw semantic selection and occurrence-bound approval are separate; synthetic/public proxy samples do not certify deployment risk.")
+    if manifest["experiment"] == "routing_confirmation":
+        unique_rows = {row["case_id"]: row for row in rows}
+        timing_fields = ("snapshot_compile", "first_prepare", "warm_prepare")
+        summary["preparation_timing_ms"] = {field: _distribution([
+            row["preparation_timing_ms"][field] for row in unique_rows.values()
+            if field in row.get("preparation_timing_ms", {})
+            and (field != "snapshot_compile" or row["preparation_timing_ms"][field] > 0)])
+            for field in timing_fields}
+        summary["pipeline_diagnostics"] = {}
+        for split in sorted({row["evaluation_split"] for row in rows}):
+            selected = [row for row in unique_rows.values() if row["evaluation_split"] == split]
+            summary["pipeline_diagnostics"][split] = {
+                "targets": len(selected),
+                "positives": sum(row["expected_entity_id"] is not None for row in selected),
+                "exact_core_detected": sum(bool(row.get("pipeline_trace", {}).get(
+                    "exact_core_detected")) for row in selected),
+                "positive_gold_in_candidates": sum(
+                    row["expected_entity_id"] is not None
+                    and bool(row.get("pipeline_trace", {}).get("gold_in_candidates"))
+                    for row in selected),
+            }
+        summary["cost_interpretation"] = (
+            "Request wall time includes local parsing and execution validation; preparation costs are "
+            "measured separately. Snapshot compilation counts only actual compilations, excluding cached "
+            "zero-cost entries. Shared-host measurements are descriptive, not service-load SLOs."
+        )
     return summary
 
 
@@ -199,6 +233,17 @@ def render_markdown(summary):
             lines.append(f"| {condition} | {values['positive_exact']}/{values['positive_planned']} | {values['article_no_answer_null']}/{values['no_answer_planned']} | {values['malformed']} | {values['errors']} | {values['missing']} | {values['usage']['prompt_tokens']} |")
     if summary.get("metric_interpretation"):
         lines.extend(["", summary["metric_interpretation"], ""])
+    if summary.get("cost_interpretation"):
+        lines.extend([summary["cost_interpretation"], "",
+            "| Condition | p50 ms | p95 ms | Input tokens | Output tokens |",
+            "|---|---:|---:|---:|---:|"])
+        for condition, values in summary["by_variant"].items():
+            lines.append(f"| {condition} | {values['latency_ms']['p50']} | "
+                         f"{values['latency_ms']['p95']} | {values['usage']['prompt_tokens']} | "
+                         f"{values['usage']['completion_tokens']} |")
+        lines.extend(["", "Preparation timings and pipeline diagnostics:", "", "```json",
+            json.dumps({"preparation_timing_ms": summary["preparation_timing_ms"],
+                        "pipeline_diagnostics": summary["pipeline_diagnostics"]}, indent=2), "```", ""])
     if summary.get("by_terminology_need"):
         lines.extend(["Pre-inference terminology-need strata:", "", "```json",
                       json.dumps(summary["by_terminology_need"], indent=2), "```", ""])

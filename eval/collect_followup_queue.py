@@ -15,14 +15,14 @@ from .collect_hf_qa_queue import validate_public_json
 from .hf_qa import canonical
 from .report_followup_llm import prepare_report, render_markdown
 from .run_followup_llm import ARTIFACTS
-from .run_followup_queue import COMBINED_KIND, DIAGNOSTIC_KIND, EXTENDED_KIND, KIND, REVIEW_KIND, validate_plan
+from .run_followup_queue import COMBINED_KIND, DIAGNOSTIC_KIND, EXTENDED_KIND, KIND, REVIEW_KIND, CONFIRMATION_KIND, validate_plan
 from .run_production_queue import save_json
 
 
 def verify_stage(root, stage, plan):
     root = Path(root)
     reporter = prepare_report
-    if plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND}:
+    if plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND}:
         from .report_extended_suite import prepare_report as reporter
     summary = reporter(root)
     manifest = json.loads((root / "run_manifest.json").read_text())
@@ -81,10 +81,10 @@ def compare_models(summaries, plan):
         result[experiment] = {"baseline_model": first["model"], "current_model": second["model"],
             "questions": first["questions"], "request_corpus_sha256": first["request_corpus_sha256"],
             "by_variant": compare_variants(first["by_variant"], second["by_variant"],
-                                            experiment in {"semantic_safety", "safety_robustness", "review_routing"}),
+                                            experiment in {"semantic_safety", "safety_robustness", "review_routing", "routing_confirmation"}),
             "limitations": ["Model family and size both change.",
                 "Repeated generations do not increase the number of independent questions."]}
-        if plan["kind"] in {DIAGNOSTIC_KIND, REVIEW_KIND}:
+        if plan["kind"] in {DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND}:
             left, right = first["by_evaluation_split"], second["by_evaluation_split"]
             if set(left) != set(right) or any(
                     any(left[key][field] != right[key][field] for field in ("questions", "families"))
@@ -93,7 +93,7 @@ def compare_models(summaries, plan):
             result[experiment]["by_evaluation_split"] = {key: {
                 "questions": value["questions"], "families": value["families"],
                 "by_variant": compare_variants(value["by_variant"], right[key]["by_variant"],
-                                                experiment in {"safety_robustness", "review_routing"})}
+                                                experiment in {"safety_robustness", "review_routing", "routing_confirmation"})}
                 for key, value in left.items()}
             result[experiment]["aggregate_scope"] = "workload aggregate only; evaluate exposed and fresh splits separately"
     return validate_public_json(result)
@@ -109,7 +109,7 @@ def collect(config):
     private_parent = repo / "eval/out"
     if "private_storage_root" in config:
         storage = Path(config["private_storage_root"])
-        if plan["kind"] not in {COMBINED_KIND, EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND} or not storage.is_absolute() or not storage.is_dir():
+        if plan["kind"] not in {COMBINED_KIND, EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND} or not storage.is_absolute() or not storage.is_dir():
             raise ValueError("explicit absolute private storage root is supported only for combined, extended or diagnostic queues")
         private_parent = storage.resolve(strict=True)
     status_path = Path(config["local_status"]).resolve()
@@ -241,9 +241,10 @@ def collect(config):
             raise ValueError("no verified generation runs available")
         comparison = compare_models(summaries, plan)
         combined = plan["kind"] == COMBINED_KIND
-        extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND}
+        extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND}
         diagnostic = plan["kind"] == DIAGNOSTIC_KIND
         review = plan["kind"] == REVIEW_KIND
+        confirmation = plan["kind"] == CONFIRMATION_KIND
         fresh = combined and plan.get("sample_design", {}).get("kind") == "fresh_document_holdout"
         limitations = ([
             "Previously inspected frozen retrieval questions are reused for this adaptive combined followup; no independent holdout claim.",
@@ -285,6 +286,14 @@ def collect(config):
                 "Pipeline selectors differ; matched-facts arms isolate presentation and policy conditionally on the declared common candidate set.",
                 "All new execution calls use strict occurrence-bound identities; historical reanalysis explicitly retains the sealed legacy contract.",
                 "No deployment thresholds are tuned, and synthetic/public proxy observations do not establish operational risk guarantees."]
+        if confirmation:
+            limitations = [
+                "Fresh AI-authored documents: 8 development families and 16 confirmation families; shared scenarios are not independent observations.",
+                "Selected policies were frozen before these model outputs; no thresholds are tuned on confirmation results.",
+                "The evidence gate checks source quote/attribute consistency and preserves production authorization; it is not an entailment oracle.",
+                "Full and compact transports bind the same immutable occurrence; shorter output grants no new authority.",
+                "No private workplace document or human verification has been supplied; real shadow evaluation remains WAITING_FOR_INPUT.",
+                "Shared-host latency is descriptive; synthetic approvals do not establish deployment risk guarantees."]
         overview = {"kind": plan["kind"], "run_id": plan["run_id"], "status": terminal["status"],
             "exit_code": terminal["exit_code"], "verified_reports": sorted(summaries), "missing_stages": missing,
             "raw_artifacts_published": False,
@@ -320,6 +329,8 @@ def collect(config):
             heading = "# KTRF source, compact-pack and safety diagnostics"
         if review:
             heading = "# KTRF review-driven QA, relevance and occurrence experiments"
+        if confirmation:
+            heading = "# KTRF fresh routing confirmation and compact transport"
         preparation = ("Frozen unit tests and actual-tokenizer preparation completed before GPU generation." if combined or extended else
                        "CPU preparation and AI blind-document evaluation completed before GPU generation.")
         lines = [heading, "", f"Status: **{terminal['status']}**, exit code `{terminal['exit_code']}`.", "",
@@ -336,6 +347,7 @@ def collect(config):
                 paths = [public / stage["id"] / name for name in (*artifacts[stage["id"]], "RESULTS.md")]
                 publish(paths, "test: report followup " + stage["id"])
         publish([public / name for name in (*public_objects, "RESULTS.md")],
+                "test: summarize fresh routing confirmation" if confirmation else
                 "test: summarize review-driven experiments" if review else
                 "test: summarize queued source and safety diagnostics" if diagnostic else
                 "test: summarize five queued extended experiments" if extended else

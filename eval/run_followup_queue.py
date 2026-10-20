@@ -22,6 +22,9 @@ KIND = "ktrf_followup_queue_v1"
 COMBINED_KIND = "ktrf_combined_queue_v1"
 EXTENDED_KIND = "ktrf_extended_queue_v1"
 DIAGNOSTIC_KIND = "ktrf_diagnostic_queue_v1"
+CONFIRMATION_KIND = "ktrf_routing_confirmation_v1"
+CONFIRMATION_COUNTS = {"routing_confirmation": 1152}
+CONFIRMATION_ORDER = [("routing_confirmation", model) for model in ("gemma12b", "qwen27b")]
 REVIEW_KIND = "ktrf_review_queue_v1"
 REVIEW_COUNTS = {"review_abcd": 1024, "review_policy": 384, "review_budget": 384,
                  "review_nomiracl": 384, "review_routing": 768}
@@ -44,12 +47,13 @@ def now():
 
 
 def validate_plan(plan):
-    if not isinstance(plan, dict) or plan.get("kind") not in {KIND, COMBINED_KIND, EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND}:
+    if not isinstance(plan, dict) or plan.get("kind") not in {KIND, COMBINED_KIND, EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND}:
         raise ValueError("frozen followup queue required")
     combined = plan["kind"] == COMBINED_KIND
-    extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND}
+    extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND}
     diagnostic = plan["kind"] == DIAGNOSTIC_KIND
     review = plan["kind"] == REVIEW_KIND
+    confirmation = plan["kind"] == CONFIRMATION_KIND
     sample_design = plan.get("sample_design")
     if "sample_design" in plan:
         if (not combined or not isinstance(sample_design, dict)
@@ -73,9 +77,10 @@ def validate_plan(plan):
     if not re.fullmatch(r"[0-9a-f]{64}", plan.get("archive_sha256", "")):
         raise ValueError("source archive hash required")
     stages = plan.get("stages", [])
-    order = REVIEW_ORDER if review else DIAGNOSTIC_ORDER if diagnostic else EXTENDED_ORDER if extended else COMBINED_ORDER if combined else ORDER
+    order = CONFIRMATION_ORDER if confirmation else REVIEW_ORDER if review else DIAGNOSTIC_ORDER if diagnostic else EXTENDED_ORDER if extended else COMBINED_ORDER if combined else ORDER
     if [(s.get("experiment"), s.get("model_key")) for s in stages] != order:
-        raise ValueError("expected matched five review experiments for Gemma then Qwen" if review else
+        raise ValueError("expected fresh routing confirmation for Gemma then Qwen" if confirmation else
+                         "expected matched five review experiments for Gemma then Qwen" if review else
                          "expected matched three diagnostics for Gemma then Qwen" if diagnostic else
                          "expected matched five experiments for Gemma then Qwen" if extended else
                          "expected matched combined stages for Gemma then Qwen" if combined else
@@ -83,7 +88,8 @@ def validate_plan(plan):
     if len({s.get("id") for s in stages}) != len(order):
         raise ValueError("unique stage IDs required")
     for stage in stages:
-        request_count = (REVIEW_COUNTS[stage["experiment"]] if review else
+        request_count = (CONFIRMATION_COUNTS[stage["experiment"]] if confirmation else
+                         REVIEW_COUNTS[stage["experiment"]] if review else
                          DIAGNOSTIC_COUNTS[stage["experiment"]] if diagnostic else
                          EXTENDED_COUNTS[stage["experiment"]] if extended else
                          sample_design["question_count"] * 12 if sample_design else
@@ -111,6 +117,8 @@ def validate_plan(plan):
             raise ValueError("local checkpoint and served identity required")
     if not 0 < plan.get("resource_wait_seconds", 0) <= 2 * 86400:
         raise ValueError("bounded resource deadline required")
+    if confirmation and plan.get("require_idle_gpu") is not True:
+        raise ValueError("confirmation cost measurements require an initially idle GPU")
     expected_proofs = {"unit", "preparation"} if combined or extended else {"unit", "preparation", "blind_document"}
     if set(plan.get("proofs", {})) != expected_proofs:
         raise ValueError("unit and tokenizer preparation proofs required" if combined or extended else
@@ -163,7 +171,7 @@ def verify_inputs(plan):
         if file_hash(path) != stage["envelope_sha256"]:
             raise ValueError("frozen request envelope changed")
         loader = load_request_file
-        if plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND}:
+        if plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND}:
             from .run_extended_suite import load_request_file as loader
         rows, protocol, _ = loader(path)
         if (protocol["experiment"] != stage["experiment"] or len(rows) != stage["request_count"]
@@ -193,10 +201,28 @@ def verify_inputs(plan):
                 raise ValueError("fresh document sample requires one distinct parent article and content hash per question")
         token = preparation["models"][stage["model_key"]]
         if (token["request_count"] != stage["request_count"] or token["overflow_count"] != 0
-                or not 0 < token["max_prompt_tokens"] <= 8192 - (384 if stage["experiment"] == "review_routing" else 128)
+                or not 0 < token["max_prompt_tokens"] <= 8192 - (768 if stage["experiment"] == "routing_confirmation" else 384 if stage["experiment"] == "review_routing" else 128)
                 or token["path"] != plan["models"][stage["model_key"]]["path"]):
             raise ValueError("actual tokenizer proof differs from frozen requests")
     return proofs
+
+
+def wait_for_idle_gpu(plan, update):
+    """Wait for other compute clients; never stop or modify their processes."""
+    deadline = time.monotonic() + plan["resource_wait_seconds"]
+    while True:
+        output = subprocess.check_output([
+            "nvidia-smi", "--id=0", "--query-compute-apps=pid",
+            "--format=csv,noheader,nounits"], text=True, timeout=20)
+        clients = [int(line.strip()) for line in output.splitlines() if line.strip()]
+        if not clients:
+            update(phase="GPU_IDLE_VERIFIED", other_gpu_clients=[])
+            return
+        update(phase="WAITING_FOR_RESOURCE", other_gpu_clients=clients,
+               wait_reason="OTHER_GPU_COMPUTE_CLIENTS", last_resource_check=now())
+        if time.monotonic() >= deadline:
+            raise RuntimeError("GPU compute clients remained active; no other process was modified")
+        time.sleep(30)
 
 
 def run_queue(plan):
@@ -229,6 +255,8 @@ def run_queue(plan):
             state.setdefault("runtimes", []).append(runtime)
             server = benchmark = None
             try:
+                if plan.get("require_idle_gpu"):
+                    wait_for_idle_gpu(plan, update)
                 if not (Path(model["path"]) / "config.json").is_file():
                     raise ValueError("local model config unavailable")
                 command = [plan["model_python"], "-m", "vllm.entrypoints.openai.api_server",
@@ -254,7 +282,7 @@ def run_queue(plan):
                         raise ValueError("stage output already exists; no answer reruns allowed")
                     current.update(status="RUNNING", benchmark_started=True, started_at=now())
                     update(active_stage=stage["id"], phase="MODEL_REQUESTS", responses_completed=0)
-                    extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND}
+                    extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND}
                     runner_module = "eval.run_extended_suite" if extended else "eval.run_followup_llm"
                     report_module = "eval.report_extended_suite" if extended else "eval.report_followup_llm"
                     run_command = [plan["python"], "-m", runner_module,
