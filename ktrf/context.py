@@ -42,7 +42,7 @@ from .resolver import resolve
 from .snapshot import Snapshot
 
 SCHEMA_VERSION = "2"
-PROFILES = ("qa_grounding", "summarization", "rag_query_expansion",
+PROFILES = ("qa_grounding", "document_qa", "summarization", "rag_query_expansion",
             "automation")
 CLASSIFICATION_ORDER = {"public": 0, "internal": 1, "restricted": 2}
 
@@ -85,6 +85,18 @@ AMBIGUOUS 후보의 제공된 정의(definition 또는 short_definition)를 설�
 QA 응답에는 answer만 작성하고 entity_id나 selections는 출력하지 않는다.
 """
 
+DOCUMENT_QA_POLICY = TERMINOLOGY_POLICY + """
+일반 문서 QA에서는 과제가 허용한 근거로 질문에 답한다.
+문서에 서술된 사건·날짜·수치·관계는 원문에서 확인한다.
+용어 정의가 제공되지 않았더라도 원문이 질문의 답을 뒷받침하면 답한다.
+과제가 제공된 용어집도 참고 근거로 허용하면, 대상 발생 위치의 문맥이 그 의미를
+뒷받침할 때 제공된 정의의 용어 뜻·업무 절차·고정 코드·적용 조건을 사용할 수 있다.
+정의의 고정 코드와 문서에서 실제 발생한 사건의 수치·날짜를 혼동하지 않는다.
+허용된 원문과 참고 근거로 답을 확인할 수 없으면 answer는 null이다.
+용어집 정의만으로 원문에 없는 사건이나 실제 실행 결과를 만들어 내지 않는다.
+응답에는 answer만 작성하고 entity_id나 selections는 출력하지 않는다.
+이 설명은 검증된 연결이나 실행 권한을 부여하지 않는다.
+"""
 
 _MAX_FIELD_CHARS = 2000  # ingestion hard cap for any single string field
 _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
@@ -804,6 +816,8 @@ def prepare_llm_context(snapshot: Snapshot, text: str,
         resolve_response=resp, context_pack=pack,
         prompt_fragment=render_context_pack(pack, "xml"),
         policy_fragment=(EXECUTION_POLICY if pack["profile"] == "automation"
+                         else DOCUMENT_QA_POLICY
+                         if pack["profile"] == "document_qa"
                          else KNOWLEDGE_ASSISTANCE_POLICY
                          if pack["answer_policy"] == "knowledge"
                          else QA_CONTEXT_POLICY

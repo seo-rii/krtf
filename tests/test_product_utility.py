@@ -2,6 +2,7 @@
 import pytest
 from eval.product_utility import build_requests, grade_outputs, local_swap_checks, swap_worlds
 from ktrf.context import (ContextPolicy, EXECUTION_POLICY,
+                          DOCUMENT_QA_POLICY,
                           KNOWLEDGE_ASSISTANCE_POLICY, QA_CONTEXT_POLICY,
                           TERMINOLOGY_POLICY, prepare_llm_context,
                           validate_llm_grounding)
@@ -61,6 +62,8 @@ def test_automation_enforces_execution_even_default_validator():
 @pytest.mark.parametrize("profile,answer_policy,expected_policy", [
     ("qa_grounding", "evidence_only", QA_CONTEXT_POLICY),
     ("qa_grounding", "knowledge", KNOWLEDGE_ASSISTANCE_POLICY),
+    ("document_qa", "evidence_only", DOCUMENT_QA_POLICY),
+    ("document_qa", "knowledge", DOCUMENT_QA_POLICY),
     ("summarization", "evidence_only", TERMINOLOGY_POLICY),
     ("rag_query_expansion", "evidence_only", TERMINOLOGY_POLICY),
     ("automation", "evidence_only", EXECUTION_POLICY),
