@@ -397,6 +397,10 @@ structured KTRF approved 22/6 and 23/2. Model-written evidence positions approve
 no IDs. Evidence IDs increased request p95 to 22.99/35.75 seconds versus
 4.77/7.09 seconds for the plain control. These are adaptive synthetic diagnostics,
 not independent deployment-risk validation.
+The next [efficiency comparison](docs/EVIDENCE_EFFICIENCY.md) prepares 640 calls
+on 64 newly authored AI documents: long references, short references, lossless
+fact tables and source-only selective checking. Development and confirmation
+families are sealed before inference; results are pending.
 The public [compact execution API](docs/COMPACT_EXECUTION.md) adds request-local
 references, expiration and atomic one-attempt consumption; it executes no actions.
 A local, non-executing [shadow ingress](eval/shadow_routing.py) prepares
