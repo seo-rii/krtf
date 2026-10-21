@@ -12,7 +12,7 @@ from .hf_qa import canonical
 from .report_synthetic_grounding import _distribution
 from .run_extended_suite import (ANSWER_SCHEMA, ARTIFACTS, DECODING, PROTOCOL_ID,
                                  ROUTING_SCHEMA, grade_outputs, load_request_file,
-                                 output_error, decoding_for, schema_for, validate_protocol, AUDITED_CONDITION_COUNTS,
+                                 output_error, decoding_for, schema_for, validate_protocol, AUDITED_CONDITION_COUNTS, OCCURRENCE_EXPERIMENTS,
                                  _metrics)
 from .run_product_llm import parse_model_json
 
@@ -62,7 +62,7 @@ def read_run(run_dir):
         latency = record.get("latency_ms")
         if type(latency) not in (int, float) or not math.isfinite(latency) or latency < 0:
             raise ValueError("invalid recorded latency")
-        if protocol["experiment"] == "routing_confirmation" and status == "RECEIVED":
+        if protocol["experiment"] in OCCURRENCE_EXPERIMENTS and status == "RECEIVED":
             cost = record.get("execution_validation_ms")
             if type(cost) not in (int, float) or not math.isfinite(cost) or cost < 0:
                 raise ValueError("confirmation execution validation timing required")
@@ -186,7 +186,7 @@ def prepare_report(run_dir):
             "Normalized answer EM and separate source/terminology-need strata; character overlap is not semantic entailment."
             if rows[0]["task"] == "document_qa" else
             "Raw semantic selection and occurrence-bound approval are separate; synthetic/public proxy samples do not certify deployment risk.")
-    if manifest["experiment"] == "routing_confirmation":
+    if manifest["experiment"] in OCCURRENCE_EXPERIMENTS:
         unique_rows = {row["case_id"]: row for row in rows}
         timing_fields = ("snapshot_compile", "first_prepare", "warm_prepare")
         summary["preparation_timing_ms"] = {field: _distribution([
@@ -212,6 +212,12 @@ def prepare_report(run_dir):
             "measured separately. Snapshot compilation counts only actual compilations, excluding cached "
             "zero-cost entries. Shared-host measurements are descriptive, not service-load SLOs."
         )
+    if manifest["experiment"] == "evidence_control":
+        summary["proposal_interpretation"] = (
+            "Schema-valid model proposals precede the same production occurrence guard in all arms. "
+            "Retrieved ambiguous candidates are visible for judgment but gain no execution authority. "
+            "All 64 cases are previously exposed development data; results are adaptive diagnostics."
+        )
     return summary
 
 
@@ -231,6 +237,13 @@ def render_markdown(summary):
                       "|---|---:|---:|---:|---:|---:|---:|"])
         for condition, values in summary["by_variant"].items():
             lines.append(f"| {condition} | {values['positive_exact']}/{values['positive_planned']} | {values['article_no_answer_null']}/{values['no_answer_planned']} | {values['malformed']} | {values['errors']} | {values['missing']} | {values['usage']['prompt_tokens']} |")
+    if summary.get("proposal_interpretation"):
+        lines.extend(["", summary["proposal_interpretation"], "",
+            "| Condition | Correct ID proposals | Wrong ID proposals | Null proposals |",
+            "|---|---:|---:|---:|"])
+        for condition, values in summary["by_variant"].items():
+            lines.append(f"| {condition} | {values['proposal_correct_id']} | "
+                         f"{values['proposal_wrong_id']} | {values['proposal_abstention']} |")
     if summary.get("metric_interpretation"):
         lines.extend(["", summary["metric_interpretation"], ""])
     if summary.get("cost_interpretation"):

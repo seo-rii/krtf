@@ -22,13 +22,14 @@ from .run_product_llm import _request_json, parse_model_json
 PROTOCOL_ID = "ktrf_extended_v1"
 REVIEW_CONDITION_COUNTS = {"review_abcd": 8, "review_policy": 6,
                            "review_budget": 6, "review_nomiracl": 3, "review_routing": 8}
-CONFIRMATION_CONDITION_COUNTS = {"routing_confirmation": 6}
+CONFIRMATION_CONDITION_COUNTS = {"routing_confirmation": 6, "evidence_control": 4}
+OCCURRENCE_EXPERIMENTS = set(CONFIRMATION_CONDITION_COUNTS)
 AUDITED_CONDITION_COUNTS = REVIEW_CONDITION_COUNTS | CONFIRMATION_CONDITION_COUNTS
 DIAGNOSTIC_CONDITION_COUNTS = {"source_pack_factorial": 6, "fresh_compact": 3,
                                "safety_robustness": 4, **AUDITED_CONDITION_COUNTS}
 DIAGNOSTIC_EXPERIMENTS = set(DIAGNOSTIC_CONDITION_COUNTS)
 EXPERIMENTS = {"transfer", "budget", "corpus", "pack", "semantic_safety"} | DIAGNOSTIC_EXPERIMENTS
-SAFETY_EXPERIMENTS = {"semantic_safety", "safety_robustness", "review_routing", "routing_confirmation"}
+SAFETY_EXPERIMENTS = {"semantic_safety", "safety_robustness", "review_routing"} | OCCURRENCE_EXPERIMENTS
 ROUTING_SCHEMA = {"type": "object", "properties": {"selections": {
     "type": "array", "minItems": 1, "maxItems": 1, "items": {
         "type": "object", "properties": {"surface": {"type": "string"},
@@ -45,12 +46,15 @@ def _hash(data):
 
 
 def decoding_for(protocol):
-    if protocol["experiment"] == "routing_confirmation":
+    if protocol["experiment"] in OCCURRENCE_EXPERIMENTS:
         return {**DECODING, "max_tokens": 768}
     return {**DECODING, "max_tokens": 384} if protocol["experiment"] == "review_routing" else DECODING
 
 
 def schema_for(rows, protocol):
+    if protocol["experiment"] == "evidence_control":
+        from .evidence_control import evidence_control_schema
+        return {row["condition"]: evidence_control_schema(row) for row in rows}
     if protocol["experiment"] == "routing_confirmation":
         from .routing_confirmation import confirmation_schema
         return {row["condition"]: confirmation_schema(row) for row in rows}
@@ -61,6 +65,9 @@ def schema_for(rows, protocol):
 
 
 def request_schema_for(row, protocol):
+    if protocol["experiment"] == "evidence_control":
+        from .evidence_control import evidence_control_schema
+        return evidence_control_schema(row)
     if protocol["experiment"] == "routing_confirmation":
         from .routing_confirmation import confirmation_schema
         return confirmation_schema(row)
@@ -104,7 +111,10 @@ def validate_requests(rows, protocol):
     if safety != (protocol["experiment"] in SAFETY_EXPERIMENTS):
         raise ValueError("task differs from declared experiment")
     if safety:
-        if protocol["experiment"] == "routing_confirmation":
+        if protocol["experiment"] == "evidence_control":
+            from .evidence_control import validate_evidence_control_requests
+            validate_evidence_control_requests(rows)
+        elif protocol["experiment"] == "routing_confirmation":
             from .routing_confirmation import validate_confirmation_requests
             validate_confirmation_requests(rows)
         elif protocol["experiment"] == "review_routing":
@@ -187,6 +197,9 @@ def load_request_file(path):
 
 
 def output_error(response, row):
+    if row.get("experiment") == "evidence_control":
+        from .evidence_control import evidence_control_response_error
+        return evidence_control_response_error(response, row)
     if row.get("experiment") == "routing_confirmation":
         from .routing_confirmation import confirmation_response_error
         return confirmation_response_error(response, row)
@@ -223,6 +236,9 @@ def _metrics(cases, safety):
             wrong_documents = {c["document_id"] for c in cases if c["accepted_wrong_id"]}
             values.update(documents=len(documents), documents_with_wrong_approval=len(wrong_documents),
                           document_wrong_approval_rate=len(wrong_documents) / len(documents))
+        if cases and "proposal_correct_id" in cases[0]:
+            for field in ("proposal_correct_id", "proposal_wrong_id", "proposal_abstention"):
+                values[field] = sum(case[field] for case in cases)
         if cases and "wire_valid" in cases[0]:
             values["validation_failures"] = {
                 field: sum(case.get(field) is False for case in cases)
@@ -306,7 +322,10 @@ def grade_outputs(rows, outputs, protocol):
                 if field in row:
                     case[field] = bool(row[field])
         if safety:
-            if protocol["experiment"] == "routing_confirmation":
+            if protocol["experiment"] == "evidence_control":
+                from .evidence_control import grade_evidence_control_response
+                grade_safety = lambda row, response: grade_evidence_control_response(response, row)
+            elif protocol["experiment"] == "routing_confirmation":
                 from .routing_confirmation import grade_confirmation_response
                 grade_safety = lambda row, response: grade_confirmation_response(response, row)
             elif protocol["experiment"] == "review_routing":
@@ -320,10 +339,13 @@ def grade_outputs(rows, outputs, protocol):
             for metric in ("attempted_nonnull", "guard_valid"):
                 case[metric] = bool(result.get(metric, False))
             case["guard_violations"] = result.get("guard_violations")
-            if protocol["experiment"] == "routing_confirmation":
+            if protocol["experiment"] in OCCURRENCE_EXPERIMENTS:
                 case["evidence_gate_violations"] = result.get("evidence_gate_violations", [])
                 for field in ("wire_valid", "base_guard_valid", "evidence_gate_valid"):
                     case[field] = result.get(field)
+            if protocol["experiment"] == "evidence_control":
+                for field in ("proposal_correct_id", "proposal_wrong_id", "proposal_abstention"):
+                    case[field] = bool(valid and result.get(field, False))
             case["positive_gold"] = row["expected_entity_id"] is not None
         else:
             value = output["response"]["answer"] if valid else None
@@ -438,10 +460,13 @@ def run_benchmark(*, requests_file, endpoint, model, out_dir, code_revision, tim
                     invalid = output_error(record["response"], row)
                     if invalid:
                         raise ValueError(invalid)
-                    if protocol["experiment"] == "routing_confirmation":
-                        from .routing_confirmation import grade_confirmation_response
+                    if protocol["experiment"] in OCCURRENCE_EXPERIMENTS:
+                        if protocol["experiment"] == "evidence_control":
+                            from .evidence_control import grade_evidence_control_response as validate_selection
+                        else:
+                            from .routing_confirmation import grade_confirmation_response as validate_selection
                         guard_started = time.perf_counter()
-                        grade_confirmation_response(record["response"], row)
+                        validate_selection(record["response"], row)
                         record["execution_validation_ms"] = round(
                             (time.perf_counter() - guard_started) * 1000, 6)
                 except HTTPError as error:
