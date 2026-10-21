@@ -1,0 +1,2588 @@
+{
+  "schema_version": 1,
+  "dataset_id": "ktrf-evidence-efficiency-source-v1",
+  "annotation_origin": "AI_AUTHORED",
+  "human_verified": false,
+  "authored_by": "codex-fresh-cost-gold-agent",
+  "gold_source": "New fictional source texts, glossary meanings, occurrence spans and labels authored together before any resolver or model invocation.",
+  "source_scenario_styles": 4,
+  "scenario_styles": [
+    "work_ledger",
+    "support_dialogue",
+    "change_log",
+    "handover_memo"
+  ],
+  "split_design": {
+    "unit": "family",
+    "development_families": 2,
+    "confirmation_families": 6,
+    "determined_before_inference": true
+  },
+  "limitations": [
+    "All source text and gold labels are AI-authored, not human verified.",
+    "Eight fictional families use four writing styles, so 64 documents are not 64 independent workplace samples.",
+    "Implicit-attribute LINK cases intentionally lack literal country/state attributes; missing literal evidence does not change their source-authored entity identity."
+  ],
+  "families": [
+    {
+      "family_id": "ee26-family-01",
+      "evaluation_split": "development",
+      "scenario_style": "work_ledger",
+      "source_facts": "가상의 라온숲사에는 서로 다른 두 업무가 있고 QZVK라는 약칭만 공유한다. 다른 나라·과거 제도·직책·다른 부서의 동명 대상은 두 사전 항목과 별개다.",
+      "terms": [
+        {
+          "key": "ee26-family-01-a",
+          "canonical": "달솔못 배관 지급 승인",
+          "surfaces": [
+            "달솔못",
+            "QZVK"
+          ],
+          "short_definition": "대한민국 라온숲사 배관검수실에서 시행하는 현행 절차. 처리 업무: 배관 지급 승인. 다른 국가나 부서의 동명 업무는 포함하지 않는다.",
+          "applicability": {
+            "jurisdiction": [
+              "대한민국"
+            ],
+            "temporal_status": [
+              "현행"
+            ],
+            "referent_kind": [
+              "절차"
+            ],
+            "scope": [
+              "라온숲사 배관검수실"
+            ]
+          }
+        },
+        {
+          "key": "ee26-family-01-b",
+          "canonical": "귀리첩 센서 반품 등록",
+          "surfaces": [
+            "귀리첩",
+            "QZVK"
+          ],
+          "short_definition": "핀란드 라온숲사 센서회수실에서 시범 운영하는 시스템. 처리 업무: 센서 반품 등록. 다른 국가나 부서의 동명 업무는 포함하지 않는다.",
+          "applicability": {
+            "jurisdiction": [
+              "핀란드"
+            ],
+            "temporal_status": [
+              "시범 운영"
+            ],
+            "referent_kind": [
+              "시스템"
+            ],
+            "scope": [
+              "라온숲사 센서회수실"
+            ]
+          }
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "ee26-family-01:1",
+          "document_id": "ee26-family-01:doc1",
+          "event_id": "ee26-family-01:event1",
+          "parent_document_id": "ee26-family-01:source1",
+          "text": "접수 원장 73쪽\n적용처: 대한민국 라온숲사 배관검수실\n구분: 현행 절차\n오늘 처리한 항목은 달솔못 두 건이다. 작업자의 장갑 색상은 심사에 영향을 주지 않는다.",
+          "document_sha256": "aaab7f12d0fe452fc22f6979d912e67d0149d9681db31b4f4c6efdbc430c9143",
+          "target_surface": "달솔못",
+          "target_core_span": {
+            "start": 52,
+            "end": 55
+          },
+          "target_full_span": {
+            "start": 52,
+            "end": 55
+          },
+          "expected_entity_id": "global:ee26-family-01-a",
+          "stratum": "easy_explicit",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-01-a",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "달솔못 배관 지급 승인"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "국가·조직·상태·종류가 A의 정의와 일치한다.",
+          "evidence_design": "EXPLICIT_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-01:2",
+          "document_id": "ee26-family-01:doc2",
+          "event_id": "ee26-family-01:event2",
+          "parent_document_id": "ee26-family-01:source2",
+          "text": "반품 원장\n핀란드에서 올라온 건을 라온숲사 센서회수실이 맡았다. 장비 유형 칸에는 시스템이라고 적혔다. 운용 단계 칸은 시범 운영이다. 대상 이름은 귀리첩이며 반품 접수 세 건을 묶었다.",
+          "document_sha256": "7d471b7b01d2491c4fec7bc03a85a6915444b443bec55129ea6284107ca08b35",
+          "target_surface": "귀리첩",
+          "target_core_span": {
+            "start": 83,
+            "end": 86
+          },
+          "target_full_span": {
+            "start": 83,
+            "end": 86
+          },
+          "expected_entity_id": "global:ee26-family-01-b",
+          "stratum": "cross_sentence_positive",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-01-b",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "귀리첩 센서 반품 등록"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "B의 속성이 여러 문장에 나뉘어 있고 대상은 일관되게 B다.",
+          "evidence_design": "CROSS_SENTENCE_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-01:3",
+          "document_id": "ee26-family-01:doc3",
+          "event_id": "ee26-family-01:event3",
+          "parent_document_id": "ee26-family-01:source3",
+          "text": "대한민국 라온숲사 배관검수실의 현행 절차 목록에서 “QZVK” 행을 열었다. 그 행의 업무명은 “배관 지급 승인”이다. 핀란드 팀의 약자 표는 별도 첨부이므로 이 행에는 적용하지 않는다.",
+          "document_sha256": "9e9c98133a1990189ee1bbc6ec0797ed951acfc949665f308422334356b947f9",
+          "target_surface": "QZVK",
+          "target_core_span": {
+            "start": 29,
+            "end": 33
+          },
+          "target_full_span": {
+            "start": 29,
+            "end": 33
+          },
+          "expected_entity_id": "global:ee26-family-01-a",
+          "stratum": "shared_alias_resolvable",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-01-a",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "달솔못 배관 지급 승인"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "공유 약칭이지만 업무명과 적용 범위가 A를 선택한다.",
+          "evidence_design": "EXPLICIT_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-01:4",
+          "document_id": "ee26-family-01:doc4",
+          "event_id": "ee26-family-01:event4",
+          "parent_document_id": "ee26-family-01:source4",
+          "text": "원장 74쪽: 라온숲사 배관검수실 담당자가 달솔못 배관 지급 승인에 접수 번호를 부여했다. 이 항목의 정식 명칭은 사전과 같지만 원장에는 국가와 운용 단계 칸이 없다.",
+          "document_sha256": "a2a3577f838589809121adcab44164f7ef3e3e80048096e3a92cf63aa82cf7b3",
+          "target_surface": "달솔못 배관 지급 승인",
+          "target_core_span": {
+            "start": 24,
+            "end": 36
+          },
+          "target_full_span": {
+            "start": 24,
+            "end": 36
+          },
+          "expected_entity_id": "global:ee26-family-01-a",
+          "stratum": "implicit_attribute_positive",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-01-a",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "달솔못 배관 지급 승인"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "정식 명칭과 담당 부서로 A가 특정된다. 국가·상태가 원문에 명시되지 않아 네 속성 인용을 강제하면 정상 연결을 잃을 수 있다.",
+          "evidence_design": "IMPLICIT_ATTRIBUTE_POSITIVE"
+        },
+        {
+          "case_id": "ee26-family-01:5",
+          "document_id": "ee26-family-01:doc5",
+          "event_id": "ee26-family-01:event5",
+          "parent_document_id": "ee26-family-01:source5",
+          "text": "칠레 지사의 구매 원장에 달솔못이 등장했다. 현지 구매반이 독자적으로 붙인 지급 규칙 이름이며 대한민국 라온숲사의 절차를 들여온 것이 아니라고 주석에 적혀 있다.",
+          "document_sha256": "64edfff27f98c97ef6b55ef3428965106ef5e8ec725e912b6b3de6d34dfbc535",
+          "target_surface": "달솔못",
+          "target_core_span": {
+            "start": 14,
+            "end": 17
+          },
+          "target_full_span": {
+            "start": 14,
+            "end": 17
+          },
+          "expected_entity_id": null,
+          "stratum": "country_nil",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "칠레의 독립 동명 규칙은 등록된 대한민국 A가 아니다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-01:6",
+          "document_id": "ee26-family-01:doc6",
+          "event_id": "ee26-family-01:event6",
+          "parent_document_id": "ee26-family-01:source6",
+          "text": "종이 원장 복원 메모: 달솔못은 2008년에 폐지한 옛 복지 대부 제도다. 지금의 배관 지급 승인 절차와는 이름만 같고 계승 관계도 없다.",
+          "document_sha256": "d866d69be54120b296279d377814948d86a9ba6cabb2707d06ac9eb58b8411ed",
+          "target_surface": "달솔못",
+          "target_core_span": {
+            "start": 13,
+            "end": 16
+          },
+          "target_full_span": {
+            "start": 13,
+            "end": 16
+          },
+          "expected_entity_id": null,
+          "stratum": "historical_nil",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "폐지된 다른 업무이며 현행 A의 과거 상태가 아니다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-01:7",
+          "document_id": "ee26-family-01:doc7",
+          "event_id": "ee26-family-01:event7",
+          "parent_document_id": "ee26-family-01:source7",
+          "text": "라온숲사 배관검수실은 달솔못 접수 건을 먼저 마감했다. 다음 장의 달솔못은 외부 조선소가 쓰는 휴가 장부 이름이다. 두 번째 항목은 회사 업무가 아니므로 외부 자료 칸에 남겼다.",
+          "document_sha256": "4f0f94b818551067e95572a713b12132ce2d2ca4f0a78241da18607e9045a69f",
+          "target_surface": "달솔못",
+          "target_core_span": {
+            "start": 37,
+            "end": 40
+          },
+          "target_full_span": {
+            "start": 37,
+            "end": 40
+          },
+          "expected_entity_id": null,
+          "stratum": "repeated_rival_scope",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "같은 문자열의 두 번째 발생만 대상이며 외부 휴가 장부를 뜻한다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-01:8",
+          "document_id": "ee26-family-01:doc8",
+          "event_id": "ee26-family-01:event8",
+          "parent_document_id": "ee26-family-01:source8",
+          "text": "두 부서의 원장을 합치는 중 접수 항목 칸에 “QZVK”만 남았다. 발신 부서·국가·업무 내용은 모두 비어 있고 어느 원장의 업무를 접수한 것인지 복구할 수 없다.",
+          "document_sha256": "bf31a15e49751e55f9aa427fa0cc24dfb84dce972e7b1b955000f3f950b7598e",
+          "target_surface": "QZVK",
+          "target_core_span": {
+            "start": 26,
+            "end": 30
+          },
+          "target_full_span": {
+            "start": 26,
+            "end": 30
+          },
+          "expected_entity_id": null,
+          "stratum": "shared_alias_ambiguous",
+          "gold": {
+            "label": "AMBIGUOUS",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "두 사전 항목이 공유하는 약자뿐이며 구별 근거가 없다.",
+          "evidence_design": "NEGATIVE"
+        }
+      ]
+    },
+    {
+      "family_id": "ee26-family-02",
+      "evaluation_split": "confirmation",
+      "scenario_style": "support_dialogue",
+      "source_facts": "가상의 온도래사에는 서로 다른 두 업무가 있고 JXWR라는 약칭만 공유한다. 다른 나라·과거 제도·직책·다른 부서의 동명 대상은 두 사전 항목과 별개다.",
+      "terms": [
+        {
+          "key": "ee26-family-02-a",
+          "canonical": "보늬판 연구 표본 반출",
+          "surfaces": [
+            "보늬판",
+            "JXWR"
+          ],
+          "short_definition": "대한민국 온도래사 시료반출실에서 시행하는 현행 절차. 처리 업무: 연구 표본 반출. 다른 국가나 부서의 동명 업무는 포함하지 않는다.",
+          "applicability": {
+            "jurisdiction": [
+              "대한민국"
+            ],
+            "temporal_status": [
+              "현행"
+            ],
+            "referent_kind": [
+              "절차"
+            ],
+            "scope": [
+              "온도래사 시료반출실"
+            ]
+          }
+        },
+        {
+          "key": "ee26-family-02-b",
+          "canonical": "이슬턱 강의 영상 게재",
+          "surfaces": [
+            "이슬턱",
+            "JXWR"
+          ],
+          "short_definition": "덴마크 온도래사 강의편집실에서 시범 운영하는 서비스. 처리 업무: 강의 영상 게재. 다른 국가나 부서의 동명 업무는 포함하지 않는다.",
+          "applicability": {
+            "jurisdiction": [
+              "덴마크"
+            ],
+            "temporal_status": [
+              "시범 운영"
+            ],
+            "referent_kind": [
+              "서비스"
+            ],
+            "scope": [
+              "온도래사 강의편집실"
+            ]
+          }
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "ee26-family-02:1",
+          "document_id": "ee26-family-02:doc1",
+          "event_id": "ee26-family-02:event1",
+          "parent_document_id": "ee26-family-02:source1",
+          "text": "상담원: 지금 말씀하신 곳이 대한민국 온도래사 시료반출실인가요?\n사용자: 맞습니다. 현행 절차인 보늬판에 반출 신청을 넣었습니다.\n상담원: 포장 상자에는 문제가 없고 절차의 적용 여부와도 무관합니다.",
+          "document_sha256": "d538f71310b08edf9f0d4a814497b9b8d6cc44065ff4cb0a5dc42cb6c9547d23",
+          "target_surface": "보늬판",
+          "target_core_span": {
+            "start": 54,
+            "end": 57
+          },
+          "target_full_span": {
+            "start": 54,
+            "end": 57
+          },
+          "expected_entity_id": "global:ee26-family-02-a",
+          "stratum": "easy_explicit",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-02-a",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "보늬판 연구 표본 반출"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "대화의 확인 응답으로 A의 네 속성이 명시된다.",
+          "evidence_design": "EXPLICIT_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-02:2",
+          "document_id": "ee26-family-02:doc2",
+          "event_id": "ee26-family-02:event2",
+          "parent_document_id": "ee26-family-02:source2",
+          "text": "편집자: 덴마크 사무실에서 쓰는 이름을 확인하고 싶어요.\n지원 담당: 운영 부서는 온도래사 강의편집실이고 서비스로 분류돼요. 아직 시범 운영 중입니다.\n편집자: 그럼 이슬턱의 게시 창을 열어 주세요.",
+          "document_sha256": "f3aa2e6935bd34b9d670862e281b9c7eb0ebe055b7881342349a1f35e7458894",
+          "target_surface": "이슬턱",
+          "target_core_span": {
+            "start": 93,
+            "end": 96
+          },
+          "target_full_span": {
+            "start": 93,
+            "end": 96
+          },
+          "expected_entity_id": "global:ee26-family-02-b",
+          "stratum": "cross_sentence_positive",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-02-b",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "이슬턱 강의 영상 게재"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "직전 대화에 나뉜 속성과 마지막 지칭이 B를 가리킨다.",
+          "evidence_design": "CROSS_SENTENCE_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-02:3",
+          "document_id": "ee26-family-02:doc3",
+          "event_id": "ee26-family-02:event3",
+          "parent_document_id": "ee26-family-02:source3",
+          "text": "사용자: “JXWR” 표기는 표본을 밖으로 내보내는 신청 맞죠?\n상담원: 네, 여기서는 대한민국 온도래사 시료반출실의 현행 절차를 그렇게 부릅니다. 영상 게재 서비스의 같은 약자는 이 상담과 무관해요.",
+          "document_sha256": "e5fdbaa0c9f229b11aa8fee8e4a52ad392491000848cee6623bc465197127bc7",
+          "target_surface": "JXWR",
+          "target_core_span": {
+            "start": 6,
+            "end": 10
+          },
+          "target_full_span": {
+            "start": 6,
+            "end": 10
+          },
+          "expected_entity_id": "global:ee26-family-02-a",
+          "stratum": "shared_alias_resolvable",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-02-a",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "보늬판 연구 표본 반출"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "표본 반출이라는 업무와 명시된 속성으로 공유 약자가 A로 좁혀진다.",
+          "evidence_design": "EXPLICIT_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-02:4",
+          "document_id": "ee26-family-02:doc4",
+          "event_id": "ee26-family-02:event4",
+          "parent_document_id": "ee26-family-02:source4",
+          "text": "사용자: 이슬턱 강의 영상 게재의 게재 예약을 취소하고 싶어요.\n담당자: 온도래사 강의편집실에서 만든 그 항목이 맞습니다. 다만 상담 화면에는 국가와 운영 단계 정보가 표시되지 않습니다.",
+          "document_sha256": "4a2bed03de6a7f901901c21a1f143eb7427f5d842ee9c14284e5e15a66bfc4f0",
+          "target_surface": "이슬턱 강의 영상 게재",
+          "target_core_span": {
+            "start": 5,
+            "end": 17
+          },
+          "target_full_span": {
+            "start": 5,
+            "end": 17
+          },
+          "expected_entity_id": "global:ee26-family-02-b",
+          "stratum": "implicit_attribute_positive",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-02-b",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "이슬턱 강의 영상 게재"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "정식 명칭과 운영 조직은 B를 특정하지만 국가·상태는 암묵적이다.",
+          "evidence_design": "IMPLICIT_ATTRIBUTE_POSITIVE"
+        },
+        {
+          "case_id": "ee26-family-02:5",
+          "document_id": "ee26-family-02:doc5",
+          "event_id": "ee26-family-02:event5",
+          "parent_document_id": "ee26-family-02:source5",
+          "text": "사용자: 아이슬란드 대학에서 보늬판을 쓴대요.\n담당자: 그 대학의 독자적인 실험실 규칙이며 온도래사와는 아무 계약도 없습니다. 같은 이름일 뿐 우리 반출 절차는 아닙니다.",
+          "document_sha256": "ecdb13f24d1e98666b54baa9ebc0f7139c11cb5089b26ca49e2ad46f487282b1",
+          "target_surface": "보늬판",
+          "target_core_span": {
+            "start": 16,
+            "end": 19
+          },
+          "target_full_span": {
+            "start": 16,
+            "end": 19
+          },
+          "expected_entity_id": null,
+          "stratum": "country_nil",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "아이슬란드 대학의 별개 동명 규칙이다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-02:6",
+          "document_id": "ee26-family-02:doc6",
+          "event_id": "ee26-family-02:event6",
+          "parent_document_id": "ee26-family-02:source6",
+          "text": "상담원: 보늬판담당자에게 연락하셨나요?\n사용자: 네. 사람의 연락처를 묻는 중이고 반출 절차를 실행해 달라는 뜻은 아닙니다.",
+          "document_sha256": "69a498b399654e5fedebe8b6d1c00e2114b87f8b2cf38a72238f605ade686675",
+          "target_surface": "보늬판담당자",
+          "target_core_span": {
+            "start": 5,
+            "end": 8
+          },
+          "target_full_span": {
+            "start": 5,
+            "end": 11
+          },
+          "expected_entity_id": null,
+          "stratum": "role_full_surface",
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "전체 표현은 업무 담당자라는 사람 역할이며 절차 ID로 치환할 수 없다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-02:7",
+          "document_id": "ee26-family-02:doc7",
+          "event_id": "ee26-family-02:event7",
+          "parent_document_id": "ee26-family-02:source7",
+          "text": "상담원: 이슬턱은 온도래사의 영상 게재 서비스죠.\n사용자: 제가 문의한 이슬턱은 동네 극단의 공연 제목입니다. 극단과 회사는 별개이고 영상을 올리는 서비스도 아닙니다.",
+          "document_sha256": "d4b5265ef3f52849102444cbfbdded0dbb01906436a048a8d186d524eecce4e8",
+          "target_surface": "이슬턱",
+          "target_core_span": {
+            "start": 40,
+            "end": 43
+          },
+          "target_full_span": {
+            "start": 40,
+            "end": 43
+          },
+          "expected_entity_id": null,
+          "stratum": "repeated_title_nil",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "선행 언급과 달리 두 번째 같은 문자열은 외부 공연 제목이다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-02:8",
+          "document_id": "ee26-family-02:doc8",
+          "event_id": "ee26-family-02:event8",
+          "parent_document_id": "ee26-family-02:source8",
+          "text": "사용자: 문자에 “JXWR”만 왔어요.\n상담원: 표본 반출과 영상 게재에서 둘 다 쓰는 약자입니다. 발신자도 없어서 어느 쪽인지 정할 수 없네요.",
+          "document_sha256": "763259eac55a8eaa6c5cf37ed5d829bc68e9729941ec173a1c6b8263d03665e9",
+          "target_surface": "JXWR",
+          "target_core_span": {
+            "start": 10,
+            "end": 14
+          },
+          "target_full_span": {
+            "start": 10,
+            "end": 14
+          },
+          "expected_entity_id": null,
+          "stratum": "shared_alias_ambiguous",
+          "gold": {
+            "label": "AMBIGUOUS",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "두 후보가 남고 대화에서 구별하지 못한다.",
+          "evidence_design": "NEGATIVE"
+        }
+      ]
+    },
+    {
+      "family_id": "ee26-family-03",
+      "evaluation_split": "confirmation",
+      "scenario_style": "change_log",
+      "source_facts": "가상의 여울담사에는 서로 다른 두 업무가 있고 CVZJ라는 약칭만 공유한다. 다른 나라·과거 제도·직책·다른 부서의 동명 대상은 두 사전 항목과 별개다.",
+      "terms": [
+        {
+          "key": "ee26-family-03-a",
+          "canonical": "누에쇠 온실 급수 변경",
+          "surfaces": [
+            "누에쇠",
+            "CVZJ"
+          ],
+          "short_definition": "대한민국 여울담사 급수제어실에서 시행하는 현행 절차. 처리 업무: 온실 급수 변경. 다른 국가나 부서의 동명 업무는 포함하지 않는다.",
+          "applicability": {
+            "jurisdiction": [
+              "대한민국"
+            ],
+            "temporal_status": [
+              "현행"
+            ],
+            "referent_kind": [
+              "절차"
+            ],
+            "scope": [
+              "여울담사 급수제어실"
+            ]
+          }
+        },
+        {
+          "key": "ee26-family-03-b",
+          "canonical": "마름곶 종자 선별 요청",
+          "surfaces": [
+            "마름곶",
+            "CVZJ"
+          ],
+          "short_definition": "노르웨이 여울담사 종자검사실에서 시범 운영하는 플랫폼. 처리 업무: 종자 선별 요청. 다른 국가나 부서의 동명 업무는 포함하지 않는다.",
+          "applicability": {
+            "jurisdiction": [
+              "노르웨이"
+            ],
+            "temporal_status": [
+              "시범 운영"
+            ],
+            "referent_kind": [
+              "플랫폼"
+            ],
+            "scope": [
+              "여울담사 종자검사실"
+            ]
+          }
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "ee26-family-03:1",
+          "document_id": "ee26-family-03:doc1",
+          "event_id": "ee26-family-03:event1",
+          "parent_document_id": "ee26-family-03:source1",
+          "text": "변경 번호 418 | 대한민국 | 여울담사 급수제어실\n현재 적용: 현행 절차 누에쇠\n조치: 야간 급수 간격을 수정했다. 온실 문손잡이의 불량 보고는 이번 절차와 관련이 없다.",
+          "document_sha256": "823425b50f4bdf87fbf901a4f21e94e770cd1ce236f6410ba421df28d52bfc41",
+          "target_surface": "누에쇠",
+          "target_core_span": {
+            "start": 43,
+            "end": 46
+          },
+          "target_full_span": {
+            "start": 43,
+            "end": 46
+          },
+          "expected_entity_id": "global:ee26-family-03-a",
+          "stratum": "easy_explicit",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-03-a",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "누에쇠 온실 급수 변경"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "구조화된 변경 로그가 A의 국가·조직·상태·종류를 모두 제시한다.",
+          "evidence_design": "EXPLICIT_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-03:2",
+          "document_id": "ee26-family-03:doc2",
+          "event_id": "ee26-family-03:event2",
+          "parent_document_id": "ee26-family-03:source2",
+          "text": "14:02 위치를 노르웨이로 정정했다.\n14:05 관리 주체를 여울담사 종자검사실로 확인했다.\n14:07 분류는 플랫폼, 상태는 시범 운영으로 확정했다.\n14:10 마름곶의 선별 요청 큐를 비웠다.",
+          "document_sha256": "cc47914677d969281b2cfae715bb9ddbf247d7ae2622b572f3e1cbe926b37a0a",
+          "target_surface": "마름곶",
+          "target_core_span": {
+            "start": 92,
+            "end": 95
+          },
+          "target_full_span": {
+            "start": 92,
+            "end": 95
+          },
+          "expected_entity_id": "global:ee26-family-03-b",
+          "stratum": "cross_sentence_positive",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-03-b",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "마름곶 종자 선별 요청"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "여러 시점의 갱신값이 하나의 B 항목에 결합된다.",
+          "evidence_design": "CROSS_SENTENCE_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-03:3",
+          "document_id": "ee26-family-03:doc3",
+          "event_id": "ee26-family-03:event3",
+          "parent_document_id": "ee26-family-03:source3",
+          "text": "패치 설명: “CVZJ”의 관수 변경 접수를 복구했다. 적용 범위는 대한민국 여울담사 급수제어실의 현행 절차다. 종자 선별 쪽과 파일 이름을 공유해도 이번 패치는 급수 업무에만 해당한다.",
+          "document_sha256": "f4455d7bedf8ce7bd0b5cde4585889389b4dbd518b6c7583dc799a3ec33ea3f9",
+          "target_surface": "CVZJ",
+          "target_core_span": {
+            "start": 8,
+            "end": 12
+          },
+          "target_full_span": {
+            "start": 8,
+            "end": 12
+          },
+          "expected_entity_id": "global:ee26-family-03-a",
+          "stratum": "shared_alias_resolvable",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-03-a",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "누에쇠 온실 급수 변경"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "약칭 충돌을 업무 범위로 해소한 A다.",
+          "evidence_design": "EXPLICIT_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-03:4",
+          "document_id": "ee26-family-03:doc4",
+          "event_id": "ee26-family-03:event4",
+          "parent_document_id": "ee26-family-03:source4",
+          "text": "커밋 설명에는 누에쇠 온실 급수 변경의 요청 번호를 고쳤다고만 적혀 있다. 소유자는 여울담사 급수제어실로 확인했으나 국가와 운영 단계는 이번 로그에서 생략했다.",
+          "document_sha256": "bd443da11ee3b4e3b0f6ec186847d6559640daa85598a21216390f199ebe8dba",
+          "target_surface": "누에쇠 온실 급수 변경",
+          "target_core_span": {
+            "start": 8,
+            "end": 20
+          },
+          "target_full_span": {
+            "start": 8,
+            "end": 20
+          },
+          "expected_entity_id": "global:ee26-family-03-a",
+          "stratum": "implicit_attribute_positive",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-03-a",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "누에쇠 온실 급수 변경"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "정식 명칭과 소유자로 A를 알 수 있으나 국가·상태의 원문 인용은 없다.",
+          "evidence_design": "IMPLICIT_ATTRIBUTE_POSITIVE"
+        },
+        {
+          "case_id": "ee26-family-03:5",
+          "document_id": "ee26-family-03:doc5",
+          "event_id": "ee26-family-03:event5",
+          "parent_document_id": "ee26-family-03:source5",
+          "text": "외부 이력 가져오기: 케냐 협동조합의 누에쇠를 텍스트로 보관했다. 해당 이름은 현지의 출하 장부를 뜻한다. 대한민국 온실 급수 절차의 해외 버전이 아니다.",
+          "document_sha256": "71e14decf9734fd626f6c5ebc22dbf0263aed7649990b7c9f86c6347161a911b",
+          "target_surface": "누에쇠",
+          "target_core_span": {
+            "start": 21,
+            "end": 24
+          },
+          "target_full_span": {
+            "start": 21,
+            "end": 24
+          },
+          "expected_entity_id": null,
+          "stratum": "country_nil",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "케냐의 출하 장부는 사전의 A와 별개다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-03:6",
+          "document_id": "ee26-family-03:doc6",
+          "event_id": "ee26-family-03:event6",
+          "parent_document_id": "ee26-family-03:source6",
+          "text": "예제 문자열을 바꿨다. 새 비밀번호 예시는 “누에쇠”이고 이 줄에서 어떤 실제 절차도 지칭하지 않는다. 이 변경은 화면의 인용 예문만 수정한다.",
+          "document_sha256": "14f984844eb762fbbdbe37d4f9c792285cb7e67bb249e68d757ce87fe57e10c5",
+          "target_surface": "누에쇠",
+          "target_core_span": {
+            "start": 25,
+            "end": 28
+          },
+          "target_full_span": {
+            "start": 25,
+            "end": 28
+          },
+          "expected_entity_id": null,
+          "stratum": "quoted_string_nonmention",
+          "gold": {
+            "label": "NON_MENTION",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "인용된 문자열은 비밀번호 예시로만 사용되며 사전 대상의 언급이 아니다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-03:7",
+          "document_id": "ee26-family-03:doc7",
+          "event_id": "ee26-family-03:event7",
+          "parent_document_id": "ee26-family-03:source7",
+          "text": "첫 실행에서 누에쇠의 급수 변경 기록을 저장했다. 두 번째 실행의 누에쇠는 독립 관측소의 망원경 잠금 명령이다. 로그 합치기 과정에서 이름이 같아졌을 뿐 두 명령은 연동되지 않는다.",
+          "document_sha256": "5be3e77ac27692b4c7cf65b415def37f4efc5e0da3f10b4392d255dc228ccb1e",
+          "target_surface": "누에쇠",
+          "target_core_span": {
+            "start": 37,
+            "end": 40
+          },
+          "target_full_span": {
+            "start": 37,
+            "end": 40
+          },
+          "expected_entity_id": null,
+          "stratum": "repeated_rival_scope",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "선택된 두 번째 발생은 외부 관측소의 별개 명령이다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-03:8",
+          "document_id": "ee26-family-03:doc8",
+          "event_id": "ee26-family-03:event8",
+          "parent_document_id": "ee26-family-03:source8",
+          "text": "변경 대상 필드: “CVZJ”. 급수·종자 두 팀이 같은 시간에 요청했고 요청 번호와 소유자 필드는 유실됐다. 이 로그만으로 팀을 고를 수 없다.",
+          "document_sha256": "6f3dab8f26bc04b8d9e694560a9915b706c733f326541d53d46a5fb20faacf07",
+          "target_surface": "CVZJ",
+          "target_core_span": {
+            "start": 11,
+            "end": 15
+          },
+          "target_full_span": {
+            "start": 11,
+            "end": 15
+          },
+          "expected_entity_id": null,
+          "stratum": "shared_alias_ambiguous",
+          "gold": {
+            "label": "AMBIGUOUS",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "두 업무가 대등하게 남고 소유자 근거가 없다.",
+          "evidence_design": "NEGATIVE"
+        }
+      ]
+    },
+    {
+      "family_id": "ee26-family-04",
+      "evaluation_split": "confirmation",
+      "scenario_style": "handover_memo",
+      "source_facts": "가상의 소담늪사에는 서로 다른 두 업무가 있고 FZQT라는 약칭만 공유한다. 다른 나라·과거 제도·직책·다른 부서의 동명 대상은 두 사전 항목과 별개다.",
+      "terms": [
+        {
+          "key": "ee26-family-04-a",
+          "canonical": "오목재 보관 시료 폐기",
+          "surfaces": [
+            "오목재",
+            "FZQT"
+          ],
+          "short_definition": "대한민국 소담늪사 시료보관실에서 시행하는 현행 절차. 처리 업무: 보관 시료 폐기. 다른 국가나 부서의 동명 업무는 포함하지 않는다.",
+          "applicability": {
+            "jurisdiction": [
+              "대한민국"
+            ],
+            "temporal_status": [
+              "현행"
+            ],
+            "referent_kind": [
+              "절차"
+            ],
+            "scope": [
+              "소담늪사 시료보관실"
+            ]
+          }
+        },
+        {
+          "key": "ee26-family-04-b",
+          "canonical": "잎새틀 시험 장비 예약",
+          "surfaces": [
+            "잎새틀",
+            "FZQT"
+          ],
+          "short_definition": "스위스 소담늪사 장비공유실에서 시범 운영하는 시스템. 처리 업무: 시험 장비 예약. 다른 국가나 부서의 동명 업무는 포함하지 않는다.",
+          "applicability": {
+            "jurisdiction": [
+              "스위스"
+            ],
+            "temporal_status": [
+              "시범 운영"
+            ],
+            "referent_kind": [
+              "시스템"
+            ],
+            "scope": [
+              "소담늪사 장비공유실"
+            ]
+          }
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "ee26-family-04:1",
+          "document_id": "ee26-family-04:doc1",
+          "event_id": "ee26-family-04:event1",
+          "parent_document_id": "ee26-family-04:source1",
+          "text": "아침 교대 인수 메모\n대한민국 소담늪사 시료보관실에서 쓰는 현행 절차는 오목재다. 오늘 폐기할 시료 목록을 이 절차에 넘겼다. 냉장고 표면의 얼룩은 폐기 승인과 무관하다.",
+          "document_sha256": "957f5d235de2c9eff8262bf8546c3137bd222b5fb7e1798437994d9493b56746",
+          "target_surface": "오목재",
+          "target_core_span": {
+            "start": 40,
+            "end": 43
+          },
+          "target_full_span": {
+            "start": 40,
+            "end": 43
+          },
+          "expected_entity_id": "global:ee26-family-04-a",
+          "stratum": "easy_explicit",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-04-a",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "오목재 보관 시료 폐기"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "인수 범위와 절차 속성이 A와 일치한다.",
+          "evidence_design": "EXPLICIT_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-04:2",
+          "document_id": "ee26-family-04:doc2",
+          "event_id": "ee26-family-04:event2",
+          "parent_document_id": "ee26-family-04:source2",
+          "text": "야간 담당자가 남긴 봉투는 스위스 사무실에서 왔다. 봉투의 소관은 소담늪사 장비공유실이다. 분류표에는 시스템, 단계표에는 시범 운영이라고 쓰여 있다. 인수 대상 잎새틀에는 다음 주 장비 예약이 남아 있다.",
+          "document_sha256": "d6bca118eae418c3e26a1725d768c67cebf64f1cf91aa7e23628804bd07adddb",
+          "target_surface": "잎새틀",
+          "target_core_span": {
+            "start": 90,
+            "end": 93
+          },
+          "target_full_span": {
+            "start": 90,
+            "end": 93
+          },
+          "expected_entity_id": "global:ee26-family-04-b",
+          "stratum": "cross_sentence_positive",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-04-b",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "잎새틀 시험 장비 예약"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "봉투·분류표의 속성이 같은 B 인수 대상을 설명한다.",
+          "evidence_design": "CROSS_SENTENCE_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-04:3",
+          "document_id": "ee26-family-04:doc3",
+          "event_id": "ee26-family-04:event3",
+          "parent_document_id": "ee26-family-04:source3",
+          "text": "후임에게: “FZQT”에서 폐기 대기 목록만 확인하세요. 대한민국 소담늪사 시료보관실의 현행 절차를 말합니다. 장비 예약 시스템의 같은 약자는 이번 교대에서 다루지 않습니다.",
+          "document_sha256": "dfeaeb4ae1a76ad52afe0486f3a0df7378397263c4d6021e654e50776445c1ec",
+          "target_surface": "FZQT",
+          "target_core_span": {
+            "start": 7,
+            "end": 11
+          },
+          "target_full_span": {
+            "start": 7,
+            "end": 11
+          },
+          "expected_entity_id": "global:ee26-family-04-a",
+          "stratum": "shared_alias_resolvable",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-04-a",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "오목재 보관 시료 폐기"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "인수 지시의 업무와 명시적 속성으로 A다.",
+          "evidence_design": "EXPLICIT_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-04:4",
+          "document_id": "ee26-family-04:doc4",
+          "event_id": "ee26-family-04:event4",
+          "parent_document_id": "ee26-family-04:source4",
+          "text": "인계할 항목은 잎새틀 시험 장비 예약이다. 관리 대장은 소담늪사 장비공유실의 소유로 남아 있다. 국가와 운용 단계는 앞 근무조의 구두 설명에 있었지만 이 메모에는 기록하지 않았다.",
+          "document_sha256": "24261b23a49bf2dd9684827c83e8e0885d6a945e8ed06c0a791d0e74c241a782",
+          "target_surface": "잎새틀 시험 장비 예약",
+          "target_core_span": {
+            "start": 8,
+            "end": 20
+          },
+          "target_full_span": {
+            "start": 8,
+            "end": 20
+          },
+          "expected_entity_id": "global:ee26-family-04-b",
+          "stratum": "implicit_attribute_positive",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-04-b",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "잎새틀 시험 장비 예약"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "B의 정식 명칭과 관리 주체로 연결할 수 있으나 두 속성은 본문에 없다.",
+          "evidence_design": "IMPLICIT_ATTRIBUTE_POSITIVE"
+        },
+        {
+          "case_id": "ee26-family-04:5",
+          "document_id": "ee26-family-04:doc5",
+          "event_id": "ee26-family-04:event5",
+          "parent_document_id": "ee26-family-04:source5",
+          "text": "외부 참관 자료에 오목재라는 이름이 있다. 이는 그리스 보존연구소의 소장품 포장 방법이다. 대한민국 회사의 시료 폐기 절차와는 별개이므로 인수 업무로 가져오지 않는다.",
+          "document_sha256": "37823df93ca18ae6d24933758505661bf6b3de5d8cdad9c616f09559c5f6ae17",
+          "target_surface": "오목재",
+          "target_core_span": {
+            "start": 10,
+            "end": 13
+          },
+          "target_full_span": {
+            "start": 10,
+            "end": 13
+          },
+          "expected_entity_id": null,
+          "stratum": "country_nil",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "그리스 연구소의 동명 포장 방법은 등록 A가 아니다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-04:6",
+          "document_id": "ee26-family-04:doc6",
+          "event_id": "ee26-family-04:event6",
+          "parent_document_id": "ee26-family-04:source6",
+          "text": "품질교육실이 새로 만든 현행 절차 오목재는 강사 배정용이다. 소담늪사 시료보관실의 폐기 절차를 복제한 것이 아니라 이름만 우연히 같다. 두 부서는 승인 장부도 공유하지 않는다.",
+          "document_sha256": "22a22806aa233596cc1f407b60c52ffa7dd4ab2d09eff854e0144ec9f2dce81c",
+          "target_surface": "오목재",
+          "target_core_span": {
+            "start": 19,
+            "end": 22
+          },
+          "target_full_span": {
+            "start": 19,
+            "end": 22
+          },
+          "expected_entity_id": null,
+          "stratum": "rival_scope_nil",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "다른 부서의 별도 강사 배정 절차이며 A의 scope 밖이다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-04:7",
+          "document_id": "ee26-family-04:doc7",
+          "event_id": "ee26-family-04:event7",
+          "parent_document_id": "ee26-family-04:source7",
+          "text": "전임자는 잎새틀의 장비 예약을 마쳤다. 후임이 따로 적은 잎새틀은 퇴직자 동호회의 모임방 이름이다. 회사 시스템이 아니라는 확인을 받고도 원문 보존을 위해 남긴다.",
+          "document_sha256": "c825afa5df5682f1894fe5299bd3e8bc0c740cdb8b06913464386b74667e8881",
+          "target_surface": "잎새틀",
+          "target_core_span": {
+            "start": 32,
+            "end": 35
+          },
+          "target_full_span": {
+            "start": 32,
+            "end": 35
+          },
+          "expected_entity_id": null,
+          "stratum": "repeated_rival_scope",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "두 번째 발생은 회사 밖 동호회의 장소다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-04:8",
+          "document_id": "ee26-family-04:doc8",
+          "event_id": "ee26-family-04:event8",
+          "parent_document_id": "ee26-family-04:source8",
+          "text": "정체를 확인하지 못한 봉투에는 “FZQT”만 쓰여 있다. 폐기 목록인지 장비 예약인지 안에 서류가 없고 어느 팀이 보냈는지도 모른다.",
+          "document_sha256": "ec5adf2f323bbe303e823badcd482db412b64fc81dc13fc835ebcb300633d658",
+          "target_surface": "FZQT",
+          "target_core_span": {
+            "start": 18,
+            "end": 22
+          },
+          "target_full_span": {
+            "start": 18,
+            "end": 22
+          },
+          "expected_entity_id": null,
+          "stratum": "shared_alias_ambiguous",
+          "gold": {
+            "label": "AMBIGUOUS",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "공유 약칭만 남아 두 항목 중 선택할 수 없다.",
+          "evidence_design": "NEGATIVE"
+        }
+      ]
+    },
+    {
+      "family_id": "ee26-family-05",
+      "evaluation_split": "development",
+      "scenario_style": "work_ledger",
+      "source_facts": "가상의 해나음사에는 서로 다른 두 업무가 있고 WQZN라는 약칭만 공유한다. 다른 나라·과거 제도·직책·다른 부서의 동명 대상은 두 사전 항목과 별개다.",
+      "terms": [
+        {
+          "key": "ee26-family-05-a",
+          "canonical": "버들숯 방화문 검사 승인",
+          "surfaces": [
+            "버들숯",
+            "WQZN"
+          ],
+          "short_definition": "대한민국 해나음사 내화검사실에서 시행하는 현행 절차. 처리 업무: 방화문 검사 승인. 다른 국가나 부서의 동명 업무는 포함하지 않는다.",
+          "applicability": {
+            "jurisdiction": [
+              "대한민국"
+            ],
+            "temporal_status": [
+              "현행"
+            ],
+            "referent_kind": [
+              "절차"
+            ],
+            "scope": [
+              "해나음사 내화검사실"
+            ]
+          }
+        },
+        {
+          "key": "ee26-family-05-b",
+          "canonical": "조약빗 운임 차액 정산",
+          "surfaces": [
+            "조약빗",
+            "WQZN"
+          ],
+          "short_definition": "오스트리아 해나음사 운임정산실에서 시범 운영하는 서비스. 처리 업무: 운임 차액 정산. 다른 국가나 부서의 동명 업무는 포함하지 않는다.",
+          "applicability": {
+            "jurisdiction": [
+              "오스트리아"
+            ],
+            "temporal_status": [
+              "시범 운영"
+            ],
+            "referent_kind": [
+              "서비스"
+            ],
+            "scope": [
+              "해나음사 운임정산실"
+            ]
+          }
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "ee26-family-05:1",
+          "document_id": "ee26-family-05:doc1",
+          "event_id": "ee26-family-05:event1",
+          "parent_document_id": "ee26-family-05:source1",
+          "text": "승인 원장 / 대한민국 해나음사 내화검사실\n등록 종류는 현행 절차이며 이번 항목은 버들숯이다. 방화문 검사 결과를 결재했다. 택배 지연은 이 승인과 관계없다.",
+          "document_sha256": "bdca0e9d9a64890e415d895b0675901b9c1accf98fbe9f666adb242aa7ad26f7",
+          "target_surface": "버들숯",
+          "target_core_span": {
+            "start": 46,
+            "end": 49
+          },
+          "target_full_span": {
+            "start": 46,
+            "end": 49
+          },
+          "expected_entity_id": "global:ee26-family-05-a",
+          "stratum": "easy_explicit",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-05-a",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "버들숯 방화문 검사 승인"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "A의 네 속성이 원장의 머리말과 항목에 명시돼 있다.",
+          "evidence_design": "EXPLICIT_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-05:2",
+          "document_id": "ee26-family-05:doc2",
+          "event_id": "ee26-family-05:event2",
+          "parent_document_id": "ee26-family-05:source2",
+          "text": "정산 원장에는 소속 지역이 오스트리아로 나온다. 작성 팀은 해나음사 운임정산실이다. 조약빗의 유형은 서비스이고 지금은 시범 운영 단계다. 지급 차액은 다음 장에 합산했다.",
+          "document_sha256": "7f972dac9c08208d9fcff5c393a85888331c638cfd4b2d6b51d61d62daa8278e",
+          "target_surface": "조약빗",
+          "target_core_span": {
+            "start": 47,
+            "end": 50
+          },
+          "target_full_span": {
+            "start": 47,
+            "end": 50
+          },
+          "expected_entity_id": "global:ee26-family-05-b",
+          "stratum": "cross_sentence_positive",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-05-b",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "조약빗 운임 차액 정산"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "문장 간 속성을 합치면 B다.",
+          "evidence_design": "CROSS_SENTENCE_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-05:3",
+          "document_id": "ee26-family-05:doc3",
+          "event_id": "ee26-family-05:event3",
+          "parent_document_id": "ee26-family-05:source3",
+          "text": "원장 머리말은 대한민국 해나음사 내화검사실의 현행 절차라고 밝힌다. 항목 “WQZN” 아래에 방화문 검사 결과를 첨부했다. 운임 정산에서 쓰는 같은 약칭은 이 번호와 연결하지 않는다.",
+          "document_sha256": "b95fb34621858a55f3bb06019ffaa12798ef1950f3ae87fc7f555d6f81264de5",
+          "target_surface": "WQZN",
+          "target_core_span": {
+            "start": 42,
+            "end": 46
+          },
+          "target_full_span": {
+            "start": 42,
+            "end": 46
+          },
+          "expected_entity_id": "global:ee26-family-05-a",
+          "stratum": "shared_alias_resolvable",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-05-a",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "버들숯 방화문 검사 승인"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "명시된 범위와 방화문 업무로 A를 고를 수 있다.",
+          "evidence_design": "EXPLICIT_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-05:4",
+          "document_id": "ee26-family-05:doc4",
+          "event_id": "ee26-family-05:event4",
+          "parent_document_id": "ee26-family-05:source4",
+          "text": "감사 원장에 버들숯 방화문 검사 승인의 승인 번호가 남아 있다. 해나음사 내화검사실의 도장을 확인했다. 이 사본에는 국가나 운영 단계가 적힌 표지가 포함되지 않았다.",
+          "document_sha256": "900a60f3a5c416244d0ef51428ad9f2e97b923b7ad80ee0f0b62a174b39757d2",
+          "target_surface": "버들숯 방화문 검사 승인",
+          "target_core_span": {
+            "start": 7,
+            "end": 20
+          },
+          "target_full_span": {
+            "start": 7,
+            "end": 20
+          },
+          "expected_entity_id": "global:ee26-family-05-a",
+          "stratum": "implicit_attribute_positive",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-05-a",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "버들숯 방화문 검사 승인"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "정식 명칭과 담당 조직은 충분하지만 국가·상태는 원문에 없다.",
+          "evidence_design": "IMPLICIT_ATTRIBUTE_POSITIVE"
+        },
+        {
+          "case_id": "ee26-family-05:5",
+          "document_id": "ee26-family-05:doc5",
+          "event_id": "ee26-family-05:event5",
+          "parent_document_id": "ee26-family-05:source5",
+          "text": "뉴질랜드 운송회사가 버들숯이라는 운전기사 수당표를 보냈다. 자체적으로 정한 이름이며 대한민국 회사의 방화문 검사 절차와는 아무 관련이 없다.",
+          "document_sha256": "a4525cf5606f506134e7ebe6715e7ee3f415df38f4fb50b8164eda0e2e63fcba",
+          "target_surface": "버들숯",
+          "target_core_span": {
+            "start": 11,
+            "end": 14
+          },
+          "target_full_span": {
+            "start": 11,
+            "end": 14
+          },
+          "expected_entity_id": null,
+          "stratum": "country_nil",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "뉴질랜드의 수당표라는 다른 대상을 가리킨다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-05:6",
+          "document_id": "ee26-family-05:doc6",
+          "event_id": "ee26-family-05:event6",
+          "parent_document_id": "ee26-family-05:source6",
+          "text": "보존 원장의 버들숯은 1996년에 종료한 구내식당 식권 제도다. 지금 방화문 검사에 쓰는 이름과 우연히 같지만 업무나 기록을 이어받은 관계는 아니다.",
+          "document_sha256": "97c9e5b4ef936c956c30dd0fd75b3c8c925fea90b19d2bff8f4e8c8e846d22ef",
+          "target_surface": "버들숯",
+          "target_core_span": {
+            "start": 7,
+            "end": 10
+          },
+          "target_full_span": {
+            "start": 7,
+            "end": 10
+          },
+          "expected_entity_id": null,
+          "stratum": "historical_nil",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "현행 A와 계승 관계가 없는 옛 동명 제도다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-05:7",
+          "document_id": "ee26-family-05:doc7",
+          "event_id": "ee26-family-05:event7",
+          "parent_document_id": "ee26-family-05:source7",
+          "text": "이 원장의 버들숯은 방화문 검사 건이다. 별책의 버들숯은 독립 재단이 만든 음악회 할인권 이름이라고 관리자가 정정했다. 두 번째 항목은 회사 결재 대상이 아니다.",
+          "document_sha256": "4d8e3bfb6911da7854d4aa512f56df67d702147c22f208c08487d92b49060367",
+          "target_surface": "버들숯",
+          "target_core_span": {
+            "start": 27,
+            "end": 30
+          },
+          "target_full_span": {
+            "start": 27,
+            "end": 30
+          },
+          "expected_entity_id": null,
+          "stratum": "repeated_rival_scope",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "후행 동명 문자열은 재단 할인권이다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-05:8",
+          "document_id": "ee26-family-05:doc8",
+          "event_id": "ee26-family-05:event8",
+          "parent_document_id": "ee26-family-05:source8",
+          "text": "분류를 잃은 종이에는 “WQZN” 표기와 날짜만 있다. 방화문 승인 원장과 운임 원장 모두 그 약자를 써서 원장 주인을 특정할 수 없다.",
+          "document_sha256": "46152d3c5e46d7579ea57826480f58b1e482d57cb80d94816294ac2d64624aa6",
+          "target_surface": "WQZN",
+          "target_core_span": {
+            "start": 13,
+            "end": 17
+          },
+          "target_full_span": {
+            "start": 13,
+            "end": 17
+          },
+          "expected_entity_id": null,
+          "stratum": "shared_alias_ambiguous",
+          "gold": {
+            "label": "AMBIGUOUS",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "두 동음 약칭 후보의 구별 근거가 없다.",
+          "evidence_design": "NEGATIVE"
+        }
+      ]
+    },
+    {
+      "family_id": "ee26-family-06",
+      "evaluation_split": "confirmation",
+      "scenario_style": "support_dialogue",
+      "source_facts": "가상의 누리샘사에는 서로 다른 두 업무가 있고 KXQV라는 약칭만 공유한다. 다른 나라·과거 제도·직책·다른 부서의 동명 대상은 두 사전 항목과 별개다.",
+      "terms": [
+        {
+          "key": "ee26-family-06-a",
+          "canonical": "햇무쌍 독성 시약 반입",
+          "surfaces": [
+            "햇무쌍",
+            "KXQV"
+          ],
+          "short_definition": "대한민국 누리샘사 독성평가실에서 시행하는 현행 절차. 처리 업무: 독성 시약 반입. 다른 국가나 부서의 동명 업무는 포함하지 않는다.",
+          "applicability": {
+            "jurisdiction": [
+              "대한민국"
+            ],
+            "temporal_status": [
+              "현행"
+            ],
+            "referent_kind": [
+              "절차"
+            ],
+            "scope": [
+              "누리샘사 독성평가실"
+            ]
+          }
+        },
+        {
+          "key": "ee26-family-06-b",
+          "canonical": "자갈록 광학 부품 발주",
+          "surfaces": [
+            "자갈록",
+            "KXQV"
+          ],
+          "short_definition": "아일랜드 누리샘사 해외구매실에서 시범 운영하는 플랫폼. 처리 업무: 광학 부품 발주. 다른 국가나 부서의 동명 업무는 포함하지 않는다.",
+          "applicability": {
+            "jurisdiction": [
+              "아일랜드"
+            ],
+            "temporal_status": [
+              "시범 운영"
+            ],
+            "referent_kind": [
+              "플랫폼"
+            ],
+            "scope": [
+              "누리샘사 해외구매실"
+            ]
+          }
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "ee26-family-06:1",
+          "document_id": "ee26-family-06:doc1",
+          "event_id": "ee26-family-06:event1",
+          "parent_document_id": "ee26-family-06:source1",
+          "text": "사용자: 대한민국 누리샘사 독성평가실에서 현행 절차 햇무쌍을 진행 중입니다.\n상담원: 시약 반입 건을 확인했습니다. 창고 에어컨 고장은 절차의 유효 여부와 무관합니다.",
+          "document_sha256": "a5921ef6124f94ba1226c158db7a72e2af725d8fb29bec930dc899348fb79392",
+          "target_surface": "햇무쌍",
+          "target_core_span": {
+            "start": 29,
+            "end": 32
+          },
+          "target_full_span": {
+            "start": 29,
+            "end": 32
+          },
+          "expected_entity_id": "global:ee26-family-06-a",
+          "stratum": "easy_explicit",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-06-a",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "햇무쌍 독성 시약 반입"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "사용자의 명시적 설명이 A 정의와 일치한다.",
+          "evidence_design": "EXPLICIT_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-06:2",
+          "document_id": "ee26-family-06:doc2",
+          "event_id": "ee26-family-06:event2",
+          "parent_document_id": "ee26-family-06:source2",
+          "text": "상담원: 해외 사무실의 나라는 어디인가요?\n사용자: 아일랜드이고 팀은 누리샘사 해외구매실이에요.\n상담원: 시범 운영 중인 플랫폼 맞나요?\n사용자: 네. 자갈록의 부품 주문을 확인하려고요.",
+          "document_sha256": "b452e2c4ac217b807433cee8e822de3b5b69fc5d4fc91cc88b61b450483b5d6c",
+          "target_surface": "자갈록",
+          "target_core_span": {
+            "start": 85,
+            "end": 88
+          },
+          "target_full_span": {
+            "start": 85,
+            "end": 88
+          },
+          "expected_entity_id": "global:ee26-family-06-b",
+          "stratum": "cross_sentence_positive",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-06-b",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "자갈록 광학 부품 발주"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "질문·확인 응답에 흩어진 속성이 B를 특정한다.",
+          "evidence_design": "CROSS_SENTENCE_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-06:3",
+          "document_id": "ee26-family-06:doc3",
+          "event_id": "ee26-family-06:event3",
+          "parent_document_id": "ee26-family-06:source3",
+          "text": "상담원: “KXQV”라는 약자는 어느 업무에서 보셨나요?\n사용자: 대한민국 누리샘사 독성평가실의 현행 절차에서요. 독성 시약을 반입하는 건이며 부품 발주 쪽이 아닙니다.",
+          "document_sha256": "60b092efc5332895564e3a71b395333b265b487acf48692c8f89a77c8ed216ae",
+          "target_surface": "KXQV",
+          "target_core_span": {
+            "start": 6,
+            "end": 10
+          },
+          "target_full_span": {
+            "start": 6,
+            "end": 10
+          },
+          "expected_entity_id": "global:ee26-family-06-a",
+          "stratum": "shared_alias_resolvable",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-06-a",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "햇무쌍 독성 시약 반입"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "시약 업무와 범위가 A를 선택한다.",
+          "evidence_design": "EXPLICIT_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-06:4",
+          "document_id": "ee26-family-06:doc4",
+          "event_id": "ee26-family-06:event4",
+          "parent_document_id": "ee26-family-06:source4",
+          "text": "사용자: 자갈록 광학 부품 발주에서 주문서를 수정해 주세요.\n상담원: 누리샘사 해외구매실이 관리하는 항목이 맞습니다. 이 상담 내역에는 국가와 운영 단계 정보가 없습니다.",
+          "document_sha256": "dae60981b9f7a39d223573f3bc6c0d7718ff8b50183e4f569dc76723be890c13",
+          "target_surface": "자갈록 광학 부품 발주",
+          "target_core_span": {
+            "start": 5,
+            "end": 17
+          },
+          "target_full_span": {
+            "start": 5,
+            "end": 17
+          },
+          "expected_entity_id": "global:ee26-family-06-b",
+          "stratum": "implicit_attribute_positive",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-06-b",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "자갈록 광학 부품 발주"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "B의 정식 명칭과 관리 조직을 확인했지만 두 속성은 명시되지 않는다.",
+          "evidence_design": "IMPLICIT_ATTRIBUTE_POSITIVE"
+        },
+        {
+          "case_id": "ee26-family-06:5",
+          "document_id": "ee26-family-06:doc5",
+          "event_id": "ee26-family-06:event5",
+          "parent_document_id": "ee26-family-06:source5",
+          "text": "사용자: 대만 민간연구소의 햇무쌍이 궁금해요.\n상담원: 그 연구소의 근무 교대표이고 우리 독성 시약 반입 절차와 무관합니다. 회사 업무로 연결할 수 없습니다.",
+          "document_sha256": "a7cc7972f81a2c86e87733ca50d8f4ec3f669fc24eedfaf686b9e561a871ce3a",
+          "target_surface": "햇무쌍",
+          "target_core_span": {
+            "start": 15,
+            "end": 18
+          },
+          "target_full_span": {
+            "start": 15,
+            "end": 18
+          },
+          "expected_entity_id": null,
+          "stratum": "country_nil",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "대만 연구소의 교대표는 A와 다른 대상이다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-06:6",
+          "document_id": "ee26-family-06:doc6",
+          "event_id": "ee26-family-06:event6",
+          "parent_document_id": "ee26-family-06:source6",
+          "text": "사용자: 햇무쌍담당자의 내선 번호가 필요해요.\n상담원: 절차 자체가 아니라 담당 역할을 맡은 사람을 찾는 요청으로 기록할게요.",
+          "document_sha256": "5b605c153b7dbca849581961edca3c8bf38e308da5be012ef6321f3430cc6d4f",
+          "target_surface": "햇무쌍담당자",
+          "target_core_span": {
+            "start": 5,
+            "end": 8
+          },
+          "target_full_span": {
+            "start": 5,
+            "end": 11
+          },
+          "expected_entity_id": null,
+          "stratum": "role_full_surface",
+          "gold": {
+            "label": "COMPOSITIONAL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "전체 표현은 사람 역할이라 절차 ID로 실행하면 의미가 달라진다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-06:7",
+          "document_id": "ee26-family-06:doc7",
+          "event_id": "ee26-family-06:event7",
+          "parent_document_id": "ee26-family-06:source7",
+          "text": "상담원: 햇무쌍은 시약 반입 절차입니다.\n사용자: 여기서 말한 햇무쌍은 우리 아파트의 우편함 별명이에요. 연구소나 회사 절차를 말한 게 아닙니다.",
+          "document_sha256": "620bc31586d5a02a8e15f79b0d3a185b080384e8a6a77b07275200482a3d2e16",
+          "target_surface": "햇무쌍",
+          "target_core_span": {
+            "start": 35,
+            "end": 38
+          },
+          "target_full_span": {
+            "start": 35,
+            "end": 38
+          },
+          "expected_entity_id": null,
+          "stratum": "repeated_rival_scope",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "선택된 후행 발생은 사적인 우편함 이름이다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-06:8",
+          "document_id": "ee26-family-06:doc8",
+          "event_id": "ee26-family-06:event8",
+          "parent_document_id": "ee26-family-06:source8",
+          "text": "사용자: “KXQV”라는 안내만 받았어요.\n상담원: 시약 반입과 광학 부품 발주가 같은 약자를 쓰는데, 보낸 사람도 업무 내용도 없으니 선택할 수 없습니다.",
+          "document_sha256": "eeb80f153ac0dd741c00c23118a3b8cd0f895a072dc3d1b450218031083ca73c",
+          "target_surface": "KXQV",
+          "target_core_span": {
+            "start": 6,
+            "end": 10
+          },
+          "target_full_span": {
+            "start": 6,
+            "end": 10
+          },
+          "expected_entity_id": null,
+          "stratum": "shared_alias_ambiguous",
+          "gold": {
+            "label": "AMBIGUOUS",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "두 후보 중 어느 업무인지 결정할 근거가 없다.",
+          "evidence_design": "NEGATIVE"
+        }
+      ]
+    },
+    {
+      "family_id": "ee26-family-07",
+      "evaluation_split": "confirmation",
+      "scenario_style": "change_log",
+      "source_facts": "가상의 다솜곁사에는 서로 다른 두 업무가 있고 VJQX라는 약칭만 공유한다. 다른 나라·과거 제도·직책·다른 부서의 동명 대상은 두 사전 항목과 별개다.",
+      "terms": [
+        {
+          "key": "ee26-family-07-a",
+          "canonical": "다래쇠 계약 원본 봉인",
+          "surfaces": [
+            "다래쇠",
+            "VJQX"
+          ],
+          "short_definition": "대한민국 다솜곁사 기록보존실에서 시행하는 현행 절차. 처리 업무: 계약 원본 봉인. 다른 국가나 부서의 동명 업무는 포함하지 않는다.",
+          "applicability": {
+            "jurisdiction": [
+              "대한민국"
+            ],
+            "temporal_status": [
+              "현행"
+            ],
+            "referent_kind": [
+              "절차"
+            ],
+            "scope": [
+              "다솜곁사 기록보존실"
+            ]
+          }
+        },
+        {
+          "key": "ee26-family-07-b",
+          "canonical": "해묵섶 풍향 관측 집계",
+          "surfaces": [
+            "해묵섶",
+            "VJQX"
+          ],
+          "short_definition": "에스토니아 다솜곁사 기상분석실에서 시범 운영하는 시스템. 처리 업무: 풍향 관측 집계. 다른 국가나 부서의 동명 업무는 포함하지 않는다.",
+          "applicability": {
+            "jurisdiction": [
+              "에스토니아"
+            ],
+            "temporal_status": [
+              "시범 운영"
+            ],
+            "referent_kind": [
+              "시스템"
+            ],
+            "scope": [
+              "다솜곁사 기상분석실"
+            ]
+          }
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "ee26-family-07:1",
+          "document_id": "ee26-family-07:doc1",
+          "event_id": "ee26-family-07:event1",
+          "parent_document_id": "ee26-family-07:source1",
+          "text": "배포 내역 91\n대한민국 다솜곁사 기록보존실: 현행 절차 다래쇠의 봉인 번호 형식을 바꿨다. 스캐너의 덮개 불량은 이번 계약 봉인 규칙에 영향을 주지 않는다.",
+          "document_sha256": "ae86569112d8548f0bef272fb161df8f5c2f1e48a98afb018ac35da4df2918bf",
+          "target_surface": "다래쇠",
+          "target_core_span": {
+            "start": 32,
+            "end": 35
+          },
+          "target_full_span": {
+            "start": 32,
+            "end": 35
+          },
+          "expected_entity_id": "global:ee26-family-07-a",
+          "stratum": "easy_explicit",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-07-a",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "다래쇠 계약 원본 봉인"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "배포 내역이 A의 네 속성과 업무를 밝힌다.",
+          "evidence_design": "EXPLICIT_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-07:2",
+          "document_id": "ee26-family-07:doc2",
+          "event_id": "ee26-family-07:event2",
+          "parent_document_id": "ee26-family-07:source2",
+          "text": "09:01 집계 서버의 지역을 에스토니아로 기록했다.\n09:04 소유자는 다솜곁사 기상분석실로 표시했다.\n09:06 유형 시스템, 상태 시범 운영을 확인했다.\n09:12 해묵섶의 풍향 집계를 재개했다.",
+          "document_sha256": "bb3a53b16d75a9e21c3a6098d75382c445aa3adf9929863dcd336f27e6e6f663",
+          "target_surface": "해묵섶",
+          "target_core_span": {
+            "start": 95,
+            "end": 98
+          },
+          "target_full_span": {
+            "start": 95,
+            "end": 98
+          },
+          "expected_entity_id": "global:ee26-family-07-b",
+          "stratum": "cross_sentence_positive",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-07-b",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "해묵섶 풍향 관측 집계"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "나뉜 갱신 항목들이 동일한 B를 설명한다.",
+          "evidence_design": "CROSS_SENTENCE_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-07:3",
+          "document_id": "ee26-family-07:doc3",
+          "event_id": "ee26-family-07:event3",
+          "parent_document_id": "ee26-family-07:source3",
+          "text": "수정한 절차의 약칭은 “VJQX”다. 계약 원본을 봉인하는 대한민국 다솜곁사 기록보존실의 현행 절차에만 반영했다. 기상 집계의 같은 약자에는 이 수정이 들어가지 않는다.",
+          "document_sha256": "a25c4551d9217fc770d7402d8f30fba9ad15d62e392e8093eb021781af7ad203",
+          "target_surface": "VJQX",
+          "target_core_span": {
+            "start": 13,
+            "end": 17
+          },
+          "target_full_span": {
+            "start": 13,
+            "end": 17
+          },
+          "expected_entity_id": "global:ee26-family-07-a",
+          "stratum": "shared_alias_resolvable",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-07-a",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "다래쇠 계약 원본 봉인"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "계약 봉인 업무로 A가 구별된다.",
+          "evidence_design": "EXPLICIT_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-07:4",
+          "document_id": "ee26-family-07:doc4",
+          "event_id": "ee26-family-07:event4",
+          "parent_document_id": "ee26-family-07:source4",
+          "text": "릴리스 메모는 다래쇠 계약 원본 봉인의 번호 중복을 고쳤다고 적었다. 관리자는 다솜곁사 기록보존실이다. 국가와 운영 단계는 이번 메모의 작성 항목이 아니어서 남기지 않았다.",
+          "document_sha256": "ab1b6a87134df1d65ca3878d5da3016176c9d97e1144900a36e826936de81bf5",
+          "target_surface": "다래쇠 계약 원본 봉인",
+          "target_core_span": {
+            "start": 8,
+            "end": 20
+          },
+          "target_full_span": {
+            "start": 8,
+            "end": 20
+          },
+          "expected_entity_id": "global:ee26-family-07-a",
+          "stratum": "implicit_attribute_positive",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-07-a",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "다래쇠 계약 원본 봉인"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "A 정식 명칭과 담당자가 있지만 두 속성 문자열은 없다.",
+          "evidence_design": "IMPLICIT_ATTRIBUTE_POSITIVE"
+        },
+        {
+          "case_id": "ee26-family-07:5",
+          "document_id": "ee26-family-07:doc5",
+          "event_id": "ee26-family-07:event5",
+          "parent_document_id": "ee26-family-07:source5",
+          "text": "외부 로그의 다래쇠는 포르투갈 박물관의 전시 조명 장치다. 대한민국 회사의 계약 봉인 절차와 기술·운영 관계가 전혀 없는 별개 물건이다.",
+          "document_sha256": "60756bc125976bd6c5df6aeb714c007d499c76330161b96379d16cc219a5f540",
+          "target_surface": "다래쇠",
+          "target_core_span": {
+            "start": 7,
+            "end": 10
+          },
+          "target_full_span": {
+            "start": 7,
+            "end": 10
+          },
+          "expected_entity_id": null,
+          "stratum": "country_nil",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "포르투갈 조명 장치를 뜻하는 별개 동명 이름이다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-07:6",
+          "document_id": "ee26-family-07:doc6",
+          "event_id": "ee26-family-07:event6",
+          "parent_document_id": "ee26-family-07:source6",
+          "text": "번역 예제를 수정했다. 화면에 인용한 “다래쇠”는 가상의 암호문이며 실제 계약 봉인이나 다른 업무를 지칭하지 않는다. 변경 범위는 예제 문자열 한 줄뿐이다.",
+          "document_sha256": "d11721d95b80abb37599f271ece78d9f439e6e151ffceeb17e8c9ba24768ff00",
+          "target_surface": "다래쇠",
+          "target_core_span": {
+            "start": 22,
+            "end": 25
+          },
+          "target_full_span": {
+            "start": 22,
+            "end": 25
+          },
+          "expected_entity_id": null,
+          "stratum": "quoted_string_nonmention",
+          "gold": {
+            "label": "NON_MENTION",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "인용된 암호 예문은 사전 항목을 언급하지 않는다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-07:7",
+          "document_id": "ee26-family-07:doc7",
+          "event_id": "ee26-family-07:event7",
+          "parent_document_id": "ee26-family-07:source7",
+          "text": "첫 항목의 해묵섶은 기상 집계 시스템이다. 수집기가 뒤에 붙인 해묵섶은 개인 독서 모임의 별칭으로 확인됐다. 같은 로그 파일에 있어도 두 번째 이름은 회사 시스템을 뜻하지 않는다.",
+          "document_sha256": "f74f5614216492033c4ec5fd5d209c76b01366e54df784d4cc58be0b2267097f",
+          "target_surface": "해묵섶",
+          "target_core_span": {
+            "start": 35,
+            "end": 38
+          },
+          "target_full_span": {
+            "start": 35,
+            "end": 38
+          },
+          "expected_entity_id": null,
+          "stratum": "repeated_rival_scope",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "선택된 두 번째 발생은 독서 모임이다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-07:8",
+          "document_id": "ee26-family-07:doc8",
+          "event_id": "ee26-family-07:event8",
+          "parent_document_id": "ee26-family-07:source8",
+          "text": "충돌 기록: “VJQX” 요청 두 건이 합쳐졌다. 계약 봉인과 풍향 집계 양쪽 모두 가능한데 요청 본문과 소유자 정보가 손실돼 어느 항목인지 복구하지 못했다.",
+          "document_sha256": "7d2db35381faf8e7f58aea84d79194872d483bc1fbac5aed29f50376967c8b5b",
+          "target_surface": "VJQX",
+          "target_core_span": {
+            "start": 8,
+            "end": 12
+          },
+          "target_full_span": {
+            "start": 8,
+            "end": 12
+          },
+          "expected_entity_id": null,
+          "stratum": "shared_alias_ambiguous",
+          "gold": {
+            "label": "AMBIGUOUS",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "공유 약칭의 구별 정보가 손실돼 모호하다.",
+          "evidence_design": "NEGATIVE"
+        }
+      ]
+    },
+    {
+      "family_id": "ee26-family-08",
+      "evaluation_split": "confirmation",
+      "scenario_style": "handover_memo",
+      "source_facts": "가상의 가온달사에는 서로 다른 두 업무가 있고 ZQWC라는 약칭만 공유한다. 다른 나라·과거 제도·직책·다른 부서의 동명 대상은 두 사전 항목과 별개다.",
+      "terms": [
+        {
+          "key": "ee26-family-08-a",
+          "canonical": "풀섶잔 검사 차량 출고",
+          "surfaces": [
+            "풀섶잔",
+            "ZQWC"
+          ],
+          "short_definition": "대한민국 가온달사 차량검사실에서 시행하는 현행 절차. 처리 업무: 검사 차량 출고. 다른 국가나 부서의 동명 업무는 포함하지 않는다.",
+          "applicability": {
+            "jurisdiction": [
+              "대한민국"
+            ],
+            "temporal_status": [
+              "현행"
+            ],
+            "referent_kind": [
+              "절차"
+            ],
+            "scope": [
+              "가온달사 차량검사실"
+            ]
+          }
+        },
+        {
+          "key": "ee26-family-08-b",
+          "canonical": "가람뼈 무선 출력 시험",
+          "surfaces": [
+            "가람뼈",
+            "ZQWC"
+          ],
+          "short_definition": "슬로베니아 가온달사 전파시험실에서 시범 운영하는 서비스. 처리 업무: 무선 출력 시험. 다른 국가나 부서의 동명 업무는 포함하지 않는다.",
+          "applicability": {
+            "jurisdiction": [
+              "슬로베니아"
+            ],
+            "temporal_status": [
+              "시범 운영"
+            ],
+            "referent_kind": [
+              "서비스"
+            ],
+            "scope": [
+              "가온달사 전파시험실"
+            ]
+          }
+        }
+      ],
+      "cases": [
+        {
+          "case_id": "ee26-family-08:1",
+          "document_id": "ee26-family-08:doc1",
+          "event_id": "ee26-family-08:event1",
+          "parent_document_id": "ee26-family-08:source1",
+          "text": "저녁 교대 메모\n대한민국 가온달사 차량검사실의 현행 절차 풀섶잔으로 오늘 검사 차량을 출고했다. 바닥의 물기는 청소 문제이며 이 절차의 적용 조건을 부정하지 않는다.",
+          "document_sha256": "debfbbf5de26a6332d887e01ff5bf1cc1b9eb3784314cc1e8f24a6124ab19234",
+          "target_surface": "풀섶잔",
+          "target_core_span": {
+            "start": 32,
+            "end": 35
+          },
+          "target_full_span": {
+            "start": 32,
+            "end": 35
+          },
+          "expected_entity_id": "global:ee26-family-08-a",
+          "stratum": "easy_explicit",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-08-a",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "풀섶잔 검사 차량 출고"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "인계자가 A의 속성과 실제 업무를 명시한다.",
+          "evidence_design": "EXPLICIT_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-08:2",
+          "document_id": "ee26-family-08:doc2",
+          "event_id": "ee26-family-08:event2",
+          "parent_document_id": "ee26-family-08:source2",
+          "text": "후임에게 넘길 계정은 슬로베니아 지점에서 왔다. 계정 소관은 가온달사 전파시험실이다. 유형은 서비스이고 운용 단계는 시범 운영으로 유지한다. 인수 항목 가람뼈에는 무선 출력 시험 예약이 있다.",
+          "document_sha256": "0f00925d2182655e8482e4ba4e9fc2f312b0373d8bc8fbd235983051682fe9bd",
+          "target_surface": "가람뼈",
+          "target_core_span": {
+            "start": 85,
+            "end": 88
+          },
+          "target_full_span": {
+            "start": 85,
+            "end": 88
+          },
+          "expected_entity_id": "global:ee26-family-08-b",
+          "stratum": "cross_sentence_positive",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-08-b",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "가람뼈 무선 출력 시험"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "문장별 속성을 모으면 B에 대한 인계다.",
+          "evidence_design": "CROSS_SENTENCE_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-08:3",
+          "document_id": "ee26-family-08:doc3",
+          "event_id": "ee26-family-08:event3",
+          "parent_document_id": "ee26-family-08:source3",
+          "text": "이번 교대의 “ZQWC”는 출고 검사 건을 뜻한다. 대한민국 가온달사 차량검사실의 현행 절차만 인수한다. 전파 시험 서비스의 같은 약자는 다음 근무조 업무가 아니다.",
+          "document_sha256": "106f6108402475b444b48a67d43f6558a566661fb096233391749541fcd93b64",
+          "target_surface": "ZQWC",
+          "target_core_span": {
+            "start": 8,
+            "end": 12
+          },
+          "target_full_span": {
+            "start": 8,
+            "end": 12
+          },
+          "expected_entity_id": "global:ee26-family-08-a",
+          "stratum": "shared_alias_resolvable",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-08-a",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "풀섶잔 검사 차량 출고"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "차량 출고 업무와 scope로 A를 특정한다.",
+          "evidence_design": "EXPLICIT_ATTRIBUTES"
+        },
+        {
+          "case_id": "ee26-family-08:4",
+          "document_id": "ee26-family-08:doc4",
+          "event_id": "ee26-family-08:event4",
+          "parent_document_id": "ee26-family-08:source4",
+          "text": "인수 서류에는 가람뼈 무선 출력 시험의 예약 번호와 가온달사 전파시험실의 직인이 있다. 국가와 운용 단계는 서류 본문에 적혀 있지 않다. 정식 명칭과 담당 부서에는 이견이 없다.",
+          "document_sha256": "4d4e8c45ee3081cfac3f334e851014e60fe97bf43c235747be125d33caddc65f",
+          "target_surface": "가람뼈 무선 출력 시험",
+          "target_core_span": {
+            "start": 8,
+            "end": 20
+          },
+          "target_full_span": {
+            "start": 8,
+            "end": 20
+          },
+          "expected_entity_id": "global:ee26-family-08-b",
+          "stratum": "implicit_attribute_positive",
+          "gold": {
+            "label": "LINK",
+            "entity_ref": "global:ee26-family-08-b",
+            "full_identity": "SAME"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [
+              "가람뼈 무선 출력 시험"
+            ],
+            "is_impossible": false,
+            "requires_terminology": true
+          },
+          "rationale": "B의 이름과 부서로 연결할 수 있지만 국가·상태를 인용할 수 없다.",
+          "evidence_design": "IMPLICIT_ATTRIBUTE_POSITIVE"
+        },
+        {
+          "case_id": "ee26-family-08:5",
+          "document_id": "ee26-family-08:doc5",
+          "event_id": "ee26-family-08:event5",
+          "parent_document_id": "ee26-family-08:source5",
+          "text": "외부 견학 메모의 풀섶잔은 모로코 학교의 도서 대출 순번표다. 대한민국 회사의 차량 출고 절차와 무관한 동명 항목이므로 차량 업무에 연결하지 않는다.",
+          "document_sha256": "9bd0a2259c4dee6148b8aaa028c3f86497febd74cf135181b67af92223917e64",
+          "target_surface": "풀섶잔",
+          "target_core_span": {
+            "start": 10,
+            "end": 13
+          },
+          "target_full_span": {
+            "start": 10,
+            "end": 13
+          },
+          "expected_entity_id": null,
+          "stratum": "country_nil",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "모로코 학교의 별개 순번표다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-08:6",
+          "document_id": "ee26-family-08:doc6",
+          "event_id": "ee26-family-08:event6",
+          "parent_document_id": "ee26-family-08:source6",
+          "text": "식당관리실은 자체 현행 절차 풀섶잔을 급식 메뉴 승인에 쓴다. 가온달사 차량검사실의 차량 출고 규칙과 이름만 같으며 담당 조직과 승인 장부는 완전히 다르다.",
+          "document_sha256": "2aee201992f2826c8dde0470034c9e0ddf0809cf3dda04956a99ae4c489b9680",
+          "target_surface": "풀섶잔",
+          "target_core_span": {
+            "start": 16,
+            "end": 19
+          },
+          "target_full_span": {
+            "start": 16,
+            "end": 19
+          },
+          "expected_entity_id": null,
+          "stratum": "rival_scope_nil",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "회사 안에서도 다른 조직과 업무인 동명 절차는 A가 아니다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-08:7",
+          "document_id": "ee26-family-08:doc7",
+          "event_id": "ee26-family-08:event7",
+          "parent_document_id": "ee26-family-08:source7",
+          "text": "전임자가 풀섶잔의 출고를 확인했다. 다음 문단의 풀섶잔은 인근 등산회의 회비 봉투 별명이다. 회사 차량과는 무관하다는 확인을 받아 두 발생을 구분해 넘긴다.",
+          "document_sha256": "2b2e66a7c6c381a5a71becb25f2d5cc801575d52a9c53bbf63ee75d842b0215b",
+          "target_surface": "풀섶잔",
+          "target_core_span": {
+            "start": 27,
+            "end": 30
+          },
+          "target_full_span": {
+            "start": 27,
+            "end": 30
+          },
+          "expected_entity_id": null,
+          "stratum": "repeated_rival_scope",
+          "gold": {
+            "label": "NIL",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "두 번째 발생만 선택했으며 외부 회비 봉투를 뜻한다.",
+          "evidence_design": "NEGATIVE"
+        },
+        {
+          "case_id": "ee26-family-08:8",
+          "document_id": "ee26-family-08:doc8",
+          "event_id": "ee26-family-08:event8",
+          "parent_document_id": "ee26-family-08:source8",
+          "text": "누가 남겼는지 모르는 인계 쪽지에 “ZQWC”만 있다. 차량 출고와 무선 출력 시험 모두 같은 약자를 쓰고, 날짜 외에는 업무를 구별할 내용이 없다.",
+          "document_sha256": "02404bec288f74c6299b67d90efe260b9e43ddd86d6405c0f56718bb445f723f",
+          "target_surface": "ZQWC",
+          "target_core_span": {
+            "start": 20,
+            "end": 24
+          },
+          "target_full_span": {
+            "start": 20,
+            "end": 24
+          },
+          "expected_entity_id": null,
+          "stratum": "shared_alias_ambiguous",
+          "gold": {
+            "label": "AMBIGUOUS",
+            "entity_ref": null,
+            "full_identity": "DISTINCT_OR_UNSUPPORTED"
+          },
+          "qa": {
+            "question": "표시된 발생 위치가 가리키는 사전 대상의 정식 명칭은?",
+            "answers": [],
+            "is_impossible": true,
+            "requires_terminology": true
+          },
+          "rationale": "업무를 가르는 근거 없이 공유 약칭만 남았다.",
+          "evidence_design": "NEGATIVE"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "source_sha256": "0ab031e4425e3d7f58746a2fae89ef9c5ac096b71f44537d34512a6f9c81ecfe",
+  "new_family_ids": [
+    "ee26-family-01",
+    "ee26-family-02",
+    "ee26-family-03",
+    "ee26-family-04",
+    "ee26-family-05",
+    "ee26-family-06",
+    "ee26-family-07",
+    "ee26-family-08"
+  ],
+  "new_lexical_names": [
+    "CVZJ",
+    "FZQT",
+    "JXWR",
+    "KXQV",
+    "QZVK",
+    "VJQX",
+    "WQZN",
+    "ZQWC",
+    "가람뼈",
+    "가람뼈 무선 출력 시험",
+    "귀리첩",
+    "귀리첩 센서 반품 등록",
+    "누에쇠",
+    "누에쇠 온실 급수 변경",
+    "다래쇠",
+    "다래쇠 계약 원본 봉인",
+    "달솔못",
+    "달솔못 배관 지급 승인",
+    "마름곶",
+    "마름곶 종자 선별 요청",
+    "버들숯",
+    "버들숯 방화문 검사 승인",
+    "보늬판",
+    "보늬판 연구 표본 반출",
+    "오목재",
+    "오목재 보관 시료 폐기",
+    "이슬턱",
+    "이슬턱 강의 영상 게재",
+    "잎새틀",
+    "잎새틀 시험 장비 예약",
+    "자갈록",
+    "자갈록 광학 부품 발주",
+    "조약빗",
+    "조약빗 운임 차액 정산",
+    "풀섶잔",
+    "풀섶잔 검사 차량 출고",
+    "해묵섶",
+    "해묵섶 풍향 관측 집계",
+    "햇무쌍",
+    "햇무쌍 독성 시약 반입"
+  ],
+  "new_name_string_overlap_count": 0,
+  "collisions": [],
+  "tracked_json_yaml_source_files": [
+    {
+      "path": "eval/annotations/blind_review_20261013/konec.manifest.json",
+      "sha256": "a77f0ce1395414ccdd4c4d4bae837774a93a10f14b5b2a2e931803ff67bcecaf"
+    },
+    {
+      "path": "eval/annotations/blind_review_20261013/koneobench.manifest.json",
+      "sha256": "ae725686a51ebed054563125d87e7abae81a23f9ed77dca92698d984aa0ff906"
+    },
+    {
+      "path": "eval/annotations/blind_review_20261013/protocol.json",
+      "sha256": "21e1a9350f80b4ef64ed251e0c4c39411813825b95d0a41f73f3b3b7a2e7d755"
+    },
+    {
+      "path": "eval/data/diagnostic_safety_cases.json",
+      "sha256": "05a92bc26e0c27ab878bac3df9cc312f6f3ab8e6eb2c179172b05b547e4cac71"
+    },
+    {
+      "path": "eval/data/extended_safety_cases.json",
+      "sha256": "9c1c3fd64de83eb6a34391f6493dfcfac42c707d7461c4d301900b793639a3b0"
+    },
+    {
+      "path": "eval/data/review_business_cases.json",
+      "sha256": "edfc070ac4205aa9d4de805bb86a71efe841fe06bf5ee8e9da9ae09288597f52"
+    },
+    {
+      "path": "eval/fixtures/context_definitions/manifest.json",
+      "sha256": "78b5887d6f76bb0b1dbfcb3353675b29815936dc36ac3f02a6e0b48ba3b9b557"
+    },
+    {
+      "path": "eval/fixtures/context_ranking_challenge/annotation_adjudication.json",
+      "sha256": "49d4c92e3701b47e32c36c67efa0b97d51620550fcd7e2283b166e0f20eceda9"
+    },
+    {
+      "path": "eval/fixtures/context_ranking_challenge/annotation_manifest.json",
+      "sha256": "6b1d2bd10508892dd3a39775cef54c0c48da529123de9cb2239fcede275835ea"
+    },
+    {
+      "path": "eval/fixtures/context_ranking_challenge/blind_binding.json",
+      "sha256": "652bbe3236ccb9c909f6fd5915dd9a7e7f34fe5e29d4e282ac5a522acf6c8394"
+    },
+    {
+      "path": "eval/fixtures/context_ranking_challenge/protocol.json",
+      "sha256": "e2eed86f4c932644bc443bf98bf6a72e2c813acb475efe291687d27806fb1b64"
+    },
+    {
+      "path": "eval/fixtures/document_context/manifest.json",
+      "sha256": "8de524e0a91d60a0fe1120b22ee1f4b89ffe51d6011fbc381846940a6abb7e46"
+    },
+    {
+      "path": "eval/fixtures/occurrence_evidence_holdout/annotation_adjudication.json",
+      "sha256": "d790ece86e9d3e5f809d3b64f9dd4d7f09f5c434347f47707a043de96d8bd09b"
+    },
+    {
+      "path": "eval/fixtures/occurrence_evidence_holdout/annotation_manifest.json",
+      "sha256": "f92839ca348d36109568ad36a5f984b66e7f740df574643ea5fc4fb5efb9b854"
+    },
+    {
+      "path": "eval/fixtures/occurrence_evidence_holdout/blind_binding.json",
+      "sha256": "05150a244d0a6929123216aa9f060e445eeb0b08a585f189cba7b820cb34c5a4"
+    },
+    {
+      "path": "eval/fixtures/occurrence_evidence_holdout/protocol.json",
+      "sha256": "dd2c2f6abbe48f3b23f5185424fab8eebb1c47cca2be315ee69d3954e442dc6e"
+    },
+    {
+      "path": "eval/fixtures/production_real_holdout/adjudication.json",
+      "sha256": "c519052e2fb735bdea5419bf118a274245380601661d238170321265904494d3"
+    },
+    {
+      "path": "eval/fixtures/production_real_holdout/glossary.yaml",
+      "sha256": "d4750b467dc968ea753f08bc13e94c720406241cdb6abdd16155b680b3376cd7"
+    },
+    {
+      "path": "eval/fixtures/production_real_holdout/manifest.json",
+      "sha256": "2f85ab90fd48d89a54eb0ea971578e9df5d848e3f44e09a0858c2d1abfcc058c"
+    },
+    {
+      "path": "eval/fixtures/production_real_holdout/selection_manifest.json",
+      "sha256": "250bec67f19d2ccca01fc0db0ae1169f7d5ac768651dda049fd2ad04b9fe3038"
+    },
+    {
+      "path": "eval/fixtures/routing_confirmation/independent_review.json",
+      "sha256": "eca0c2631926182947535451d4c3d7a08cc7fc6d6e685ee63e85fdbcbcc93233"
+    },
+    {
+      "path": "eval/fixtures/routing_confirmation/source_exclusion.json",
+      "sha256": "8369bc42a123d807db7a2477888136a8dab6f1f33802556ff0ce8624ea5bc383"
+    },
+    {
+      "path": "eval/fixtures/routing_confirmation/source_gold.json",
+      "sha256": "c1a5196d5e8b74a55b8fbf2862e7f9d51de2dafbfd2aabc1354336663aaa4a24"
+    }
+  ],
+  "inspection_scope": "Tracked source fixture, data and annotation JSON/YAML only. No prior model outputs, generated responses or experiment reports inspected."
+}
