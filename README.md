@@ -362,6 +362,7 @@ measured together. As of **2026-10-21**, the following queues are complete:
 | Source amount, compact pack and semantic-check diagnostics | 3,584 | [diagnostic queue](reports/diagnostic_queue_20261020/RESULTS.md) |
 | Source/glossary/KTRF, QA policy, budget, NoMIRACL and occurrence-bound routing | 5,888 | [review queue](reports/review_queue_20261020/RESULTS.md) |
 | Fresh routing families, full/compact output and literal evidence | 2,304 | [confirmation queue](reports/confirmation_queue_20261020/RESULTS.md) |
+| Matched candidates and server evidence IDs | 512 | [evidence control](reports/evidence_queue_20261021/RESULTS.md) |
 
 Calls include paired conditions and repeats; they are not independent new
 questions. General Korean QA still shows no consistent pack advantage, and
@@ -387,9 +388,15 @@ positions from unique source literals and reports posthoc results separately;
 it also identifies 19 positives without rendered gold facts and 3 correct
 proposals blocked by occurrence authorization. Original sealed scores stay intact.
 
-A bounded [evidence control](docs/EVIDENCE_CONTROL.md) now compares the same
-actual candidates and production guard, with server evidence IDs versus model
-positions, on 64 previously exposed development cases (512 planned calls).
+The bounded [evidence control](docs/EVIDENCE_CONTROL.md) completed 512 calls
+on 64 previously exposed development cases with matched actual candidates and
+the same production guard. Server evidence IDs approved 23 correct and 0 wrong
+IDs for both models; 9 of 32 correct proposals remained blocked as ambiguous.
+The plain control approved 23/4 (correct/wrong) for Gemma and 23/1 for Qwen;
+structured KTRF approved 22/6 and 23/2. Model-written evidence positions approved
+no IDs. Evidence IDs increased request p95 to 22.99/35.75 seconds versus
+4.77/7.09 seconds for the plain control. These are adaptive synthetic diagnostics,
+not independent deployment-risk validation.
 The public [compact execution API](docs/COMPACT_EXECUTION.md) adds request-local
 references, expiration and atomic one-attempt consumption; it executes no actions.
 A local, non-executing [shadow ingress](eval/shadow_routing.py) prepares

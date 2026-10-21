@@ -55,6 +55,7 @@
 | 원문·compact·의미 확인 | [3,584회](../reports/diagnostic_queue_20261020/RESULTS.md) | 기존/신규 문맥·family를 분리 |
 | 리뷰 후속 QA·예산·NoMIRACL·발생 위치 실행 | [5,888회](../reports/review_queue_20261020/RESULTS.md) | 생성·재채점·결과 푸시 완료 (`456ee80`) |
 | 새 family·전체/간결 출력·근거 검사 | [2,304회](../reports/confirmation_queue_20261020/RESULTS.md) | 생성·재채점·결과 푸시 완료 (`ed097a0`) |
+| 동일 후보·검증기·서버 근거 ID | [512회](../reports/evidence_queue_20261021/RESULTS.md) | 노출 개발 64문서, 재채점·푸시 완료 (`8424d21`) |
 | 근거 위치·후보 제공·승인 규칙 CPU 진단 | [사후 분석](../reports/confirmation_cpu_20261021/ANALYSIS.md) | 원래 점수 보존, 새 LLM 호출 없음 |
 | 봉인 원시 응답 재분석·실제 후보 통합 | [CPU 보고서](../reports/review_cpu_20261020/ANALYSIS.md) | 새 LLM 호출 없음, 노출된 진단 자료 |
 | 실제 후보 lexical/nano 통합 | [616대상 집계](../reports/review_cpu_20261020/nano.json) | 기존 552대상과 새 AI 업무 64대상을 구분 |
@@ -75,9 +76,12 @@ Qwen KTRF+의미 확인의 실제 pipeline은 96사례에서 정답 승인 36건
 유지하며 요청 p95를 약 절반으로 줄였고, 근거 위치 직접 반환은 정답까지 차단했다.
 [compact API](COMPACT_EXECUTION.md)는 만료·요청 범위·원자적 한 번 소비를 포함한
 라이브러리 인터페이스로 구현했으며 호스트별 배포와 durable 상태 저장은 별도다.
-다음은 [동일 후보·검증기와 서버 근거 ID](EVIDENCE_CONTROL.md)를 노출 개발 자료
-64건에서 비교하는 512회 진단이다. 실행 권한을 늘리지 않고 제안의 정답과 승인을
-분리하며, 개선 후보는 새 자료로 다시 확인해야 한다.
+[동일 후보·검증기와 서버 근거 ID](EVIDENCE_CONTROL.md) 512회도 완료했다.
+서버 ID는 두 모델 모두 정답 제안 32개, 승인 23개·오승인 0개였고 모호한 정답
+9개는 기존 guard가 거절했다. 구조화만 적용한 조건의 추가 우위는 없었다.
+근거 ID의 요청 p95는 Gemma 약 23초·Qwen 약 36초로 단순 선택보다 커졌다.
+다음 판단은 근거 참조·입력 비용을 줄이면서 같은 차단 효과를 유지하는지와
+새 자료에서의 재현성이다. 노출 개발 자료의 오류 0개를 운영 위험 보장으로 삼지 않는다.
 실제 업무 shadow pilot은 `WAITING_FOR_INPUT`이며 로컬 문서/용어집 ingress와
 blind 주석 packet·무실행 replay 도구를 준비했다. 사람 gold와 수정 시간은
 미측정이다. AI 작성 업무 사례와
