@@ -352,7 +352,7 @@ match from 22 to 25 and Qwen from 25 to 29, while using about 22% more prompt
 tokens. Schema-constrained generation removes the 12 repeated Qwen pack format
 errors and preserves answerable exact match. These are experimental comparisons;
 BM25, pack and JSON schema were later
-measured together. As of **2026-10-20**, the following queues are complete:
+measured together. As of **2026-10-21**, the following queues are complete:
 
 | Completed comparison | Model calls | Evidence |
 |---|---:|---|
@@ -361,6 +361,7 @@ measured together. As of **2026-10-20**, the following queues are complete:
 | Transfer, budget, corpus retrieval, pack and semantic safety | 5,568 | [extended queue](reports/extended_queue_20261019/RESULTS.md) |
 | Source amount, compact pack and semantic-check diagnostics | 3,584 | [diagnostic queue](reports/diagnostic_queue_20261020/RESULTS.md) |
 | Source/glossary/KTRF, QA policy, budget, NoMIRACL and occurrence-bound routing | 5,888 | [review queue](reports/review_queue_20261020/RESULTS.md) |
+| Fresh routing families, full/compact output and literal evidence | 2,304 | [confirmation queue](reports/confirmation_queue_20261020/RESULTS.md) |
 
 Calls include paired conditions and repeats; they are not independent new
 questions. General Korean QA still shows no consistent pack advantage, and
@@ -375,9 +376,23 @@ versus 19 and 0 for a plain glossary. The matched-fact KTRF control still approv
 1 wrong ID (35 correct), and general QA did not establish an advantage over the
 plain glossary. These observations do not certify deployment safety.
 
-The next [routing confirmation](docs/ROUTING_CONFIRMATION.md) freezes new
-families and compares contextual gating and compact responses; results are
-pending. A local, non-executing [shadow ingress](eval/shadow_routing.py) prepares
+The [routing confirmation](docs/ROUTING_CONFIRMATION.md) is complete. In its
+128-case confirmation split (64 linkable targets), KTRF with a meaning check
+approved 42 correct IDs and 0 wrong IDs for both models. Compact responses
+preserved those counts; across all 192 cases, request p95 fell from 12.59 to
+6.11 seconds for Gemma and 14.13 to 7.18 seconds for Qwen. The literal evidence
+arm approved no IDs because of evidence/position failures. The
+[CPU diagnosis](reports/confirmation_cpu_20261021/ANALYSIS.md) reconstructs
+positions from unique source literals and reports posthoc results separately;
+it also identifies 19 positives without rendered gold facts and 3 correct
+proposals blocked by occurrence authorization. Original sealed scores stay intact.
+
+A bounded [evidence control](docs/EVIDENCE_CONTROL.md) now compares the same
+actual candidates and production guard, with server evidence IDs versus model
+positions, on 64 previously exposed development cases (512 planned calls).
+The public [compact execution API](docs/COMPACT_EXECUTION.md) adds request-local
+references, expiration and atomic one-attempt consumption; it executes no actions.
+A local, non-executing [shadow ingress](eval/shadow_routing.py) prepares
 blind annotation packets and optional resolver latency measurements from
 user-provided documents. The actual workplace pilot is `WAITING_FOR_INPUT`;
 synthetic cases do not substitute for workplace documents or human review time.

@@ -45,7 +45,7 @@
 | G2 | Stage B/C 학습 파이프라인 (torch, KLUE-RoBERTa) | ✅ GPU 전 루프 검증 (train→ONNX→runtime); **본 학습은 라벨 ≥5k 게이트 대기** |
 | G3 | 멀티테넌트 adapter GPU 상주 (§32.3) | ✅ residency manager 구현 (`ktrf/adapters.py`) |
 
-## 최근 완료와 다음 검증 (2026-10-20)
+## 최근 완료와 다음 검증 (2026-10-21)
 
 | 완료 단위 | 호출 수·산출물 | 해석 |
 |---|---|---|
@@ -54,6 +54,8 @@
 | 다섯 확장 실험 | [5,568회](../reports/extended_queue_20261019/RESULTS.md) | 이전·예산·512문맥 검색·정책·안전성 |
 | 원문·compact·의미 확인 | [3,584회](../reports/diagnostic_queue_20261020/RESULTS.md) | 기존/신규 문맥·family를 분리 |
 | 리뷰 후속 QA·예산·NoMIRACL·발생 위치 실행 | [5,888회](../reports/review_queue_20261020/RESULTS.md) | 생성·재채점·결과 푸시 완료 (`456ee80`) |
+| 새 family·전체/간결 출력·근거 검사 | [2,304회](../reports/confirmation_queue_20261020/RESULTS.md) | 생성·재채점·결과 푸시 완료 (`ed097a0`) |
+| 근거 위치·후보 제공·승인 규칙 CPU 진단 | [사후 분석](../reports/confirmation_cpu_20261021/ANALYSIS.md) | 원래 점수 보존, 새 LLM 호출 없음 |
 | 봉인 원시 응답 재분석·실제 후보 통합 | [CPU 보고서](../reports/review_cpu_20261020/ANALYSIS.md) | 새 LLM 호출 없음, 노출된 진단 자료 |
 | 실제 후보 lexical/nano 통합 | [616대상 집계](../reports/review_cpu_20261020/nano.json) | 기존 552대상과 새 AI 업무 64대상을 구분 |
 
@@ -68,8 +70,14 @@ QA의 일관된 pack 개선이나 무검토 실행 안전성은 입증되지 않
 
 완료한 GPU 비교의 계약과 해석은 [REVIEW_EXPERIMENTS.md](REVIEW_EXPERIMENTS.md)에 있다.
 Qwen KTRF+의미 확인의 실제 pipeline은 96사례에서 정답 승인 36건·오승인 0건,
-동일 사실 통제는 35건·1건이었다. 새 family 검증·문맥 차단·출력 압축을 다음
-[routing confirmation 큐](ROUTING_CONFIRMATION.md)로 준비한다.
+동일 사실 통제는 35건·1건이었다. 이후 [새 family 확인](ROUTING_CONFIRMATION.md)에서
+두 모델의 확인 자료 정답 승인/오승인은 42/0이었다. 간결한 출력은 정답 승인 수를
+유지하며 요청 p95를 약 절반으로 줄였고, 근거 위치 직접 반환은 정답까지 차단했다.
+[compact API](COMPACT_EXECUTION.md)는 만료·요청 범위·원자적 한 번 소비를 포함한
+라이브러리 인터페이스로 구현했으며 호스트별 배포와 durable 상태 저장은 별도다.
+다음은 [동일 후보·검증기와 서버 근거 ID](EVIDENCE_CONTROL.md)를 노출 개발 자료
+64건에서 비교하는 512회 진단이다. 실행 권한을 늘리지 않고 제안의 정답과 승인을
+분리하며, 개선 후보는 새 자료로 다시 확인해야 한다.
 실제 업무 shadow pilot은 `WAITING_FOR_INPUT`이며 로컬 문서/용어집 ingress와
 blind 주석 packet·무실행 replay 도구를 준비했다. 사람 gold와 수정 시간은
 미측정이다. AI 작성 업무 사례와
