@@ -218,6 +218,32 @@ def prepare_report(run_dir):
             "Retrieved ambiguous candidates are visible for judgment but gain no execution authority. "
             "All 64 cases are previously exposed development data; results are adaptive diagnostics."
         )
+    if manifest["experiment"] == "evidence_efficiency":
+        summary["proposal_interpretation"] = (
+            "Model proposals precede the same production occurrence guard in every arm. "
+            "Fresh AI-authored family splits are shown separately; no deployment risk is certified. "
+            "Selective routing is fixed before generation using source and candidate facts, never gold."
+        )
+        summary["by_evidence_path"] = {}
+        for condition in manifest["declared_protocol"]["conditions"]:
+            paths = {}
+            for required, path in ((False, "plain"), (True, "evidence")):
+                cases = [case for case in graded["cases"] if case["condition"] == condition
+                         and case["evidence_required"] is required]
+                if not cases:
+                    continue
+                case_ids = {case["case_id"] for case in cases}
+                observed = [record for record in records if record["condition"] == condition
+                            and record["case_id"] in case_ids]
+                paths[path] = _with_observations({condition: _metrics(cases, True)}, observed)[condition]
+            summary["by_evidence_path"][condition] = paths
+        summary["difficulty_gate"] = {
+            "unique_source_cases": len(unique_rows),
+            "easy_cases": sum(row["difficulty_gate"]["easy"] for row in unique_rows.values()),
+            "reason_counts": dict(Counter(reason for row in unique_rows.values()
+                                          for reason in row["difficulty_gate"]["reasons"])),
+            "uses_gold": False,
+        }
     return summary
 
 
@@ -244,6 +270,10 @@ def render_markdown(summary):
         for condition, values in summary["by_variant"].items():
             lines.append(f"| {condition} | {values['proposal_correct_id']} | "
                          f"{values['proposal_wrong_id']} | {values['proposal_abstention']} |")
+    if summary.get("by_evidence_path"):
+        lines.extend(["", "Selective routing paths, including measured tokens and request latency:", "", "```json",
+            json.dumps({"difficulty_gate": summary["difficulty_gate"],
+                        "by_evidence_path": summary["by_evidence_path"]}, indent=2), "```", ""])
     if summary.get("metric_interpretation"):
         lines.extend(["", summary["metric_interpretation"], ""])
     if summary.get("cost_interpretation"):
