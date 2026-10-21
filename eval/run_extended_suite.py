@@ -22,7 +22,7 @@ from .run_product_llm import _request_json, parse_model_json
 PROTOCOL_ID = "ktrf_extended_v1"
 REVIEW_CONDITION_COUNTS = {"review_abcd": 8, "review_policy": 6,
                            "review_budget": 6, "review_nomiracl": 3, "review_routing": 8}
-CONFIRMATION_CONDITION_COUNTS = {"routing_confirmation": 6, "evidence_control": 4, "evidence_efficiency": 5}
+CONFIRMATION_CONDITION_COUNTS = {"routing_confirmation": 6, "evidence_control": 4, "evidence_efficiency": 5, "evidence_robustness": 6}
 OCCURRENCE_EXPERIMENTS = set(CONFIRMATION_CONDITION_COUNTS)
 AUDITED_CONDITION_COUNTS = REVIEW_CONDITION_COUNTS | CONFIRMATION_CONDITION_COUNTS
 DIAGNOSTIC_CONDITION_COUNTS = {"source_pack_factorial": 6, "fresh_compact": 3,
@@ -52,6 +52,10 @@ def decoding_for(protocol):
 
 
 def schema_for(rows, protocol):
+    if protocol["experiment"] == "evidence_robustness":
+        from .evidence_robustness import evidence_robustness_schema
+        return {json.dumps([row["case_id"], row["condition"]], ensure_ascii=False,
+                           separators=(",", ":")): evidence_robustness_schema(row) for row in rows}
     if protocol["experiment"] == "evidence_efficiency":
         from .evidence_efficiency import evidence_efficiency_schema
         # Selective routing has a different schema for easy and difficult requests.
@@ -70,6 +74,9 @@ def schema_for(rows, protocol):
 
 
 def request_schema_for(row, protocol):
+    if protocol["experiment"] == "evidence_robustness":
+        from .evidence_robustness import evidence_robustness_schema
+        return evidence_robustness_schema(row)
     if protocol["experiment"] == "evidence_efficiency":
         from .evidence_efficiency import evidence_efficiency_schema
         return evidence_efficiency_schema(row)
@@ -119,7 +126,10 @@ def validate_requests(rows, protocol):
     if safety != (protocol["experiment"] in SAFETY_EXPERIMENTS):
         raise ValueError("task differs from declared experiment")
     if safety:
-        if protocol["experiment"] == "evidence_efficiency":
+        if protocol["experiment"] == "evidence_robustness":
+            from .evidence_robustness import validate_evidence_robustness_requests
+            validate_evidence_robustness_requests(rows)
+        elif protocol["experiment"] == "evidence_efficiency":
             from .evidence_efficiency import validate_evidence_efficiency_requests
             validate_evidence_efficiency_requests(rows)
         elif protocol["experiment"] == "evidence_control":
@@ -208,6 +218,9 @@ def load_request_file(path):
 
 
 def output_error(response, row):
+    if row.get("experiment") == "evidence_robustness":
+        from .evidence_robustness import evidence_robustness_response_error
+        return evidence_robustness_response_error(response, row)
     if row.get("experiment") == "evidence_efficiency":
         from .evidence_efficiency import evidence_efficiency_response_error
         return evidence_efficiency_response_error(response, row)
@@ -336,7 +349,10 @@ def grade_outputs(rows, outputs, protocol):
                 if field in row:
                     case[field] = bool(row[field])
         if safety:
-            if protocol["experiment"] == "evidence_efficiency":
+            if protocol["experiment"] == "evidence_robustness":
+                from .evidence_robustness import grade_evidence_robustness_response
+                grade_safety = lambda row, response: grade_evidence_robustness_response(response, row)
+            elif protocol["experiment"] == "evidence_efficiency":
                 from .evidence_efficiency import grade_evidence_efficiency_response
                 grade_safety = lambda row, response: grade_evidence_efficiency_response(response, row)
             elif protocol["experiment"] == "evidence_control":
@@ -360,7 +376,7 @@ def grade_outputs(rows, outputs, protocol):
                 case["evidence_gate_violations"] = result.get("evidence_gate_violations", [])
                 for field in ("wire_valid", "base_guard_valid", "evidence_gate_valid"):
                     case[field] = result.get(field)
-            if protocol["experiment"] in {"evidence_control", "evidence_efficiency"}:
+            if protocol["experiment"] in {"evidence_control", "evidence_efficiency", "evidence_robustness"}:
                 for field in ("proposal_correct_id", "proposal_wrong_id", "proposal_abstention"):
                     case[field] = bool(valid and result.get(field, False))
             if protocol["experiment"] == "evidence_efficiency":
@@ -480,7 +496,9 @@ def run_benchmark(*, requests_file, endpoint, model, out_dir, code_revision, tim
                     if invalid:
                         raise ValueError(invalid)
                     if protocol["experiment"] in OCCURRENCE_EXPERIMENTS:
-                        if protocol["experiment"] == "evidence_efficiency":
+                        if protocol["experiment"] == "evidence_robustness":
+                            from .evidence_robustness import grade_evidence_robustness_response as validate_selection
+                        elif protocol["experiment"] == "evidence_efficiency":
                             from .evidence_efficiency import grade_evidence_efficiency_response as validate_selection
                         elif protocol["experiment"] == "evidence_control":
                             from .evidence_control import grade_evidence_control_response as validate_selection

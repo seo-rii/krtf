@@ -22,6 +22,9 @@ KIND = "ktrf_followup_queue_v1"
 COMBINED_KIND = "ktrf_combined_queue_v1"
 EXTENDED_KIND = "ktrf_extended_queue_v1"
 DIAGNOSTIC_KIND = "ktrf_diagnostic_queue_v1"
+ROBUSTNESS_KIND = "ktrf_evidence_robustness_v1"
+ROBUSTNESS_COUNTS = {"evidence_robustness": 384}
+ROBUSTNESS_ORDER = [("evidence_robustness", model) for model in ("gemma12b", "qwen27b")]
 EFFICIENCY_KIND = "ktrf_evidence_efficiency_v1"
 EFFICIENCY_COUNTS = {"evidence_efficiency": 320}
 EFFICIENCY_ORDER = [("evidence_efficiency", model) for model in ("gemma12b", "qwen27b")]
@@ -53,15 +56,28 @@ def now():
 
 
 def validate_plan(plan):
-    if not isinstance(plan, dict) or plan.get("kind") not in {KIND, COMBINED_KIND, EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND}:
+    if not isinstance(plan, dict) or plan.get("kind") not in {KIND, COMBINED_KIND, EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND}:
         raise ValueError("frozen followup queue required")
     combined = plan["kind"] == COMBINED_KIND
-    extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND}
+    extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND}
     diagnostic = plan["kind"] == DIAGNOSTIC_KIND
     review = plan["kind"] == REVIEW_KIND
     confirmation = plan["kind"] == CONFIRMATION_KIND
     evidence = plan["kind"] == EVIDENCE_KIND
     efficiency = plan["kind"] == EFFICIENCY_KIND
+    robustness = plan["kind"] == ROBUSTNESS_KIND
+    if robustness:
+        predecessor = plan.get("predecessor")
+        if (not isinstance(predecessor, dict)
+                or set(predecessor) != {"run_id", "status_path", "publication_marker"}
+                or not isinstance(predecessor.get("run_id"), str)
+                or not re.fullmatch(r"[a-zA-Z0-9_-]+", predecessor["run_id"])
+                or predecessor["run_id"] == plan.get("run_id")
+                or any(not isinstance(predecessor.get(key), str)
+                       or not Path(predecessor[key]).is_absolute()
+                       for key in ("status_path", "publication_marker"))
+                or predecessor["status_path"] == predecessor["publication_marker"]):
+            raise ValueError("robustness queue requires an explicit predecessor and publication marker")
     sample_design = plan.get("sample_design")
     if "sample_design" in plan:
         if (not combined or not isinstance(sample_design, dict)
@@ -85,9 +101,10 @@ def validate_plan(plan):
     if not re.fullmatch(r"[0-9a-f]{64}", plan.get("archive_sha256", "")):
         raise ValueError("source archive hash required")
     stages = plan.get("stages", [])
-    order = EFFICIENCY_ORDER if efficiency else EVIDENCE_ORDER if evidence else CONFIRMATION_ORDER if confirmation else REVIEW_ORDER if review else DIAGNOSTIC_ORDER if diagnostic else EXTENDED_ORDER if extended else COMBINED_ORDER if combined else ORDER
+    order = ROBUSTNESS_ORDER if robustness else EFFICIENCY_ORDER if efficiency else EVIDENCE_ORDER if evidence else CONFIRMATION_ORDER if confirmation else REVIEW_ORDER if review else DIAGNOSTIC_ORDER if diagnostic else EXTENDED_ORDER if extended else COMBINED_ORDER if combined else ORDER
     if [(s.get("experiment"), s.get("model_key")) for s in stages] != order:
-        raise ValueError("expected evidence efficiency for Gemma then Qwen" if efficiency else
+        raise ValueError("expected evidence robustness for Gemma then Qwen" if robustness else
+                         "expected evidence efficiency for Gemma then Qwen" if efficiency else
                          "expected evidence control for Gemma then Qwen" if evidence else
                          "expected fresh routing confirmation for Gemma then Qwen" if confirmation else
                          "expected matched five review experiments for Gemma then Qwen" if review else
@@ -98,7 +115,8 @@ def validate_plan(plan):
     if len({s.get("id") for s in stages}) != len(order):
         raise ValueError("unique stage IDs required")
     for stage in stages:
-        request_count = (EFFICIENCY_COUNTS[stage["experiment"]] if efficiency else
+        request_count = (ROBUSTNESS_COUNTS[stage["experiment"]] if robustness else
+                         EFFICIENCY_COUNTS[stage["experiment"]] if efficiency else
                          EVIDENCE_COUNTS[stage["experiment"]] if evidence else
                          CONFIRMATION_COUNTS[stage["experiment"]] if confirmation else
                          REVIEW_COUNTS[stage["experiment"]] if review else
@@ -129,7 +147,7 @@ def validate_plan(plan):
             raise ValueError("local checkpoint and served identity required")
     if not 0 < plan.get("resource_wait_seconds", 0) <= 2 * 86400:
         raise ValueError("bounded resource deadline required")
-    if (confirmation or evidence or efficiency) and plan.get("require_idle_gpu") is not True:
+    if (confirmation or evidence or efficiency or robustness) and plan.get("require_idle_gpu") is not True:
         raise ValueError("confirmation cost measurements require an initially idle GPU")
     expected_proofs = {"unit", "preparation"} if combined or extended else {"unit", "preparation", "blind_document"}
     if set(plan.get("proofs", {})) != expected_proofs:
@@ -183,7 +201,7 @@ def verify_inputs(plan):
         if file_hash(path) != stage["envelope_sha256"]:
             raise ValueError("frozen request envelope changed")
         loader = load_request_file
-        if plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND}:
+        if plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND}:
             from .run_extended_suite import load_request_file as loader
         rows, protocol, _ = loader(path)
         if (protocol["experiment"] != stage["experiment"] or len(rows) != stage["request_count"]
@@ -213,10 +231,28 @@ def verify_inputs(plan):
                 raise ValueError("fresh document sample requires one distinct parent article and content hash per question")
         token = preparation["models"][stage["model_key"]]
         if (token["request_count"] != stage["request_count"] or token["overflow_count"] != 0
-                or not 0 < token["max_prompt_tokens"] <= 8192 - (768 if stage["experiment"] in {"routing_confirmation", "evidence_control", "evidence_efficiency"} else 384 if stage["experiment"] == "review_routing" else 128)
+                or not 0 < token["max_prompt_tokens"] <= 8192 - (768 if stage["experiment"] in {"routing_confirmation", "evidence_control", "evidence_efficiency", "evidence_robustness"} else 384 if stage["experiment"] == "review_routing" else 128)
                 or token["path"] != plan["models"][stage["model_key"]]["path"]):
             raise ValueError("actual tokenizer proof differs from frozen requests")
     return proofs
+
+
+def verify_predecessor(plan):
+    """Do not enter a predecessor queue's between-model or publication gap."""
+    spec = plan["predecessor"]
+    state = json.loads(Path(spec["status_path"]).read_text())
+    marker = json.loads(Path(spec["publication_marker"]).read_text())
+    if (not isinstance(state, dict) or state.get("run_id") != spec["run_id"]
+            or state.get("status") != "COMPLETE" or type(state.get("exit_code")) is not int
+            or state["exit_code"] != 0
+            or not isinstance(marker, dict) or marker.get("run_id") != spec["run_id"]
+            or marker.get("published") is not True
+            or any(type(marker.get(key)) is not int or marker[key] != 0
+                   for key in ("queue_exit_code", "collector_exit_code"))
+            or not isinstance(marker.get("collector_commit"), str)
+            or not re.fullmatch(r"[0-9a-f]{40}", marker["collector_commit"])):
+        raise ValueError("predecessor queue and aggregate publication must complete successfully")
+    return marker
 
 
 def wait_for_idle_gpu(plan, update):
@@ -267,6 +303,8 @@ def run_queue(plan):
             state.setdefault("runtimes", []).append(runtime)
             server = benchmark = None
             try:
+                if plan["kind"] == ROBUSTNESS_KIND:
+                    verify_predecessor(plan)
                 if plan.get("require_idle_gpu"):
                     wait_for_idle_gpu(plan, update)
                 if not (Path(model["path"]) / "config.json").is_file():
@@ -294,7 +332,7 @@ def run_queue(plan):
                         raise ValueError("stage output already exists; no answer reruns allowed")
                     current.update(status="RUNNING", benchmark_started=True, started_at=now())
                     update(active_stage=stage["id"], phase="MODEL_REQUESTS", responses_completed=0)
-                    extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND}
+                    extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND}
                     runner_module = "eval.run_extended_suite" if extended else "eval.run_followup_llm"
                     report_module = "eval.report_extended_suite" if extended else "eval.report_followup_llm"
                     run_command = [plan["python"], "-m", runner_module,

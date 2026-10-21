@@ -244,6 +244,44 @@ def prepare_report(run_dir):
                                           for reason in row["difficulty_gate"]["reasons"])),
             "uses_gold": False,
         }
+    if manifest["experiment"] == "evidence_robustness":
+        summary.update(
+            evaluation_population="REUSED_SEALED_SOURCE_DIAGNOSTIC",
+            aggregate_scope=("Reused-source diagnostic workload only. Original development and confirmation "
+                             "labels identify earlier splits; neither is a new heldout validation set."),
+            proposal_interpretation=(
+                "All proposals precede the unchanged production occurrence guard. Evidence bundles "
+                "bind the same four literal attribute spans; they add no semantic or execution authority. "
+                "Both wire formats see the same complete compact facts and source-derived bundle catalog. "
+                "Ordering and distractor perturbations share source documents, candidate facts and labels."))
+        summary["bundle_inventory"] = {}
+        for condition in manifest["declared_protocol"]["conditions"]:
+            condition_rows = [row for row in rows if row["condition"] == condition]
+            inventories = [row["bundle_inventory"] for row in condition_rows]
+            summary["bundle_inventory"][condition] = {
+                "source_cases": len(condition_rows),
+                "total_bundle_references": sum(len(item["bundles"]) for item in inventories),
+                "source_cases_with_zero_bundles": sum(not item["bundles"] for item in inventories),
+                "source_cases_with_omissions": sum(item["omitted_combinations"] > 0 for item in inventories),
+                "total_combinations": sum(combo["total_combinations"] for item in inventories
+                                          for combo in item["combinations"]),
+                "emitted_combinations": sum(combo["emitted_combinations"] for item in inventories
+                                            for combo in item["combinations"]),
+                "omitted_combinations": sum(item["omitted_combinations"] for item in inventories),
+                "max_per_entity_segment": sorted({item["max_per_entity_segment"] for item in inventories}),
+            }
+        summary["by_wire_format"] = {}
+        summary["by_perturbation"] = {}
+        for grouping, position in (("by_wire_format", 0), ("by_perturbation", 1)):
+            labels = sorted({row["condition"].split("_", 1)[position] for row in rows})
+            for label in labels:
+                conditions = [condition for condition in manifest["declared_protocol"]["conditions"]
+                              if condition.split("_", 1)[position] == label]
+                summary[grouping][label] = {
+                    "questions": len({row["case_id"] for row in rows if row["condition"] in conditions}),
+                    "conditions": conditions,
+                    "by_variant": {condition: summary["by_variant"][condition] for condition in conditions},
+                }
     return summary
 
 
@@ -274,6 +312,12 @@ def render_markdown(summary):
         lines.extend(["", "Selective routing paths, including measured tokens and request latency:", "", "```json",
             json.dumps({"difficulty_gate": summary["difficulty_gate"],
                         "by_evidence_path": summary["by_evidence_path"]}, indent=2), "```", ""])
+    if summary.get("evaluation_population") == "REUSED_SEALED_SOURCE_DIAGNOSTIC":
+        lines.extend(["", "Evidence representation and perturbation diagnostics:", "", "```json",
+            json.dumps({"evaluation_population": summary["evaluation_population"],
+                        "by_wire_format": summary["by_wire_format"],
+                        "by_perturbation": summary["by_perturbation"],
+                        "bundle_inventory": summary["bundle_inventory"]}, indent=2), "```", ""])
     if summary.get("metric_interpretation"):
         lines.extend(["", summary["metric_interpretation"], ""])
     if summary.get("cost_interpretation"):
