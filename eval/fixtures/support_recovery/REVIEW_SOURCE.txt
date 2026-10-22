@@ -1,0 +1,84 @@
+Support recovery: source-first final confirmation corpus
+
+Dataset: ktrf-support-recovery-source-v1
+Author: support_gold_ai_author
+Source SHA-256: 478c1d49a3b57294b4b683befcc9583df10660577a3c8766c10121b4f97c5f83
+Exclusion SHA-256: 6c8882c7c1dffaeaaa819bf9f780a0ecf3df4e78c66a6cfcd198d3a7bf1387d5
+
+This source is fictional AI-authored gold, not a human-verified or sampled
+workplace corpus. All source documents, glossary facts, target positions and
+identity labels were fixed before resolver preparation or model generation.
+No resolver, retrieval engine or generation model was called by the author.
+The independent reviewer must read the final source and approve all 96 cases
+before recording independent_review.json and pinning its exact byte hash.
+
+Twelve new lexical families, eight independent fictional events per family.
+All 96 documents are final confirmation; none are development/tuning records.
+Three styles each have four families: incident investigation, procurement
+email, and project handover/chat. Family independence is a designed synthetic
+property; the recurring eight challenge structures are correlated and do not
+constitute 96 independent real-world audit events.
+A is consistently a domestic procedure and B a foreign system, and positive
+shared-alias cases select B. These designed correlations limit generalization;
+this corpus must not support an unconstrained operational safety claim.
+
+Each family has two unrelated registered entities with separate canonical
+names and Korean aliases, but one shared four-letter Latin alias. Each term's
+country, operational stage, referent type and organizational scope are
+explicit in its full definition. The two entities differ on all four axes.
+The 60 novel lexical names were checked against 20 tracked fixture JSON/YAML
+artifacts, including prior routing and evidence-efficiency source corpora;
+source_exclusion.json preserves their exact paths and hashes. There were no
+string overlaps.
+
+Within every family the source-authored challenge positions are:
+  1 LINK A: four explicit attributes in one paragraph.
+  2 LINK B: the same target is followed across three paragraphs; all four
+    attributes belong to that target rather than nearby unrelated objects.
+  3 LINK A: exact canonical name and owning organization, with country and
+    operational stage omitted. Omission is explicitly distinct from conflict.
+  4 LINK B: the shared Latin alias is disambiguated by function and attributes.
+  5 NIL: an independent foreign object (odd families), or a defunct unrelated
+    old policy (even families), has the same alias; it is not a version of A.
+  6 NIL: nearby attributes belong to B; the selected alias refers to a third,
+    external object. Transferring B's attributes to it is an attribution error.
+  7 NON_MENTION in odd families: a metalinguistic letter/string example.
+    COMPOSITIONAL in even families: alias+담당자 means a human; core and full
+    target spans are intentionally different.
+  8 AMBIGUOUS: the shared Latin alias appears without distinguishing evidence.
+
+The resulting labels are LINK48, NIL24, NON_MENTION6, COMPOSITIONAL6,
+AMBIGUOUS12. The target always records exact Unicode codepoint core and full
+spans. Role expressions are not relabeled as the underlying procedure.
+
+source_support_annotations is source-side gold only. It gives literal support
+spans with entity ownership, allowed missing attributes, and explicit mismatch
+spans. It must not be passed as model input, used to manufacture retrieval
+candidates, or used to select final confirmation methods. In negative case6,
+all four support_units intentionally belong to B, not the selected external
+alias. The annotations help diagnose what an oracle could recover without
+pretending that a literal value proves semantic attribution.
+
+Families and glossary functions:
+  sr26-family-01 미루별사: heat-exchanger sealing approval / vacuum-gauge retest.
+  sr26-family-02 새봄결사: battery-cell isolation / circuit-trace preservation.
+  sr26-family-03 푸른곁사: gas-sample removal approval / valve-history matching.
+  sr26-family-04 한들샘사: coolant reinjection review / alarm-cause classification.
+  sr26-family-05 모아결사: plating raw-material review / optical-lens loan entry.
+  sr26-family-06 예솔맥사: packaging delivery approval / flame-resistant fabric bids.
+  sr26-family-07 담은별사: ceramic batch acceptance / telecom-line extension settlement.
+  sr26-family-08 이음솔사: circulation-pump payment / filter-stock transfer entry.
+  sr26-family-09 바른잎사: map-tile publication / speech-sample retest allocation.
+  sr26-family-10 해든숲사: consent-text change / notification-route recovery entry.
+  sr26-family-11 잔별결사: record retention change / video-transfer segment check.
+  sr26-family-12 하늬곁사: color-sample distribution / equipment-drawing conflict entry.
+
+Reviewer checklist:
+  * Read full glossary definitions and all eight documents in every family.
+  * Verify selected occurrence and full-surface identity independently.
+  * Check especially omitted versus contradictory attributes, cross-paragraph
+    anaphora, and the deliberately misleading attribution in case6.
+  * Preserve NIL / NON_MENTION / COMPOSITIONAL / AMBIGUOUS distinctions.
+  * Record all case IDs, author/reviewer separation, source hash, review-before-
+    resolver and review-before-generation, human_verified=false, and unresolved
+    disagreements=0 only after issues are resolved from source semantics.
