@@ -1,0 +1,947 @@
+{
+  "schema_version": 1,
+  "status": "APPROVED",
+  "source_sha256": "e75e65721ef4344fb21f889561fb3821c609fd4f77d619ba25b5d86f2439424c",
+  "reviewer": "/root/finish_closure_runtime",
+  "reviewed_case_ids": [
+    "ec26-family-01:1",
+    "ec26-family-01:2",
+    "ec26-family-01:3",
+    "ec26-family-01:4",
+    "ec26-family-01:5",
+    "ec26-family-01:6",
+    "ec26-family-01:7",
+    "ec26-family-01:8",
+    "ec26-family-02:1",
+    "ec26-family-02:2",
+    "ec26-family-02:3",
+    "ec26-family-02:4",
+    "ec26-family-02:5",
+    "ec26-family-02:6",
+    "ec26-family-02:7",
+    "ec26-family-02:8",
+    "ec26-family-03:1",
+    "ec26-family-03:2",
+    "ec26-family-03:3",
+    "ec26-family-03:4",
+    "ec26-family-03:5",
+    "ec26-family-03:6",
+    "ec26-family-03:7",
+    "ec26-family-03:8",
+    "ec26-family-04:1",
+    "ec26-family-04:2",
+    "ec26-family-04:3",
+    "ec26-family-04:4",
+    "ec26-family-04:5",
+    "ec26-family-04:6",
+    "ec26-family-04:7",
+    "ec26-family-04:8",
+    "ec26-family-05:1",
+    "ec26-family-05:2",
+    "ec26-family-05:3",
+    "ec26-family-05:4",
+    "ec26-family-05:5",
+    "ec26-family-05:6",
+    "ec26-family-05:7",
+    "ec26-family-05:8",
+    "ec26-family-06:1",
+    "ec26-family-06:2",
+    "ec26-family-06:3",
+    "ec26-family-06:4",
+    "ec26-family-06:5",
+    "ec26-family-06:6",
+    "ec26-family-06:7",
+    "ec26-family-06:8",
+    "ec26-family-07:1",
+    "ec26-family-07:2",
+    "ec26-family-07:3",
+    "ec26-family-07:4",
+    "ec26-family-07:5",
+    "ec26-family-07:6",
+    "ec26-family-07:7",
+    "ec26-family-07:8",
+    "ec26-family-08:1",
+    "ec26-family-08:2",
+    "ec26-family-08:3",
+    "ec26-family-08:4",
+    "ec26-family-08:5",
+    "ec26-family-08:6",
+    "ec26-family-08:7",
+    "ec26-family-08:8",
+    "ec26-family-09:1",
+    "ec26-family-09:2",
+    "ec26-family-09:3",
+    "ec26-family-09:4",
+    "ec26-family-09:5",
+    "ec26-family-09:6",
+    "ec26-family-09:7",
+    "ec26-family-09:8",
+    "ec26-family-10:1",
+    "ec26-family-10:2",
+    "ec26-family-10:3",
+    "ec26-family-10:4",
+    "ec26-family-10:5",
+    "ec26-family-10:6",
+    "ec26-family-10:7",
+    "ec26-family-10:8",
+    "ec26-family-11:1",
+    "ec26-family-11:2",
+    "ec26-family-11:3",
+    "ec26-family-11:4",
+    "ec26-family-11:5",
+    "ec26-family-11:6",
+    "ec26-family-11:7",
+    "ec26-family-11:8",
+    "ec26-family-12:1",
+    "ec26-family-12:2",
+    "ec26-family-12:3",
+    "ec26-family-12:4",
+    "ec26-family-12:5",
+    "ec26-family-12:6",
+    "ec26-family-12:7",
+    "ec26-family-12:8"
+  ],
+  "reviewed_before_resolver": true,
+  "reviewed_before_generation": true,
+  "human_verified": false,
+  "unresolved_disagreements": 0,
+  "annotation_origin": "AI_AUTHORED",
+  "review_origin": "INDEPENDENT_AI_REVIEW",
+  "review_scope": [
+    "All 24 whole entity definitions, aliases, applicability values and family source facts.",
+    "All 96 complete source documents in authored paragraph order, including all long surrounding sections.",
+    "All 96 semantic labels, exact core/full target spans, selected occurrence indices and QA identity metadata.",
+    "All 216 literal support spans, ownership annotations, 36 contradiction annotations and allowed missing attributes.",
+    "Country, operational stage, referent kind, organizational scope, real quotation versus metalinguistic use, compositional person referents, NIL and unresolved shared aliases.",
+    "All 12 family identities and 96 event/document/parent identities, length/label and shared-target attribute balancing.",
+    "All 60 new lexical names against the exact hashes and contents of 23 prior tracked fixture artifacts."
+  ],
+  "review_method": {
+    "source_only": true,
+    "resolver_invocations": 0,
+    "tokenizer_invocations": 0,
+    "generation_model_invocations": 0,
+    "full_source_codepoints": 91918,
+    "paragraph_rendering": "Every document was read in its original paragraph order. Byte-identical repeated paragraphs used explicit references to their earlier complete rendering; unique paragraphs were shown in full, never summarized.",
+    "paragraph_occurrences": 672,
+    "distinct_full_paragraphs_read": 307,
+    "literal_and_identity_audit": "Source-only JSON/hash/span checks supplement independent semantic reading; no resolver output or model proposal was used to set labels."
+  },
+  "resolved_before_approval": [
+    {
+      "case_id": "ec26-family-02:4",
+      "issue": "After shared-target balancing to role A, the independent reference paragraph named the A alias with the B organization.",
+      "resolution": "Changed only the independent reference alias from 해솔바늘 to 연무고리, matching B organization. Selected shared-alias target, entity label and all offsets remain unchanged; the final text was reread."
+    },
+    {
+      "case_id": "ec26-family-04:4",
+      "issue": "After shared-target balancing to role A, the independent reference paragraph named the A alias with the B organization.",
+      "resolution": "Changed only the independent reference alias from 포근도르 to 별무늬핀, matching B organization. Selected shared-alias target, entity label and all offsets remain unchanged; the final text was reread."
+    },
+    {
+      "case_id": "ec26-family-12:4",
+      "issue": "After shared-target balancing to role A, the independent reference paragraph named the A alias with the B organization.",
+      "resolution": "Changed only the independent reference alias from 고요맞춤 to 다솔보늬, matching B organization. Selected shared-alias target, entity label and all offsets remain unchanged; the final text was reread."
+    }
+  ],
+  "audit_counts": {
+    "families": 12,
+    "definitions": 24,
+    "documents": 96,
+    "labels": {
+      "LINK": 48,
+      "NIL": 24,
+      "NON_MENTION": 6,
+      "AMBIGUOUS": 12,
+      "COMPOSITIONAL": 6
+    },
+    "document_lengths": {
+      "long": 48,
+      "short": 48
+    },
+    "nonfirst_selected_occurrences": 18,
+    "literal_support_units": 216,
+    "contradiction_annotations": 36,
+    "prior_artifact_hash_mismatches": 0,
+    "prior_lexical_collisions": 0
+  },
+  "known_limitations": [
+    "Fictional AI-authored and independently AI-reviewed sources; not human gold, natural workplace sampling or an operational risk estimate.",
+    "Twelve families share eight controlled challenge structures and three writing styles. Paired conditions and family events are not independent replications.",
+    "Long examples contain substantive surrounding prose but reuse many exact paragraphs within a writing style; length stress is controlled rather than naturally sampled.",
+    "Shared-alias target role, country, kind and stage are balanced, but explicit/implicit unique-name positives favor A and cross-paragraph positives favor B. Balancing does not remove all source correlations.",
+    "Independent event boundaries, correction statements and mismatch explanations are deliberately explicit and may make some cases easier than natural documents.",
+    "Exact prior-name exclusion does not establish semantic novelty, absence of near-duplicates or absence from model pretraining.",
+    "Support annotations are scoring metadata only and must not enter prompts, retrieval candidate generation, method selection or execution authorization."
+  ],
+  "case_reviews": [
+    {
+      "case_id": "ec26-family-01:1",
+      "document_sha256": "4a914b9e8115b5291140974ba17af37d8dbaaf4e246b38d36d5820e9ad8224e3",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-01-a",
+      "note": "The selected actual occurrence identifies A; its four stated attributes belong to the same target. Actual quoted speech remains a mention."
+    },
+    {
+      "case_id": "ec26-family-01:2",
+      "document_sha256": "b11550d1b07ad6bff10cafb5f4ca5796dba1b6f4b6995dc7702a35e05c218840",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-01-b",
+      "note": "The event-number chain explicitly assigns the following paragraphs to B. The earlier revoked classification is not the final source fact."
+    },
+    {
+      "case_id": "ec26-family-01:3",
+      "document_sha256": "e53768c661f66165c50567cb77a58d84c61996696699b8578832bbd9d4e7f61c",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-01-a",
+      "note": "The canonical A identity, organization and kind support the link. Omitted country and stage are unknown, not contradictory."
+    },
+    {
+      "case_id": "ec26-family-01:4",
+      "document_sha256": "468874dfade723f6330e4d72245be3cb3b6731c9a6acfe834a09ca32599d39a5",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-01-a",
+      "note": "Target-owned country, organization, stage, kind and function uniquely identify the annotated shared-alias entity. Independent reference material is separate."
+    },
+    {
+      "case_id": "ec26-family-01:5",
+      "document_sha256": "3a358307085a07edbd96952c0381b36490cce0c5082747d05070909da9fa59bf",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The source expressly identifies an independent foreign tool or defunct unrelated institution, not the registered entity or its history."
+    },
+    {
+      "case_id": "ec26-family-01:6",
+      "document_sha256": "b2f820dea52c31652cda591150aba317d105e026aa211c1a26467e1740e1f9fd",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The nearby four attributes belong to B in a different event. The selected A spelling denotes an unregistered external paper tag."
+    },
+    {
+      "case_id": "ec26-family-01:7",
+      "document_sha256": "d5ccd62f3d3f7c3c4fb42296e39a88721b63d392419df62177ef33e74058a095",
+      "decision": "AGREE",
+      "label": "NON_MENTION",
+      "entity_id": null,
+      "note": "The full source expression is metalinguistic text in odd families or a person with the work name as an embedded core in even families."
+    },
+    {
+      "case_id": "ec26-family-01:8",
+      "document_sha256": "5b9c779158ade79c70741705565884a981b0434977821dbd9572b67198564e55",
+      "decision": "AGREE",
+      "label": "AMBIGUOUS",
+      "entity_id": null,
+      "note": "The selected shared alias has no target-owned distinguishing facts. Independent reference material cannot resolve it."
+    },
+    {
+      "case_id": "ec26-family-02:1",
+      "document_sha256": "dfa43efcade10de3f4710eed843f73e15e7442aa8e2a2b3cfddeddda131e10af",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-02-a",
+      "note": "The selected actual occurrence identifies A; its four stated attributes belong to the same target. Actual quoted speech remains a mention."
+    },
+    {
+      "case_id": "ec26-family-02:2",
+      "document_sha256": "e97d40cecf442cf40e8671bba563f03754965fef7e366bacc039b38ace8f3b58",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-02-b",
+      "note": "The event-number chain explicitly assigns the following paragraphs to B. The earlier revoked classification is not the final source fact."
+    },
+    {
+      "case_id": "ec26-family-02:3",
+      "document_sha256": "2d3a01c07f88a9e51fcd7502d3bc83b67e7834ddc4a3a0f6541b015a7b392a2a",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-02-a",
+      "note": "The canonical A identity, organization and kind support the link. Omitted country and stage are unknown, not contradictory."
+    },
+    {
+      "case_id": "ec26-family-02:4",
+      "document_sha256": "69658db4317d09670c0742597d64923e7afb402acbe4e983383bf0a46f3d5d41",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-02-a",
+      "note": "Target-owned country, organization, stage, kind and function uniquely identify the annotated shared-alias entity. Independent reference material is separate."
+    },
+    {
+      "case_id": "ec26-family-02:5",
+      "document_sha256": "90acd6a0e78d50374be809f3217dd27a070517d529a6c2083a5a14add0e2254f",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The source expressly identifies an independent foreign tool or defunct unrelated institution, not the registered entity or its history."
+    },
+    {
+      "case_id": "ec26-family-02:6",
+      "document_sha256": "9378ddcb5fbdedfece86e866b432059d28231e385121fd7590c9e7b7fc4813bc",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The nearby four attributes belong to B in a different event. The selected A spelling denotes an unregistered external paper tag."
+    },
+    {
+      "case_id": "ec26-family-02:7",
+      "document_sha256": "c4e12fd89aff33162c1bb38f783e3c6f5ee9ffe382c95b3a0d97c98e5b11b99e",
+      "decision": "AGREE",
+      "label": "COMPOSITIONAL",
+      "entity_id": null,
+      "note": "The full source expression is metalinguistic text in odd families or a person with the work name as an embedded core in even families."
+    },
+    {
+      "case_id": "ec26-family-02:8",
+      "document_sha256": "de9239968b0205f11e7da9849b60ac4c23af61c3ff0e50c8ec366992d61ba4e1",
+      "decision": "AGREE",
+      "label": "AMBIGUOUS",
+      "entity_id": null,
+      "note": "The selected shared alias has no target-owned distinguishing facts. Independent reference material cannot resolve it."
+    },
+    {
+      "case_id": "ec26-family-03:1",
+      "document_sha256": "d8279a33df0525e3c205d80fbeca907433d197b654e0e48ee66441894fb597b2",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-03-a",
+      "note": "The selected actual occurrence identifies A; its four stated attributes belong to the same target. Actual quoted speech remains a mention."
+    },
+    {
+      "case_id": "ec26-family-03:2",
+      "document_sha256": "8ca3a8e3711006c20f9347b5857f959c1d7eff9d409401a81abd5b4ff7181e26",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-03-b",
+      "note": "The event-number chain explicitly assigns the following paragraphs to B. The earlier revoked classification is not the final source fact."
+    },
+    {
+      "case_id": "ec26-family-03:3",
+      "document_sha256": "b0b8de007128fb17e79a3993a1b7b1c7e27940fb3e27340eccb84afda3b834da",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-03-a",
+      "note": "The canonical A identity, organization and kind support the link. Omitted country and stage are unknown, not contradictory."
+    },
+    {
+      "case_id": "ec26-family-03:4",
+      "document_sha256": "dbe951b8bf50385e3870b9a475552ea2bf291ead99c1aeb3ab123e7c03130f19",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-03-a",
+      "note": "Target-owned country, organization, stage, kind and function uniquely identify the annotated shared-alias entity. Independent reference material is separate."
+    },
+    {
+      "case_id": "ec26-family-03:5",
+      "document_sha256": "6fd05c038696a1909da3668e1085641629330e2bfc31822d62fb11044144f8fe",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The source expressly identifies an independent foreign tool or defunct unrelated institution, not the registered entity or its history."
+    },
+    {
+      "case_id": "ec26-family-03:6",
+      "document_sha256": "2252e35989212ba2455e6f27188ef31de2fc96d0ff3b96d20847f460a3229867",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The nearby four attributes belong to B in a different event. The selected A spelling denotes an unregistered external paper tag."
+    },
+    {
+      "case_id": "ec26-family-03:7",
+      "document_sha256": "667e2f46c6111dbdce9f34d9a3f6b7826da15071d4e06f9f202a3576e2e17b42",
+      "decision": "AGREE",
+      "label": "NON_MENTION",
+      "entity_id": null,
+      "note": "The full source expression is metalinguistic text in odd families or a person with the work name as an embedded core in even families."
+    },
+    {
+      "case_id": "ec26-family-03:8",
+      "document_sha256": "c194fa15a5ca92d390ffd626841060d782adc2ee2dd43c43584f6044ebb78efc",
+      "decision": "AGREE",
+      "label": "AMBIGUOUS",
+      "entity_id": null,
+      "note": "The selected shared alias has no target-owned distinguishing facts. Independent reference material cannot resolve it."
+    },
+    {
+      "case_id": "ec26-family-04:1",
+      "document_sha256": "2b1af7453f2b2b6363570e7ba96dcf636fb3921e3859083822e447f94ddf10f1",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-04-a",
+      "note": "The selected actual occurrence identifies A; its four stated attributes belong to the same target. Actual quoted speech remains a mention."
+    },
+    {
+      "case_id": "ec26-family-04:2",
+      "document_sha256": "1018dfa4d6ebbe69570de0cf29cc9973dc658a8733d8f7f76e564fa03e99705f",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-04-b",
+      "note": "The event-number chain explicitly assigns the following paragraphs to B. The earlier revoked classification is not the final source fact."
+    },
+    {
+      "case_id": "ec26-family-04:3",
+      "document_sha256": "f8a21724a5e3c8133efa0d01c3800d877366b3746c7704808c91f01bd476690d",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-04-a",
+      "note": "The canonical A identity, organization and kind support the link. Omitted country and stage are unknown, not contradictory."
+    },
+    {
+      "case_id": "ec26-family-04:4",
+      "document_sha256": "c3ec895707b3f456f41adfd8369c71180f5a3338e884eb5dfd58c84f58e44390",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-04-a",
+      "note": "Target-owned country, organization, stage, kind and function uniquely identify the annotated shared-alias entity. Independent reference material is separate."
+    },
+    {
+      "case_id": "ec26-family-04:5",
+      "document_sha256": "b1692576052d1f914dcbd5c2c08f7fb9d2e0c3764616ebdb8f98ad350f8994cb",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The source expressly identifies an independent foreign tool or defunct unrelated institution, not the registered entity or its history."
+    },
+    {
+      "case_id": "ec26-family-04:6",
+      "document_sha256": "148bd5437017a3c3242ba917faf635c4ef79083ea7f78a6d1b0f01d198964f9e",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The nearby four attributes belong to B in a different event. The selected A spelling denotes an unregistered external paper tag."
+    },
+    {
+      "case_id": "ec26-family-04:7",
+      "document_sha256": "eed9e68072c8df7a88ff0c0f7b7c29acbc6463c3f42846590be1845e25c9aaff",
+      "decision": "AGREE",
+      "label": "COMPOSITIONAL",
+      "entity_id": null,
+      "note": "The full source expression is metalinguistic text in odd families or a person with the work name as an embedded core in even families."
+    },
+    {
+      "case_id": "ec26-family-04:8",
+      "document_sha256": "846ae70a486c734f1cbfa822fba7fed0ef17992d2aafca56c53c91cc1bdf2605",
+      "decision": "AGREE",
+      "label": "AMBIGUOUS",
+      "entity_id": null,
+      "note": "The selected shared alias has no target-owned distinguishing facts. Independent reference material cannot resolve it."
+    },
+    {
+      "case_id": "ec26-family-05:1",
+      "document_sha256": "0290088211482fed52710cd562bf883980c3b2089228e2e69fb08afd30099c98",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-05-a",
+      "note": "The selected actual occurrence identifies A; its four stated attributes belong to the same target. Actual quoted speech remains a mention."
+    },
+    {
+      "case_id": "ec26-family-05:2",
+      "document_sha256": "5f8313be9be9544d285adebf0d7d52bb35c523162ba058d8360e7807eafb744f",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-05-b",
+      "note": "The event-number chain explicitly assigns the following paragraphs to B. The earlier revoked classification is not the final source fact."
+    },
+    {
+      "case_id": "ec26-family-05:3",
+      "document_sha256": "4efbba7f1e9b4ea4889a39940e56a46636555283e364fc16e7c68e0fadf990af",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-05-a",
+      "note": "The canonical A identity, organization and kind support the link. Omitted country and stage are unknown, not contradictory."
+    },
+    {
+      "case_id": "ec26-family-05:4",
+      "document_sha256": "9fb3092a02a335c9e33921711ece743e2559f9f1082a68857b082f1cae8bb974",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-05-a",
+      "note": "Target-owned country, organization, stage, kind and function uniquely identify the annotated shared-alias entity. Independent reference material is separate."
+    },
+    {
+      "case_id": "ec26-family-05:5",
+      "document_sha256": "1e3d7b0e6d0c621e55ac6704de37769926c78d84c4f518cd9a7732f7834ea89b",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The source expressly identifies an independent foreign tool or defunct unrelated institution, not the registered entity or its history."
+    },
+    {
+      "case_id": "ec26-family-05:6",
+      "document_sha256": "ab434b10da1295a8d43d2415dbaae4cab2c7f6ae46530dbd08c99ab65a28ba2c",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The nearby four attributes belong to B in a different event. The selected A spelling denotes an unregistered external paper tag."
+    },
+    {
+      "case_id": "ec26-family-05:7",
+      "document_sha256": "467282190545b19d61f9bcefb019dd26f7c6015c2275c13a45967b8692208640",
+      "decision": "AGREE",
+      "label": "NON_MENTION",
+      "entity_id": null,
+      "note": "The full source expression is metalinguistic text in odd families or a person with the work name as an embedded core in even families."
+    },
+    {
+      "case_id": "ec26-family-05:8",
+      "document_sha256": "193bda96675380f28d60254e8f177d49f013311984794fd180310925de64cf46",
+      "decision": "AGREE",
+      "label": "AMBIGUOUS",
+      "entity_id": null,
+      "note": "The selected shared alias has no target-owned distinguishing facts. Independent reference material cannot resolve it."
+    },
+    {
+      "case_id": "ec26-family-06:1",
+      "document_sha256": "6df4be3d0ebdbc7ff96753e5aa9097468bcf405bb0834fbf43431925e5c3e596",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-06-a",
+      "note": "The selected actual occurrence identifies A; its four stated attributes belong to the same target. Actual quoted speech remains a mention."
+    },
+    {
+      "case_id": "ec26-family-06:2",
+      "document_sha256": "115ce0519fd42ee0ef213711e7f77406582d5afd8aedee14e3edb9dca648323f",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-06-b",
+      "note": "The event-number chain explicitly assigns the following paragraphs to B. The earlier revoked classification is not the final source fact."
+    },
+    {
+      "case_id": "ec26-family-06:3",
+      "document_sha256": "0b3e4f1ac8e9effc7712109cb3a8d81647ec458533562ffdc9d82c6799a4021b",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-06-a",
+      "note": "The canonical A identity, organization and kind support the link. Omitted country and stage are unknown, not contradictory."
+    },
+    {
+      "case_id": "ec26-family-06:4",
+      "document_sha256": "9875feedc7a6623b5416808f0cca8af0e72705ed97d823bca10d6743af4eeebb",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-06-b",
+      "note": "Target-owned country, organization, stage, kind and function uniquely identify the annotated shared-alias entity. Independent reference material is separate."
+    },
+    {
+      "case_id": "ec26-family-06:5",
+      "document_sha256": "8686ff4835762fd6db37be4671e311e55ba41f1dbb6adcba3d691cbc4b8e14d7",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The source expressly identifies an independent foreign tool or defunct unrelated institution, not the registered entity or its history."
+    },
+    {
+      "case_id": "ec26-family-06:6",
+      "document_sha256": "3c0a945ebd650cc33ce6416770ada166ecc8217e51d51d29bc30a6ea9b4b0751",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The nearby four attributes belong to B in a different event. The selected A spelling denotes an unregistered external paper tag."
+    },
+    {
+      "case_id": "ec26-family-06:7",
+      "document_sha256": "d905eaf51f44c8a90d2ead01f1df26e013614a39cf8d39b2f219093246f49d77",
+      "decision": "AGREE",
+      "label": "COMPOSITIONAL",
+      "entity_id": null,
+      "note": "The full source expression is metalinguistic text in odd families or a person with the work name as an embedded core in even families."
+    },
+    {
+      "case_id": "ec26-family-06:8",
+      "document_sha256": "f93db3fed90dad213710843b3f64d8032791691e7086e06a534b247c28f4c02e",
+      "decision": "AGREE",
+      "label": "AMBIGUOUS",
+      "entity_id": null,
+      "note": "The selected shared alias has no target-owned distinguishing facts. Independent reference material cannot resolve it."
+    },
+    {
+      "case_id": "ec26-family-07:1",
+      "document_sha256": "8e26cc64d7dcc7b307e25d5f7de43516f9a570b31099495bfc13773ac6062ef9",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-07-a",
+      "note": "The selected actual occurrence identifies A; its four stated attributes belong to the same target. Actual quoted speech remains a mention."
+    },
+    {
+      "case_id": "ec26-family-07:2",
+      "document_sha256": "66b52b4bc759cc5649df036b046a18160e9cbf1610efe7cd8f7aa42d4aa8411c",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-07-b",
+      "note": "The event-number chain explicitly assigns the following paragraphs to B. The earlier revoked classification is not the final source fact."
+    },
+    {
+      "case_id": "ec26-family-07:3",
+      "document_sha256": "02353806a3785de65c6395ea963dc6e9ff590a79bad971119b05dfa55c0a072e",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-07-a",
+      "note": "The canonical A identity, organization and kind support the link. Omitted country and stage are unknown, not contradictory."
+    },
+    {
+      "case_id": "ec26-family-07:4",
+      "document_sha256": "35c0b80517e881a95dd6609c47159bc759682d50ab19ed4f7890295767f3d032",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-07-b",
+      "note": "Target-owned country, organization, stage, kind and function uniquely identify the annotated shared-alias entity. Independent reference material is separate."
+    },
+    {
+      "case_id": "ec26-family-07:5",
+      "document_sha256": "0236516a9b8859c3b74fb13e3e72a7a4c52a5b0af46e3cfb3c396bc3655a2045",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The source expressly identifies an independent foreign tool or defunct unrelated institution, not the registered entity or its history."
+    },
+    {
+      "case_id": "ec26-family-07:6",
+      "document_sha256": "64d226decaca86f0dd9367f34c5c317208ba5566c4453e5a000c4f1e2ac27795",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The nearby four attributes belong to B in a different event. The selected A spelling denotes an unregistered external paper tag."
+    },
+    {
+      "case_id": "ec26-family-07:7",
+      "document_sha256": "17582447aeb737d6b0f6ba676323255d52605b9be31d986f26cf7a7047b0838e",
+      "decision": "AGREE",
+      "label": "NON_MENTION",
+      "entity_id": null,
+      "note": "The full source expression is metalinguistic text in odd families or a person with the work name as an embedded core in even families."
+    },
+    {
+      "case_id": "ec26-family-07:8",
+      "document_sha256": "0e1906daf5907c3bc1181ea43b450c60ca13ce7ed69fb04b6a49bde802c454e2",
+      "decision": "AGREE",
+      "label": "AMBIGUOUS",
+      "entity_id": null,
+      "note": "The selected shared alias has no target-owned distinguishing facts. Independent reference material cannot resolve it."
+    },
+    {
+      "case_id": "ec26-family-08:1",
+      "document_sha256": "ab3e3b998e51c38f1b220c1ed029486c0dcecdd6b95db07a2b5dd35f0370a9a6",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-08-a",
+      "note": "The selected actual occurrence identifies A; its four stated attributes belong to the same target. Actual quoted speech remains a mention."
+    },
+    {
+      "case_id": "ec26-family-08:2",
+      "document_sha256": "6c9a6fa93d578bd828e8f9617d6f059286c4d84d20c367d14d7c6609e961ce4b",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-08-b",
+      "note": "The event-number chain explicitly assigns the following paragraphs to B. The earlier revoked classification is not the final source fact."
+    },
+    {
+      "case_id": "ec26-family-08:3",
+      "document_sha256": "6c58d2cb643e0af0a23a3d7fbba2aac6bd69f11108b80e71dbd4f377838b3292",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-08-a",
+      "note": "The canonical A identity, organization and kind support the link. Omitted country and stage are unknown, not contradictory."
+    },
+    {
+      "case_id": "ec26-family-08:4",
+      "document_sha256": "21e6d7f48eaa56170ec270897a1e9fce148d77c62f063e3ae83dc76b1e9489e0",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-08-b",
+      "note": "Target-owned country, organization, stage, kind and function uniquely identify the annotated shared-alias entity. Independent reference material is separate."
+    },
+    {
+      "case_id": "ec26-family-08:5",
+      "document_sha256": "f1c03c418b4e3ff62ad048ec067573a88eeaf4d9a52bd5f76edddbcef55ea813",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The source expressly identifies an independent foreign tool or defunct unrelated institution, not the registered entity or its history."
+    },
+    {
+      "case_id": "ec26-family-08:6",
+      "document_sha256": "e863485d7a3753bab14453dd0c39cd12fcbfa8e8c24e35efbeb63a652c27c7c7",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The nearby four attributes belong to B in a different event. The selected A spelling denotes an unregistered external paper tag."
+    },
+    {
+      "case_id": "ec26-family-08:7",
+      "document_sha256": "422586249e087a99ee562405aa3aeb4c3997221207211814da62908b019d1605",
+      "decision": "AGREE",
+      "label": "COMPOSITIONAL",
+      "entity_id": null,
+      "note": "The full source expression is metalinguistic text in odd families or a person with the work name as an embedded core in even families."
+    },
+    {
+      "case_id": "ec26-family-08:8",
+      "document_sha256": "2f86486cfcb3c4496dbfa9efda54a118cb7323f5b44eda1e3d42db8ba4102fbb",
+      "decision": "AGREE",
+      "label": "AMBIGUOUS",
+      "entity_id": null,
+      "note": "The selected shared alias has no target-owned distinguishing facts. Independent reference material cannot resolve it."
+    },
+    {
+      "case_id": "ec26-family-09:1",
+      "document_sha256": "9a13746cc31c8bea784c864bd659972e23d5a665d1983691f8f6299543e1d3a0",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-09-a",
+      "note": "The selected actual occurrence identifies A; its four stated attributes belong to the same target. Actual quoted speech remains a mention."
+    },
+    {
+      "case_id": "ec26-family-09:2",
+      "document_sha256": "55179b4fde6cf75630cbeaecd160b7eb8ca9f2820d23fe7e575920bfc85166df",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-09-b",
+      "note": "The event-number chain explicitly assigns the following paragraphs to B. The earlier revoked classification is not the final source fact."
+    },
+    {
+      "case_id": "ec26-family-09:3",
+      "document_sha256": "3335a6570ea93b06e35b075471f57567406fa47badc36bab78896f02cc6eced8",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-09-a",
+      "note": "The canonical A identity, organization and kind support the link. Omitted country and stage are unknown, not contradictory."
+    },
+    {
+      "case_id": "ec26-family-09:4",
+      "document_sha256": "b3853f2619dd7483ceea09f3209d43610c7241a1491dd96d4fe62128791c6d27",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-09-b",
+      "note": "Target-owned country, organization, stage, kind and function uniquely identify the annotated shared-alias entity. Independent reference material is separate."
+    },
+    {
+      "case_id": "ec26-family-09:5",
+      "document_sha256": "952327d4c2840d0baa9e04be4af6d1a58c3a05c228161b90f1ccfdb0f2cd1292",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The source expressly identifies an independent foreign tool or defunct unrelated institution, not the registered entity or its history."
+    },
+    {
+      "case_id": "ec26-family-09:6",
+      "document_sha256": "aeffd4bcaca2af84c82b43e37b8a716240e1b0edbb249158f3110168856c6fdd",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The nearby four attributes belong to B in a different event. The selected A spelling denotes an unregistered external paper tag."
+    },
+    {
+      "case_id": "ec26-family-09:7",
+      "document_sha256": "3bb00a8cdc3b2b4ea4e24cc1955406396ef439dfc7c1a02bffde33efb15c76b3",
+      "decision": "AGREE",
+      "label": "NON_MENTION",
+      "entity_id": null,
+      "note": "The full source expression is metalinguistic text in odd families or a person with the work name as an embedded core in even families."
+    },
+    {
+      "case_id": "ec26-family-09:8",
+      "document_sha256": "740c2401899583d9d737fa7a085c480dd554caa8f8b71456251bd7ca04255a08",
+      "decision": "AGREE",
+      "label": "AMBIGUOUS",
+      "entity_id": null,
+      "note": "The selected shared alias has no target-owned distinguishing facts. Independent reference material cannot resolve it."
+    },
+    {
+      "case_id": "ec26-family-10:1",
+      "document_sha256": "3198cf4d5821aa810ad60fff6ffd5ab70b16c4751792d313a97d1bd6c789cf11",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-10-a",
+      "note": "The selected actual occurrence identifies A; its four stated attributes belong to the same target. Actual quoted speech remains a mention."
+    },
+    {
+      "case_id": "ec26-family-10:2",
+      "document_sha256": "d717ea96b1dbf204e3454aba276c8a8ec6f345140132f24f63bcadece97294ec",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-10-b",
+      "note": "The event-number chain explicitly assigns the following paragraphs to B. The earlier revoked classification is not the final source fact."
+    },
+    {
+      "case_id": "ec26-family-10:3",
+      "document_sha256": "02d93ceb6956fca583ee6d7175ec2a7a65fd9e38aca9860d2623fdd112779a59",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-10-a",
+      "note": "The canonical A identity, organization and kind support the link. Omitted country and stage are unknown, not contradictory."
+    },
+    {
+      "case_id": "ec26-family-10:4",
+      "document_sha256": "11df10a869426d84934232189a42956f4116cac1e88d96281abc3fd583b1cb74",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-10-b",
+      "note": "Target-owned country, organization, stage, kind and function uniquely identify the annotated shared-alias entity. Independent reference material is separate."
+    },
+    {
+      "case_id": "ec26-family-10:5",
+      "document_sha256": "052df255dbcc41c136f57c8d869a646b96879ab0919698e15277e54497a413ef",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The source expressly identifies an independent foreign tool or defunct unrelated institution, not the registered entity or its history."
+    },
+    {
+      "case_id": "ec26-family-10:6",
+      "document_sha256": "828f2ce32c6552b504dc927e1281d728c2119291f1a55286e85cddb1ad1109d8",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The nearby four attributes belong to B in a different event. The selected A spelling denotes an unregistered external paper tag."
+    },
+    {
+      "case_id": "ec26-family-10:7",
+      "document_sha256": "4385dacf6b2984e73cabd77b0c646e34a6101379b34cc49cfafa029fa402c6ed",
+      "decision": "AGREE",
+      "label": "COMPOSITIONAL",
+      "entity_id": null,
+      "note": "The full source expression is metalinguistic text in odd families or a person with the work name as an embedded core in even families."
+    },
+    {
+      "case_id": "ec26-family-10:8",
+      "document_sha256": "52f0e3495992bbde148542c1842f5550add73484e83128f434e15101447172f8",
+      "decision": "AGREE",
+      "label": "AMBIGUOUS",
+      "entity_id": null,
+      "note": "The selected shared alias has no target-owned distinguishing facts. Independent reference material cannot resolve it."
+    },
+    {
+      "case_id": "ec26-family-11:1",
+      "document_sha256": "23cbb5341985be5cdacfe5cfb1981cf47114bffd616b90641f6e525d20a20d6d",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-11-a",
+      "note": "The selected actual occurrence identifies A; its four stated attributes belong to the same target. Actual quoted speech remains a mention."
+    },
+    {
+      "case_id": "ec26-family-11:2",
+      "document_sha256": "a1dcf66720c9d151e2992be5616982b00de5ce5e613d10423c309711128df16e",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-11-b",
+      "note": "The event-number chain explicitly assigns the following paragraphs to B. The earlier revoked classification is not the final source fact."
+    },
+    {
+      "case_id": "ec26-family-11:3",
+      "document_sha256": "30197dfe638fce7eed013f96ad04a4a540eef96518623bffc5d669271d11625a",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-11-a",
+      "note": "The canonical A identity, organization and kind support the link. Omitted country and stage are unknown, not contradictory."
+    },
+    {
+      "case_id": "ec26-family-11:4",
+      "document_sha256": "bcc040bb26ea1fc04ea62f440c34a548fa3345ddaca57561d6527f88d7d59478",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-11-b",
+      "note": "Target-owned country, organization, stage, kind and function uniquely identify the annotated shared-alias entity. Independent reference material is separate."
+    },
+    {
+      "case_id": "ec26-family-11:5",
+      "document_sha256": "a7f9b5db7e2b5d060a880a906456a38d9b42b296ac4d75bcc8340058de80659f",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The source expressly identifies an independent foreign tool or defunct unrelated institution, not the registered entity or its history."
+    },
+    {
+      "case_id": "ec26-family-11:6",
+      "document_sha256": "520f627c9227619979bf1c506b6dcc8140e38c86bbf71ffc8dbb598a355025eb",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The nearby four attributes belong to B in a different event. The selected A spelling denotes an unregistered external paper tag."
+    },
+    {
+      "case_id": "ec26-family-11:7",
+      "document_sha256": "2918f8d791dcdd4746a104d85b2cbb6f241df3453dc686921b3556032b3dce0e",
+      "decision": "AGREE",
+      "label": "NON_MENTION",
+      "entity_id": null,
+      "note": "The full source expression is metalinguistic text in odd families or a person with the work name as an embedded core in even families."
+    },
+    {
+      "case_id": "ec26-family-11:8",
+      "document_sha256": "9d4b8e04cf20eb8b4c09ba030d08fca3683b00a1bae39c4f12d5d9deb85edc0a",
+      "decision": "AGREE",
+      "label": "AMBIGUOUS",
+      "entity_id": null,
+      "note": "The selected shared alias has no target-owned distinguishing facts. Independent reference material cannot resolve it."
+    },
+    {
+      "case_id": "ec26-family-12:1",
+      "document_sha256": "f6244df0eecc290cb8c6ba80933eef86ec71aaab19920de64f8e1319f2196c57",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-12-a",
+      "note": "The selected actual occurrence identifies A; its four stated attributes belong to the same target. Actual quoted speech remains a mention."
+    },
+    {
+      "case_id": "ec26-family-12:2",
+      "document_sha256": "631a3fcee14767246c2da045207cd05e8d8e043d8df1f87b63c06acb4bad0a2b",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-12-b",
+      "note": "The event-number chain explicitly assigns the following paragraphs to B. The earlier revoked classification is not the final source fact."
+    },
+    {
+      "case_id": "ec26-family-12:3",
+      "document_sha256": "e3ed97e6a6b1a435bcbea27d73e92c3dd3591217be1c6c020de5e212a1c4bb29",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-12-a",
+      "note": "The canonical A identity, organization and kind support the link. Omitted country and stage are unknown, not contradictory."
+    },
+    {
+      "case_id": "ec26-family-12:4",
+      "document_sha256": "c46f9af6f47d7758cede2c9767d9a7715b5f8cb8fa386602ed39578bcba61379",
+      "decision": "AGREE",
+      "label": "LINK",
+      "entity_id": "global:ec26-family-12-a",
+      "note": "Target-owned country, organization, stage, kind and function uniquely identify the annotated shared-alias entity. Independent reference material is separate."
+    },
+    {
+      "case_id": "ec26-family-12:5",
+      "document_sha256": "308fe6c53ff8b364312aa17b55eb55718de96e30e108758bcde524ce7f602676",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The source expressly identifies an independent foreign tool or defunct unrelated institution, not the registered entity or its history."
+    },
+    {
+      "case_id": "ec26-family-12:6",
+      "document_sha256": "1e6ac9ab7e1717d699baac0b26028d8ad86b3053862ed7af076390712ab8035b",
+      "decision": "AGREE",
+      "label": "NIL",
+      "entity_id": null,
+      "note": "The nearby four attributes belong to B in a different event. The selected A spelling denotes an unregistered external paper tag."
+    },
+    {
+      "case_id": "ec26-family-12:7",
+      "document_sha256": "cf3a7e06951282e338c0633771f3faeef4edc4d35090a9ac34a7c736293ed496",
+      "decision": "AGREE",
+      "label": "COMPOSITIONAL",
+      "entity_id": null,
+      "note": "The full source expression is metalinguistic text in odd families or a person with the work name as an embedded core in even families."
+    },
+    {
+      "case_id": "ec26-family-12:8",
+      "document_sha256": "aa4b287cb7c3de1310fc24b4fecccd4f4d1fa83fd6f0cf4a373cc1f804cfc374",
+      "decision": "AGREE",
+      "label": "AMBIGUOUS",
+      "entity_id": null,
+      "note": "The selected shared alias has no target-owned distinguishing facts. Independent reference material cannot resolve it."
+    }
+  ]
+}

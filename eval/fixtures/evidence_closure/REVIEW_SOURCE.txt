@@ -1,0 +1,83 @@
+Evidence closure: source-first final confirmation corpus
+
+Dataset: ktrf-evidence-closure-source-v1
+Author: /root/closure_gold; source completion: /root/finish_closure_gold
+Source SHA-256: e75e65721ef4344fb21f889561fb3821c609fd4f77d619ba25b5d86f2439424c
+Exclusion SHA-256: 1ba83eef886ba566012deabfa0f66686d8d4f2779edff99906a377f36ed9049e
+
+This is fictional AI-authored gold. It is not human-verified gold, a sampled
+workplace distribution, or a measurement of operational safety. All source
+facts, complete documents, selected occurrence spans, labels and attribute
+ownership annotations precede resolver preparation and model inference.
+No resolver, tokenizer or generation model was invoked by the source author.
+Independent reviewer /root/finish_closure_runtime read all 24 full definitions
+and all 96 complete documents, resolved the three ancillary-reference issues
+listed in REVIEW.md, and approved independent_review.json before resolver
+preparation or inference. Its pinned byte SHA-256 is
+7b80997a7dbcea618b0ccb5cad9d7cf53ef50e72408646a8560c8c7c408c5c17.
+This is independent AI review, not human annotation or verification.
+
+There are twelve new glossary families and eight fictional source events per
+family. All 96 cases are sealed final confirmation: no development/tuning
+cases and no method selection on this gold. Three writing styles each cover
+four families: approval minutes, vendor incident email and operations handover.
+Each term has a Korean alias and a shared four-letter Latin alias; every
+family contains two unrelated entities with distinct country, operational
+stage, referent kind and organizational scope in their whole definitions.
+
+Counterbalancing fixed before inference:
+  * For each role A and B separately: domestic6/foreign6, procedure6/system6.
+  * Shared-alias LINK cases: A6/B6, domestic6/foreign6, procedure6/system6,
+    current6/pilot6. Shared LINK A families are 01,02,03,04,05,12; B otherwise.
+  * Long48 and short48; each contains LINK24/negative24. Every family has two
+    long LINK and two long negative cases plus two short LINK/two short negative.
+  * All long documents preserve 1200..2000 Unicode codepoints of source text;
+    actual final range is 1582..1844.
+
+The per-family challenge positions deliberately recur:
+  1 LINK A: explicit four attributes, with legitimate actual speech in some
+    cases; long examples also contain an earlier metalinguistic occurrence.
+  2 LINK B: support crosses paragraphs with an explicit same-event identity
+    chain and a correction before/after the support paragraphs.
+  3 LINK A: canonical identity and scope/type support, while country and
+    operational stage are omitted. Omission does not assert a contradiction.
+  4 LINK A/B: shared alias resolves to the balanced role through source facts.
+  5 NIL: an unrelated foreign tool (odd families) or defunct independent
+    policy (even families), expressly not a version or history of A.
+  6 NIL: the source attributes belong to a separate B occurrence; selected
+    A spelling denotes an unregistered external object. No attribute borrowing.
+  7 NON_MENTION in odd families (letter/string editing); COMPOSITIONAL in even
+    families (alias+담당자 denotes a person, distinct from the embedded core).
+  8 AMBIGUOUS: a shared alias without target-owned distinguishing support.
+
+Labels: LINK48, NIL24, NON_MENTION6, COMPOSITIONAL6, AMBIGUOUS12. Source spans
+are exact Unicode codepoint offsets. target_occurrence_index binds the selected
+full surface, so repeated spellings cannot be silently swapped to the first.
+source_support_annotations are source-side scoring metadata only. They must
+not be shown to the resolver/model or used to construct retrieval candidates,
+select a confirmation method or grant execution permission. They describe
+literal spans, source-intended entity ownership, allowed omitted attributes,
+and explicit mismatches; literal overlap alone does not prove attribution.
+
+Known limitations and remaining designed correlations:
+  * Family events are fictional and clustered. Twelve families and three
+    author-controlled styles do not establish statistical workplace independence.
+  * The eight challenge structures repeat. Explicit and implicit unique-alias
+    positive cases favor role A, while cross-paragraph positives favor role B.
+    Balancing the shared-alias cases removes their old all-domestic shortcut;
+    it does not erase all role/stratum or family/style correlations.
+  * Long records contain substantive but deliberately structured surrounding
+    sections, reused within writing style. They are controlled long-context
+    stress cases rather than naturally sampled long business documents.
+  * Target markers, repeated-surface distractors, explicit source attribution
+    language and revision statements may make some distinctions easier than
+    real documents. Other cases deliberately test omission and uncertainty.
+  * AI review is not a second human annotation and must not be reported as one.
+
+Before review, source completion corrected Korean particles and remapped exact
+spans, replaced a prior-source lexical collision 비단모래 with the new 옥빛산호,
+and changed six shared-alias source descriptions and their matching labels to
+counterbalance country/type/status. These changes were source-only and made
+before any resolver/model evaluation. source_exclusion.json records all 60
+new lexical names and hashes of 23 prior tracked fixture artifacts;
+no new canonical name or alias occurs as a literal substring in those files.

@@ -1,0 +1,179 @@
+{
+  "schema_version": 1,
+  "source_sha256": "e75e65721ef4344fb21f889561fb3821c609fd4f77d619ba25b5d86f2439424c",
+  "new_family_ids": [
+    "ec26-family-01",
+    "ec26-family-02",
+    "ec26-family-03",
+    "ec26-family-04",
+    "ec26-family-05",
+    "ec26-family-06",
+    "ec26-family-07",
+    "ec26-family-08",
+    "ec26-family-09",
+    "ec26-family-10",
+    "ec26-family-11",
+    "ec26-family-12"
+  ],
+  "new_lexical_names": [
+    "JQXM",
+    "JXDV",
+    "KXWV",
+    "PVXQ",
+    "QZLB",
+    "VQZJ",
+    "VXKJ",
+    "WQZH",
+    "XQVR",
+    "YQZK",
+    "ZJQF",
+    "ZVQP",
+    "가람코일",
+    "가람코일 렌즈 코팅 재검 요청",
+    "고요맞춤",
+    "고요맞춤 원료 배합 이력 조회",
+    "누리호박",
+    "누리호박 검수 성적서 대조",
+    "누비자루",
+    "누비자루 승강장 마모 판정",
+    "다솔보늬",
+    "다솔보늬 저장 시험 표본 배정",
+    "다홍물결",
+    "다홍물결 식품 포장 봉인 배치",
+    "달빛누름",
+    "달빛누름 방류수 재채취 배정",
+    "모란버팀",
+    "모란버팀 원단 손실률 정산",
+    "별무늬핀",
+    "별무늬핀 터빈 부품 수명 예측",
+    "비취톱니",
+    "비취톱니 납품 단가 이의 접수",
+    "설빛나선",
+    "설빛나선 회선 경로 전환 예약",
+    "소담꼬마",
+    "소담꼬마 약품 투입량 검토",
+    "수정다솜",
+    "수정다솜 저온 화물 훼손 신고",
+    "여운누름",
+    "여운누름 전지 분리 작업 승인",
+    "연무고리",
+    "연무고리 청정실 출입기록 보관",
+    "예솔추시",
+    "예솔추시 진공로 정비 배정",
+    "옥빛산호",
+    "옥빛산호 보관료 정산 검토",
+    "유리솜결",
+    "유리솜결 차량 점검 이력 이관",
+    "은솔마디",
+    "은솔마디 상자 규격 오차 신고",
+    "이슬자락",
+    "이슬자락 통신장비 회수 확인",
+    "초록사금",
+    "초록사금 충전 곡선 이탈 신고",
+    "포근도르",
+    "포근도르 출력 제한 통지",
+    "해솔바늘",
+    "해솔바늘 압력센서 교정 예약",
+    "햇살도톰",
+    "햇살도톰 염료 배합 변경 신청"
+  ],
+  "new_name_string_overlap_count": 0,
+  "collisions": [],
+  "tracked_json_yaml_source_files": [
+    {
+      "path": "eval/fixtures/context_definitions/manifest.json",
+      "sha256": "78b5887d6f76bb0b1dbfcb3353675b29815936dc36ac3f02a6e0b48ba3b9b557"
+    },
+    {
+      "path": "eval/fixtures/context_ranking_challenge/annotation_adjudication.json",
+      "sha256": "49d4c92e3701b47e32c36c67efa0b97d51620550fcd7e2283b166e0f20eceda9"
+    },
+    {
+      "path": "eval/fixtures/context_ranking_challenge/annotation_manifest.json",
+      "sha256": "6b1d2bd10508892dd3a39775cef54c0c48da529123de9cb2239fcede275835ea"
+    },
+    {
+      "path": "eval/fixtures/context_ranking_challenge/blind_binding.json",
+      "sha256": "652bbe3236ccb9c909f6fd5915dd9a7e7f34fe5e29d4e282ac5a522acf6c8394"
+    },
+    {
+      "path": "eval/fixtures/context_ranking_challenge/protocol.json",
+      "sha256": "e2eed86f4c932644bc443bf98bf6a72e2c813acb475efe291687d27806fb1b64"
+    },
+    {
+      "path": "eval/fixtures/document_context/manifest.json",
+      "sha256": "8de524e0a91d60a0fe1120b22ee1f4b89ffe51d6011fbc381846940a6abb7e46"
+    },
+    {
+      "path": "eval/fixtures/evidence_efficiency/independent_review.json",
+      "sha256": "51e4536d15a45d2cec50e1be4a82a9c1e741ae723ea4c6fb07752b4661f026eb"
+    },
+    {
+      "path": "eval/fixtures/evidence_efficiency/source_exclusion.json",
+      "sha256": "eec97842292a9f7973a58dfc6f254fa2f8338e067c627e562766e65a79582d95"
+    },
+    {
+      "path": "eval/fixtures/evidence_efficiency/source_gold.json",
+      "sha256": "0ab031e4425e3d7f58746a2fae89ef9c5ac096b71f44537d34512a6f9c81ecfe"
+    },
+    {
+      "path": "eval/fixtures/occurrence_evidence_holdout/annotation_adjudication.json",
+      "sha256": "d790ece86e9d3e5f809d3b64f9dd4d7f09f5c434347f47707a043de96d8bd09b"
+    },
+    {
+      "path": "eval/fixtures/occurrence_evidence_holdout/annotation_manifest.json",
+      "sha256": "f92839ca348d36109568ad36a5f984b66e7f740df574643ea5fc4fb5efb9b854"
+    },
+    {
+      "path": "eval/fixtures/occurrence_evidence_holdout/blind_binding.json",
+      "sha256": "05150a244d0a6929123216aa9f060e445eeb0b08a585f189cba7b820cb34c5a4"
+    },
+    {
+      "path": "eval/fixtures/occurrence_evidence_holdout/protocol.json",
+      "sha256": "dd2c2f6abbe48f3b23f5185424fab8eebb1c47cca2be315ee69d3954e442dc6e"
+    },
+    {
+      "path": "eval/fixtures/production_real_holdout/adjudication.json",
+      "sha256": "c519052e2fb735bdea5419bf118a274245380601661d238170321265904494d3"
+    },
+    {
+      "path": "eval/fixtures/production_real_holdout/glossary.yaml",
+      "sha256": "d4750b467dc968ea753f08bc13e94c720406241cdb6abdd16155b680b3376cd7"
+    },
+    {
+      "path": "eval/fixtures/production_real_holdout/manifest.json",
+      "sha256": "2f85ab90fd48d89a54eb0ea971578e9df5d848e3f44e09a0858c2d1abfcc058c"
+    },
+    {
+      "path": "eval/fixtures/production_real_holdout/selection_manifest.json",
+      "sha256": "250bec67f19d2ccca01fc0db0ae1169f7d5ac768651dda049fd2ad04b9fe3038"
+    },
+    {
+      "path": "eval/fixtures/routing_confirmation/independent_review.json",
+      "sha256": "eca0c2631926182947535451d4c3d7a08cc7fc6d6e685ee63e85fdbcbcc93233"
+    },
+    {
+      "path": "eval/fixtures/routing_confirmation/source_exclusion.json",
+      "sha256": "8369bc42a123d807db7a2477888136a8dab6f1f33802556ff0ce8624ea5bc383"
+    },
+    {
+      "path": "eval/fixtures/routing_confirmation/source_gold.json",
+      "sha256": "c1a5196d5e8b74a55b8fbf2862e7f9d51de2dafbfd2aabc1354336663aaa4a24"
+    },
+    {
+      "path": "eval/fixtures/support_recovery/independent_review.json",
+      "sha256": "9e720e1dc3fa960cfc25954cad6da62bd72ef5b6c4d3538c1141807ecda23257"
+    },
+    {
+      "path": "eval/fixtures/support_recovery/source_exclusion.json",
+      "sha256": "6c8882c7c1dffaeaaa819bf9f780a0ecf3df4e78c66a6cfcd198d3a7bf1387d5"
+    },
+    {
+      "path": "eval/fixtures/support_recovery/source_gold.json",
+      "sha256": "478c1d49a3b57294b4b683befcc9583df10660577a3c8766c10121b4f97c5f83"
+    }
+  ],
+  "audit_method": "Literal Unicode substring exclusion against all prior tracked fixture JSON/YAML files; authored before any resolver or generation invocation",
+  "new_lexical_name_count": 60,
+  "new_family_count": 12
+}
