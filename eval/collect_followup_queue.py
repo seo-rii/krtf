@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shlex
 import subprocess
 import time
@@ -53,6 +54,88 @@ def verify_stage(root, stage, plan, *, selection=None):
     for value in (summary, identity, environment):
         validate_public_json(value)
     return summary, identity, environment
+
+
+def collect_recovery_provenance(plan, terminal, config, private, copy):
+    """Bind one reused closure stage to its original sealed run and collector."""
+    if "retry_from" not in plan:
+        if "recovery_spec" in config or any("reused_from" in row for row in terminal["stages"]):
+            raise ValueError("stage reuse requires a pinned recovery plan and specification")
+        return None
+    from .recover_followup_queue import (
+        reused_stage_state, validate_recovery_origin, validate_recovery_publication,
+        validate_recovery_spec,
+    )
+
+    def pinned_json(pin, name):
+        if (not isinstance(pin, dict) or set(pin) != {"path", "sha256"}
+                or not isinstance(pin.get("path"), str) or not Path(pin["path"]).is_absolute()
+                or not isinstance(pin.get("sha256"), str)
+                or not re.fullmatch(r"[0-9a-f]{64}", pin["sha256"])):
+            raise ValueError("recovery provenance requires an absolute path and immutable hash")
+        target = private / (name + ".json")
+        copy(pin["path"], target)
+        if hashlib.sha256(target.read_bytes()).hexdigest() != pin["sha256"]:
+            raise ValueError("copied recovery provenance differs from frozen hash")
+        return json.loads(target.read_text())
+
+    spec_pin = config.get("recovery_spec")
+    spec = pinned_json(spec_pin, "recovery_spec")
+    validate_recovery_spec(spec, plan)
+    if (terminal.get("driver_code_revision") != plan["driver_code_revision"]
+            or terminal.get("driver_archive_sha256") != spec["driver_archive_sha256"]
+            or terminal.get("retry_from") != plan["retry_from"]
+            or terminal.get("recovery_spec_sha256") != spec_pin["sha256"]):
+        raise ValueError("terminal recovery driver or specification differs from collector pins")
+    retry = plan["retry_from"]
+    original = pinned_json({"path": retry["plan_path"], "sha256": retry["plan_sha256"]},
+                           "recovery_original_plan")
+    original_terminal = pinned_json({"path": retry["status_path"], "sha256": retry["status_sha256"]},
+                                   "recovery_original_status")
+    origin = validate_recovery_origin(plan, original, original_terminal)
+    collector_status = pinned_json(spec["original_collector_status"], "recovery_original_collector_status")
+    collector_exit = pinned_json(spec["original_collector_exit"], "recovery_original_collector_exit")
+    validate_recovery_publication(plan, original, original_terminal, collector_status, collector_exit)
+    if ("reused_from" in terminal["stages"][0]
+            or terminal["stages"][1] != reused_stage_state(origin)):
+        raise ValueError("reused stage differs from the pinned original terminal result")
+    overview = {
+        "kind": spec["kind"], "original_run_id": original["run_id"],
+        "original_plan_sha256": retry["plan_sha256"],
+        "original_status_sha256": retry["status_sha256"],
+        "specification_sha256": spec_pin["sha256"],
+        "driver_code_revision": plan["driver_code_revision"],
+        "experiment_code_revision": plan["code_revision"],
+        "planned_new_generation_requests": plan["stages"][0]["request_count"],
+        "new_generation_requests": terminal["stages"][0].get("received_count", 0),
+        "reused_generation_requests": plan["stages"][1]["request_count"],
+        "new_stages": [plan["stages"][0]["id"]],
+        "reused_stages": [plan["stages"][1]["id"]],
+        "runtime_change": {"model_key": "gemma12b", "setting": "gpu_memory_utilization",
+                           "before": original["models"]["gemma12b"]["gpu_memory_utilization"],
+                           "after": plan["models"]["gemma12b"]["gpu_memory_utilization"]},
+        "inference_policy_changed": False,
+        "original_collector_status_sha256": spec["original_collector_status"]["sha256"],
+        "original_collector_exit_sha256": spec["original_collector_exit"]["sha256"],
+        "reused_stage_artifacts_sha256": spec["reused_stage_artifacts_sha256"],
+        "reused_artifacts_unchanged": True,
+    }
+    return {"original_plan": original, "specification": spec,
+            "origin": origin, "overview": validate_public_json(overview)}
+
+
+def stage_collection_source(plan, stage, result, recovery):
+    """Choose provenance before copying; ordinary stages cannot claim reuse."""
+    if recovery is not None and stage["model_key"] == "qwen27b":
+        from .recover_followup_queue import reused_stage_state
+        if result != reused_stage_state(recovery["origin"]):
+            raise ValueError("reused stage differs from pinned provenance")
+        original = recovery["original_plan"]
+        original_stage = next(row for row in original["stages"] if row["id"] == stage["id"])
+        return result["reused_from"]["result_path"], original_stage, original
+    if "reused_from" in result:
+        raise ValueError("unpinned or wrong-stage reuse is not allowed")
+    return str(Path(plan["run_root"]) / "results" / stage["id"]), stage, plan
 
 
 def compare_models(summaries, plan):
@@ -228,6 +311,13 @@ def collect(config):
                 or (plan["kind"] == KIND and proofs["blind_document"].get("exit_code") != 0)
                 or proofs["preparation"].get("code_revision") != plan["code_revision"]):
             raise ValueError("successful frozen CPU/test/preparation proofs required")
+        recovery = collect_recovery_provenance(plan, terminal, config, private, copy)
+        if recovery is not None:
+            proofs["recovery"] = recovery["overview"]
+            original = recovery["original_plan"]
+            original_missing = str(Path(original["run_root"]) / "results" / original["stages"][0]["id"])
+            remote("python3 -c " + shlex.quote("import os,sys;sys.exit(int(os.path.lexists(sys.argv[1])))")
+                   + " " + shlex.quote(original_missing))
         artifacts, summaries, missing = {}, {}, []
         update(phase="PRIVATE_COLLECTION_AND_REGRADING")
         for stage, result in zip(plan["stages"], terminal["stages"], strict=True):
@@ -235,7 +325,7 @@ def collect(config):
                     or type(result.get("exit_code")) is not int or result.get("status") not in {"COMPLETE", "FAILED"}
                     or (result["status"] == "COMPLETE") != (result["exit_code"] == 0)):
                 raise ValueError("stage identity/count/terminal status differs")
-            remote_out = str(Path(plan["run_root"]) / "results" / stage["id"])
+            remote_out, source_stage, source_plan = stage_collection_source(plan, stage, result, recovery)
             if result.get("benchmark_started") is False and result["status"] == "FAILED":
                 remote("python3 -c " + shlex.quote("import os,sys;sys.exit(int(os.path.lexists(sys.argv[1])))")
                        + " " + shlex.quote(remote_out))
@@ -247,10 +337,13 @@ def collect(config):
             target.mkdir(mode=0o700)
             for name in (*ARTIFACTS, "run_manifest.json", "environment.json", "summary.json"):
                 copy(remote_out + "/" + name, target / name)
+                if recovery is not None and stage["model_key"] == "qwen27b":
+                    if hashlib.sha256((target / name).read_bytes()).hexdigest() != recovery["specification"]["reused_stage_artifacts_sha256"][name]:
+                        raise ValueError("copied reused artifact differs from frozen original bytes")
             if plan["kind"] == SUPPORT_CONFIRMATION_KIND:
-                summary, identity, environment = verify_stage(target, stage, plan, selection=proofs["selection"])
+                summary, identity, environment = verify_stage(target, source_stage, source_plan, selection=proofs["selection"])
             else:
-                summary, identity, environment = verify_stage(target, stage, plan)
+                summary, identity, environment = verify_stage(target, source_stage, source_plan)
             if any(result.get(key) != summary["counts"][key] for key in (
                     "received_count", "missing_count", "error_count", "malformed_count")):
                 raise ValueError("terminal counts differ from sealed raw regrading")
@@ -374,6 +467,16 @@ def collect(config):
             "raw_artifacts_published": False,
             "planned_generation_requests": sum(stage["request_count"] for stage in plan["stages"]),
             "limitations": limitations}
+        if recovery is not None:
+            overview["recovery"] = recovery["overview"]
+            overview["new_generation_requests"] = recovery["overview"]["new_generation_requests"]
+            overview["reused_generation_requests"] = recovery["overview"]["reused_generation_requests"]
+            memory_change = recovery["overview"]["runtime_change"]
+            overview["limitations"].extend([
+                "Recovery permits new generation only for the previously missing Gemma stage; all 480 Qwen responses are reused byte-for-byte from the pinned original completed stage.",
+                f"Gemma GPU memory utilization changes from {memory_change['before']:g} to {memory_change['after']:g} to recover startup capacity; experiment requests, decoding and inference policy remain frozen.",
+                "The original Gemma stage failed before benchmark generation, and the original partial collector completed publication with an expected failed-queue exit status.",
+            ])
         if fresh:
             overview["sample_design"] = plan["sample_design"]
         public_objects = {"summary.json": overview, "queue_plan.json": plan, "queue_status.json": terminal,
@@ -388,7 +491,13 @@ def collect(config):
             target.mkdir()
             for name, value in artifacts[stage["id"]].items():
                 validate_public_json(value)
-                save_json(target / name, value)
+                if (recovery is not None and stage["model_key"] == "qwen27b"
+                        and name in {"summary.json", "environment.json"}):
+                    # Verification used the original plan; retain its original
+                    # serialized metadata rather than relabelling the old run.
+                    (target / name).write_bytes((private / stage["id"] / name).read_bytes())
+                else:
+                    save_json(target / name, value)
             renderer = render_markdown
             if extended:
                 from .report_extended_suite import render_markdown as renderer
@@ -422,6 +531,12 @@ def collect(config):
         lines = [heading, "", f"Status: **{terminal['status']}**, exit code `{terminal['exit_code']}`.", "",
                  preparation, "",
                  "| Stage | Status | Received/planned |", "|---|---|---:|"]
+        if recovery is not None:
+            lines[6:6] = [f"Recovery: **{overview['new_generation_requests']} new Gemma requests; "
+                          f"{overview['reused_generation_requests']} reused Qwen requests**. "
+                          "The Qwen stage was not regenerated. Gemma GPU memory utilization "
+                          f"changes `{memory_change['before']:g} → {memory_change['after']:g}`; "
+                          "requests, decoding and inference policy are unchanged.", ""]
         for stage, result in zip(plan["stages"], terminal["stages"], strict=True):
             label = f"[{stage['id']}]({stage['id']}/RESULTS.md)" if stage["id"] in summaries else stage["id"]
             lines.append(f"| {label} | {result['status']} | {result.get('received_count', 'not started')}/{stage['request_count']} |")
