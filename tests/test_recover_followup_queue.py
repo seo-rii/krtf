@@ -78,7 +78,7 @@ def recovery_case(closure_plan, tmp_path, monkeypatch, request):
         stream.add(worker, arcname="eval/recover_followup_queue.py")
         stream.add(helper, arcname="eval/helper.py")
     monkeypatch.setattr(recovery, "__file__", str(worker))
-    ipc_tmp = tempfile.TemporaryDirectory(prefix="ktrf-recovery-ipc-")
+    ipc_tmp = tempfile.TemporaryDirectory(prefix="ec-ipc-", dir="/tmp")
     request.addfinalizer(ipc_tmp.cleanup)
     ipc = Path(ipc_tmp.name)
     ipc.chmod(0o700)
