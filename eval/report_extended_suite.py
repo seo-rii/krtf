@@ -218,11 +218,13 @@ def prepare_report(run_dir):
             "Retrieved ambiguous candidates are visible for judgment but gain no execution authority. "
             "All 64 cases are previously exposed development data; results are adaptive diagnostics."
         )
-    if manifest["experiment"] == "support_recovery":
+    if manifest["experiment"] in {"support_recovery", "evidence_closure"}:
         population = manifest["request_provenance"]["source"]["evaluation_population"]
         summary.update(
             evaluation_population=population,
             aggregate_scope=(
+                "Fresh AI-authored server-closure confirmation on 96 documents from 12 semantic families, balanced between short and long sources. This is not human workplace gold or a deployment risk estimate."
+                if manifest["experiment"] == "evidence_closure" else
                 "Reused-source support-recovery diagnostic; earlier split labels do not identify a new holdout."
                 if len(manifest["declared_protocol"]["conditions"]) == 8 else
                 "Fresh AI-authored confirmation of a method selected on separate reused-source diagnostics. "
@@ -264,6 +266,38 @@ def prepare_report(run_dir):
                 "unknown_attributes": summary["by_variant"][condition].get("support_unknown_attributes", {}),
                 "present_attributes": summary["by_variant"][condition].get("support_present_attributes", {}),
             }
+    if manifest["experiment"] == "evidence_closure":
+        summary["proposal_interpretation"] = (
+            "All arms report experimental shadow judgments without execution authority. Model semantic "
+            "proposals, pre-closure evidence validation, server-closed validation and the unchanged "
+            "production occurrence-guard result are separate. Server closure only adds source-bound "
+            "segments for the selected occurrence and attributes; it does not prove semantic entailment.")
+        summary["closure_diagnostics"] = {
+            condition: {field: summary["by_variant"][condition][field]
+                        for field in ("proposal_correct_id", "proposal_wrong_id", "proposal_abstention",
+                                      "raw_validation_valid", "closed_validation_valid",
+                                      "server_added_segments", "cases_with_server_added_segments", "null_wire_errors",
+                                      "raw_accepted_correct_id", "raw_accepted_wrong_id", "raw_guard_failures",
+                                      "shadow_accepted_correct_id", "shadow_accepted_wrong_id")}
+            for condition in manifest["declared_protocol"]["conditions"]}
+        summary["source_strata"] = {}
+        for field in ("document_length_band", "candidate_referent_kind", "candidate_country", "target_side"):
+            labels = sorted({row[field] for row in rows if isinstance(row.get(field), str)})
+            if not labels:
+                continue
+            groups = {}
+            for label in labels:
+                selected = [case for case in graded["cases"] if case.get(field) == label]
+                keys = {(case["case_id"], case["condition"]) for case in selected}
+                observed = [record for record in records
+                            if (record["case_id"], record["condition"]) in keys]
+                groups[label] = {
+                    "questions": len({case["case_id"] for case in selected}),
+                    "families": len({case["family_id"] for case in selected}),
+                    "by_variant": _with_observations({
+                        condition: _metrics([case for case in selected if case["condition"] == condition], True)
+                        for condition in manifest["declared_protocol"]["conditions"]}, observed)}
+            summary["source_strata"][field] = groups
     if manifest["experiment"] == "evidence_efficiency":
         summary["proposal_interpretation"] = (
             "Model proposals precede the same production occurrence guard in every arm. "
@@ -337,7 +371,7 @@ def render_markdown(summary):
         f"Cases: {summary['questions']}; parent documents: {summary['parent_documents']}. Counts: `{summary['counts']}`.", "",
         "One observation per case and condition. Shared documents, families and conditions do not increase the independent sample size.", ""]
     safety = summary["task"] == "structured_routing"
-    if summary.get("experiment") == "support_recovery":
+    if summary.get("experiment") in {"support_recovery", "evidence_closure"}:
         lines.extend([
             "**Evaluation only. Shadow results are EXPERIMENTAL_SIMULATED_APPROVAL, "
             "with no execution authority; they are not production approvals.**", "",
@@ -371,7 +405,7 @@ def render_markdown(summary):
                         "by_wire_format": summary["by_wire_format"],
                         "by_perturbation": summary["by_perturbation"],
                         "bundle_inventory": summary["bundle_inventory"]}, indent=2), "```", ""])
-    if summary.get("experiment") == "support_recovery":
+    if summary.get("experiment") in {"support_recovery", "evidence_closure"}:
         lines.extend(["", "Separate guard and simulated-shadow decisions:", "",
             "| Condition | Production guard correct | Production guard wrong | Simulated shadow correct | Simulated shadow wrong |",
             "|---|---:|---:|---:|---:|"])
@@ -385,6 +419,18 @@ def render_markdown(summary):
                         "validation_failure_clusters": summary["validation_failure_clusters"]},
                        indent=2), "```", ""])
         lines.extend([summary["unknown_attribute_interpretation"], ""])
+    if summary.get("experiment") == "evidence_closure":
+        lines.extend(["", "Server closure and null-wire diagnostics:", "",
+            "| Condition | Raw correct/wrong | Closed shadow correct/wrong | Raw validation valid | Closed validation valid | Added segments | Cases with additions | Null wire errors |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|"])
+        for condition, values in summary["closure_diagnostics"].items():
+            lines.append(f"| {condition} | {values['raw_accepted_correct_id']}/{values['raw_accepted_wrong_id']} | "
+                         f"{values['shadow_accepted_correct_id']}/{values['shadow_accepted_wrong_id']} | "
+                         f"{values['raw_validation_valid']} | "
+                         f"{values['closed_validation_valid']} | {values['server_added_segments']} | "
+                         f"{values['cases_with_server_added_segments']} | {values['null_wire_errors']} |")
+        lines.extend(["", "Paired source-length, referent-kind, country and target-side strata:", "", "```json",
+                      json.dumps(summary["source_strata"], indent=2), "```", ""])
     if summary.get("metric_interpretation"):
         lines.extend(["", summary["metric_interpretation"], ""])
     if summary.get("cost_interpretation"):
