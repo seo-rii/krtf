@@ -22,6 +22,11 @@ KIND = "ktrf_followup_queue_v1"
 COMBINED_KIND = "ktrf_combined_queue_v1"
 EXTENDED_KIND = "ktrf_extended_queue_v1"
 DIAGNOSTIC_KIND = "ktrf_diagnostic_queue_v1"
+SUPPORT_KIND = "ktrf_support_recovery_v1"
+SUPPORT_CONFIRMATION_KIND = "ktrf_support_confirmation_v1"
+SUPPORT_COUNTS = {"support_recovery": 512}
+SUPPORT_CONFIRMATION_COUNTS = {"support_recovery": 192}
+SUPPORT_ORDER = [("support_recovery", model) for model in ("gemma12b", "qwen27b")]
 ROBUSTNESS_KIND = "ktrf_evidence_robustness_v1"
 ROBUSTNESS_COUNTS = {"evidence_robustness": 384}
 ROBUSTNESS_ORDER = [("evidence_robustness", model) for model in ("gemma12b", "qwen27b")]
@@ -56,17 +61,19 @@ def now():
 
 
 def validate_plan(plan):
-    if not isinstance(plan, dict) or plan.get("kind") not in {KIND, COMBINED_KIND, EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND}:
+    if not isinstance(plan, dict) or plan.get("kind") not in {KIND, COMBINED_KIND, EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND, SUPPORT_KIND, SUPPORT_CONFIRMATION_KIND}:
         raise ValueError("frozen followup queue required")
     combined = plan["kind"] == COMBINED_KIND
-    extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND}
+    extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND, SUPPORT_KIND, SUPPORT_CONFIRMATION_KIND}
     diagnostic = plan["kind"] == DIAGNOSTIC_KIND
     review = plan["kind"] == REVIEW_KIND
     confirmation = plan["kind"] == CONFIRMATION_KIND
     evidence = plan["kind"] == EVIDENCE_KIND
     efficiency = plan["kind"] == EFFICIENCY_KIND
     robustness = plan["kind"] == ROBUSTNESS_KIND
-    if robustness:
+    support = plan["kind"] in {SUPPORT_KIND, SUPPORT_CONFIRMATION_KIND}
+    support_confirmation = plan["kind"] == SUPPORT_CONFIRMATION_KIND
+    if robustness or support:
         predecessor = plan.get("predecessor")
         if (not isinstance(predecessor, dict)
                 or set(predecessor) != {"run_id", "status_path", "publication_marker"}
@@ -77,7 +84,17 @@ def validate_plan(plan):
                        or not Path(predecessor[key]).is_absolute()
                        for key in ("status_path", "publication_marker"))
                 or predecessor["status_path"] == predecessor["publication_marker"]):
-            raise ValueError("robustness queue requires an explicit predecessor and publication marker")
+            raise ValueError("dependent queue requires an explicit predecessor and publication marker")
+    if support_confirmation:
+        selection = plan.get("selection")
+        if (not isinstance(selection, dict) or set(selection) != {"path", "sha256"}
+                or not isinstance(selection.get("path"), str)
+                or not Path(selection["path"]).is_absolute()
+                or not isinstance(selection.get("sha256"), str)
+                or not re.fullmatch(r"[0-9a-f]{64}", selection["sha256"])):
+            raise ValueError("confirmation requires a pinned method-selection proof")
+    elif support and "selection" in plan:
+        raise ValueError("discovery must not consume a confirmation method-selection proof")
     sample_design = plan.get("sample_design")
     if "sample_design" in plan:
         if (not combined or not isinstance(sample_design, dict)
@@ -101,9 +118,10 @@ def validate_plan(plan):
     if not re.fullmatch(r"[0-9a-f]{64}", plan.get("archive_sha256", "")):
         raise ValueError("source archive hash required")
     stages = plan.get("stages", [])
-    order = ROBUSTNESS_ORDER if robustness else EFFICIENCY_ORDER if efficiency else EVIDENCE_ORDER if evidence else CONFIRMATION_ORDER if confirmation else REVIEW_ORDER if review else DIAGNOSTIC_ORDER if diagnostic else EXTENDED_ORDER if extended else COMBINED_ORDER if combined else ORDER
+    order = SUPPORT_ORDER if support else ROBUSTNESS_ORDER if robustness else EFFICIENCY_ORDER if efficiency else EVIDENCE_ORDER if evidence else CONFIRMATION_ORDER if confirmation else REVIEW_ORDER if review else DIAGNOSTIC_ORDER if diagnostic else EXTENDED_ORDER if extended else COMBINED_ORDER if combined else ORDER
     if [(s.get("experiment"), s.get("model_key")) for s in stages] != order:
-        raise ValueError("expected evidence robustness for Gemma then Qwen" if robustness else
+        raise ValueError("expected support recovery for Gemma then Qwen" if support else
+                         "expected evidence robustness for Gemma then Qwen" if robustness else
                          "expected evidence efficiency for Gemma then Qwen" if efficiency else
                          "expected evidence control for Gemma then Qwen" if evidence else
                          "expected fresh routing confirmation for Gemma then Qwen" if confirmation else
@@ -115,7 +133,9 @@ def validate_plan(plan):
     if len({s.get("id") for s in stages}) != len(order):
         raise ValueError("unique stage IDs required")
     for stage in stages:
-        request_count = (ROBUSTNESS_COUNTS[stage["experiment"]] if robustness else
+        request_count = (SUPPORT_CONFIRMATION_COUNTS[stage["experiment"]] if support_confirmation else
+                         SUPPORT_COUNTS[stage["experiment"]] if support else
+                         ROBUSTNESS_COUNTS[stage["experiment"]] if robustness else
                          EFFICIENCY_COUNTS[stage["experiment"]] if efficiency else
                          EVIDENCE_COUNTS[stage["experiment"]] if evidence else
                          CONFIRMATION_COUNTS[stage["experiment"]] if confirmation else
@@ -147,7 +167,7 @@ def validate_plan(plan):
             raise ValueError("local checkpoint and served identity required")
     if not 0 < plan.get("resource_wait_seconds", 0) <= 2 * 86400:
         raise ValueError("bounded resource deadline required")
-    if (confirmation or evidence or efficiency or robustness) and plan.get("require_idle_gpu") is not True:
+    if (confirmation or evidence or efficiency or robustness or support) and plan.get("require_idle_gpu") is not True:
         raise ValueError("confirmation cost measurements require an initially idle GPU")
     expected_proofs = {"unit", "preparation"} if combined or extended else {"unit", "preparation", "blind_document"}
     if set(plan.get("proofs", {})) != expected_proofs:
@@ -157,6 +177,37 @@ def validate_plan(plan):
         if not proof.get("path") or not re.fullmatch(r"[0-9a-f]{64}", proof.get("sha256", "")):
             raise ValueError("pinned proof file hashes required")
     return plan
+
+
+def verify_support_selection(plan):
+    """Bind fresh confirmation to the method chosen solely on discovery outputs."""
+    from .support_recovery import CONDITIONS
+    spec = plan["selection"]
+    if file_hash(spec["path"]) != spec["sha256"]:
+        raise ValueError("method-selection proof hash mismatch")
+    selection = json.loads(Path(spec["path"]).read_text())
+    summaries = selection.get("discovery_summary_sha256") if isinstance(selection, dict) else None
+    if (not isinstance(selection, dict)
+            or selection.get("kind") != "ktrf_support_method_selection_v1"
+            or selection.get("phase") != "FINAL_FROZEN"
+            or selection.get("discovery_run_id") != plan["predecessor"]["run_id"]
+            or selection.get("baseline_condition") != "paragraph_all_production"
+            or not isinstance(selection.get("selected_condition"), str)
+            or selection.get("selected_condition") not in set(CONDITIONS) - {"paragraph_all_production"}
+            or selection.get("selected_before_confirmation") is not True
+            or selection.get("selection_uses_confirmation_outputs") is not False
+            or selection.get("evaluation_only") is not True or selection.get("real_execution") is not False
+            or selection.get("selection_rule") != "minimum_wrong_then_maximum_correct_then_lower_token_cost_v1"
+            or not isinstance(summaries, dict) or set(summaries) != {"gemma12b", "qwen27b"}
+            or any(not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value)
+                   for value in summaries.values())
+            or any(not isinstance(selection.get(field), str)
+                   or not re.fullmatch(pattern, selection[field])
+                   for field, pattern in (("discovery_code_revision", r"[0-9a-f]{40}"),
+                                          ("fresh_source_sha256", r"[0-9a-f]{64}"),
+                                          ("fresh_review_sha256", r"[0-9a-f]{64}")))):
+        raise ValueError("invalid frozen discovery-only method-selection proof")
+    return selection
 
 
 def verify_inputs(plan):
@@ -196,17 +247,29 @@ def verify_inputs(plan):
     sample_design = plan.get("sample_design")
     if sample_design is not None and prepared.get("sample_design") != sample_design:
         raise ValueError("preparation sample design differs from frozen plan")
+    selection = (verify_support_selection(plan)
+                 if plan["kind"] == SUPPORT_CONFIRMATION_KIND else None)
     for stage in plan["stages"]:
         path = Path(stage["requests_file"])
         if file_hash(path) != stage["envelope_sha256"]:
             raise ValueError("frozen request envelope changed")
         loader = load_request_file
-        if plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND}:
+        if plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND, SUPPORT_KIND, SUPPORT_CONFIRMATION_KIND}:
             from .run_extended_suite import load_request_file as loader
-        rows, protocol, _ = loader(path)
+        rows, protocol, provenance = loader(path)
         if (protocol["experiment"] != stage["experiment"] or len(rows) != stage["request_count"]
                 or hashlib.sha256(b"".join(canonical(row) for row in rows)).hexdigest() != stage["requests_sha256"]):
             raise ValueError("request matrix differs from frozen plan")
+        if plan["kind"] in {SUPPORT_KIND, SUPPORT_CONFIRMATION_KIND}:
+            expected_conditions = 2 if selection else 8
+            if len(protocol.get("conditions", [])) != expected_conditions:
+                raise ValueError("support queue condition count differs from its declared phase")
+            if selection:
+                source = provenance.get("source", {})
+                if (protocol["conditions"] != [selection["baseline_condition"], selection["selected_condition"]]
+                        or source.get("source_sha256") != selection["fresh_source_sha256"]
+                        or source.get("review_sha256") != selection["fresh_review_sha256"]):
+                    raise ValueError("fresh source or selected condition differs from selection proof")
         # The manifest shape is intentionally explicit and independent of inference outputs.
         preparation = prepared["experiments"][stage["experiment"]]
         if any(preparation.get(key) != stage[key] for key in (
@@ -231,7 +294,7 @@ def verify_inputs(plan):
                 raise ValueError("fresh document sample requires one distinct parent article and content hash per question")
         token = preparation["models"][stage["model_key"]]
         if (token["request_count"] != stage["request_count"] or token["overflow_count"] != 0
-                or not 0 < token["max_prompt_tokens"] <= 8192 - (768 if stage["experiment"] in {"routing_confirmation", "evidence_control", "evidence_efficiency", "evidence_robustness"} else 384 if stage["experiment"] == "review_routing" else 128)
+                or not 0 < token["max_prompt_tokens"] <= 8192 - (768 if stage["experiment"] in {"routing_confirmation", "evidence_control", "evidence_efficiency", "evidence_robustness", "support_recovery"} else 384 if stage["experiment"] == "review_routing" else 128)
                 or token["path"] != plan["models"][stage["model_key"]]["path"]):
             raise ValueError("actual tokenizer proof differs from frozen requests")
     return proofs
@@ -303,7 +366,7 @@ def run_queue(plan):
             state.setdefault("runtimes", []).append(runtime)
             server = benchmark = None
             try:
-                if plan["kind"] == ROBUSTNESS_KIND:
+                if plan["kind"] in {ROBUSTNESS_KIND, SUPPORT_KIND, SUPPORT_CONFIRMATION_KIND}:
                     verify_predecessor(plan)
                 if plan.get("require_idle_gpu"):
                     wait_for_idle_gpu(plan, update)
@@ -332,7 +395,7 @@ def run_queue(plan):
                         raise ValueError("stage output already exists; no answer reruns allowed")
                     current.update(status="RUNNING", benchmark_started=True, started_at=now())
                     update(active_stage=stage["id"], phase="MODEL_REQUESTS", responses_completed=0)
-                    extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND}
+                    extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND, SUPPORT_KIND, SUPPORT_CONFIRMATION_KIND}
                     runner_module = "eval.run_extended_suite" if extended else "eval.run_followup_llm"
                     report_module = "eval.report_extended_suite" if extended else "eval.report_followup_llm"
                     run_command = [plan["python"], "-m", runner_module,

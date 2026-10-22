@@ -22,7 +22,8 @@ from .run_product_llm import _request_json, parse_model_json
 PROTOCOL_ID = "ktrf_extended_v1"
 REVIEW_CONDITION_COUNTS = {"review_abcd": 8, "review_policy": 6,
                            "review_budget": 6, "review_nomiracl": 3, "review_routing": 8}
-CONFIRMATION_CONDITION_COUNTS = {"routing_confirmation": 6, "evidence_control": 4, "evidence_efficiency": 5, "evidence_robustness": 6}
+CONFIRMATION_CONDITION_COUNTS = {"routing_confirmation": 6, "evidence_control": 4, "evidence_efficiency": 5, "evidence_robustness": 6,
+                                 "support_recovery": (2, 8)}
 OCCURRENCE_EXPERIMENTS = set(CONFIRMATION_CONDITION_COUNTS)
 AUDITED_CONDITION_COUNTS = REVIEW_CONDITION_COUNTS | CONFIRMATION_CONDITION_COUNTS
 DIAGNOSTIC_CONDITION_COUNTS = {"source_pack_factorial": 6, "fresh_compact": 3,
@@ -52,6 +53,10 @@ def decoding_for(protocol):
 
 
 def schema_for(rows, protocol):
+    if protocol["experiment"] == "support_recovery":
+        from .support_recovery import support_recovery_schema
+        return {json.dumps([row["case_id"], row["condition"]], ensure_ascii=False,
+                           separators=(",", ":")): support_recovery_schema(row) for row in rows}
     if protocol["experiment"] == "evidence_robustness":
         from .evidence_robustness import evidence_robustness_schema
         return {json.dumps([row["case_id"], row["condition"]], ensure_ascii=False,
@@ -74,6 +79,9 @@ def schema_for(rows, protocol):
 
 
 def request_schema_for(row, protocol):
+    if protocol["experiment"] == "support_recovery":
+        from .support_recovery import support_recovery_schema
+        return support_recovery_schema(row)
     if protocol["experiment"] == "evidence_robustness":
         from .evidence_robustness import evidence_robustness_schema
         return evidence_robustness_schema(row)
@@ -99,7 +107,8 @@ def validate_protocol(protocol):
             or len(set(conditions)) != len(conditions)):
         raise ValueError("unique explicit condition names required")
     condition_count = DIAGNOSTIC_CONDITION_COUNTS.get(protocol["experiment"])
-    if condition_count is not None and len(conditions) != condition_count:
+    allowed_counts = condition_count if isinstance(condition_count, tuple) else (condition_count,)
+    if condition_count is not None and len(conditions) not in allowed_counts:
         raise ValueError(f"{protocol['experiment']} requires {condition_count} conditions")
     if type(protocol.get("repeat_count")) is not int or protocol["repeat_count"] != 1:
         raise ValueError("extended experiments require repeat_count=1")
@@ -126,7 +135,10 @@ def validate_requests(rows, protocol):
     if safety != (protocol["experiment"] in SAFETY_EXPERIMENTS):
         raise ValueError("task differs from declared experiment")
     if safety:
-        if protocol["experiment"] == "evidence_robustness":
+        if protocol["experiment"] == "support_recovery":
+            from .support_recovery import validate_support_recovery_requests
+            validate_support_recovery_requests(rows, conditions=protocol["conditions"])
+        elif protocol["experiment"] == "evidence_robustness":
             from .evidence_robustness import validate_evidence_robustness_requests
             validate_evidence_robustness_requests(rows)
         elif protocol["experiment"] == "evidence_efficiency":
@@ -218,6 +230,9 @@ def load_request_file(path):
 
 
 def output_error(response, row):
+    if row.get("experiment") == "support_recovery":
+        from .support_recovery import support_recovery_response_error
+        return support_recovery_response_error(response, row)
     if row.get("experiment") == "evidence_robustness":
         from .evidence_robustness import evidence_robustness_response_error
         return evidence_robustness_response_error(response, row)
@@ -275,6 +290,21 @@ def _metrics(cases, safety):
                 violation["kind"] for case in cases
                 for violation in case.get("evidence_gate_violations", [])
             ))
+        if cases and "authorization_mode" in cases[0]:
+            modes = {case["authorization_mode"] for case in cases}
+            if len(modes) != 1:
+                raise ValueError("production and simulated shadow approvals must not be pooled")
+            values.update(authorization_mode=next(iter(modes)), evaluation_only=True,
+                          execution_authority="none")
+            for field in ("production_guard_accepted_correct_id", "production_guard_accepted_wrong_id",
+                          "shadow_accepted_correct_id", "shadow_accepted_wrong_id"):
+                values[field] = sum(case.get(field, False) for case in cases)
+            values["production_base_guard_failures"] = sum(
+                case.get("production_base_guard_valid") is False for case in cases)
+            values["support_unknown_attributes"] = dict(Counter(
+                item for case in cases for item in case.get("support_unknown_attributes", [])))
+            values["support_present_attributes"] = dict(Counter(
+                item for case in cases for item in case.get("support_present_attributes", [])))
     else:
         values.update(positive_exact=sum(r["correct"] for r in positive),
             positive_exact_rate=sum(r["correct"] for r in positive) / len(positive) if positive else None,
@@ -349,7 +379,10 @@ def grade_outputs(rows, outputs, protocol):
                 if field in row:
                     case[field] = bool(row[field])
         if safety:
-            if protocol["experiment"] == "evidence_robustness":
+            if protocol["experiment"] == "support_recovery":
+                from .support_recovery import grade_support_recovery_response
+                grade_safety = lambda row, response: grade_support_recovery_response(response, row)
+            elif protocol["experiment"] == "evidence_robustness":
                 from .evidence_robustness import grade_evidence_robustness_response
                 grade_safety = lambda row, response: grade_evidence_robustness_response(response, row)
             elif protocol["experiment"] == "evidence_efficiency":
@@ -376,11 +409,21 @@ def grade_outputs(rows, outputs, protocol):
                 case["evidence_gate_violations"] = result.get("evidence_gate_violations", [])
                 for field in ("wire_valid", "base_guard_valid", "evidence_gate_valid"):
                     case[field] = result.get(field)
-            if protocol["experiment"] in {"evidence_control", "evidence_efficiency", "evidence_robustness"}:
+            if protocol["experiment"] in {"evidence_control", "evidence_efficiency", "evidence_robustness", "support_recovery"}:
                 for field in ("proposal_correct_id", "proposal_wrong_id", "proposal_abstention"):
                     case[field] = bool(valid and result.get(field, False))
             if protocol["experiment"] == "evidence_efficiency":
                 case["evidence_required"] = row["evidence_required"]
+            if protocol["experiment"] == "support_recovery":
+                case.update(authorization_mode=row["authorization_mode"], evaluation_only=True,
+                            execution_authority="none")
+                case["production_base_guard_valid"] = result.get("production_base_guard_valid")
+                case["production_guard_violations"] = result.get("production_guard_violations", [])
+                for field in ("production_guard_accepted_correct_id", "production_guard_accepted_wrong_id",
+                              "shadow_accepted_correct_id", "shadow_accepted_wrong_id"):
+                    case[field] = bool(valid and result.get(field, False))
+                for field in ("support_unknown_attributes", "support_present_attributes"):
+                    case[field] = result.get(field, [])
             case["positive_gold"] = row["expected_entity_id"] is not None
         else:
             value = output["response"]["answer"] if valid else None
@@ -496,7 +539,9 @@ def run_benchmark(*, requests_file, endpoint, model, out_dir, code_revision, tim
                     if invalid:
                         raise ValueError(invalid)
                     if protocol["experiment"] in OCCURRENCE_EXPERIMENTS:
-                        if protocol["experiment"] == "evidence_robustness":
+                        if protocol["experiment"] == "support_recovery":
+                            from .support_recovery import grade_support_recovery_response as validate_selection
+                        elif protocol["experiment"] == "evidence_robustness":
                             from .evidence_robustness import grade_evidence_robustness_response as validate_selection
                         elif protocol["experiment"] == "evidence_efficiency":
                             from .evidence_efficiency import grade_evidence_efficiency_response as validate_selection

@@ -15,16 +15,24 @@ from .collect_hf_qa_queue import validate_public_json
 from .hf_qa import canonical
 from .report_followup_llm import prepare_report, render_markdown
 from .run_followup_llm import ARTIFACTS
-from .run_followup_queue import COMBINED_KIND, DIAGNOSTIC_KIND, EXTENDED_KIND, KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND, validate_plan
+from .run_followup_queue import COMBINED_KIND, DIAGNOSTIC_KIND, EXTENDED_KIND, KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND, SUPPORT_KIND, SUPPORT_CONFIRMATION_KIND, validate_plan
 from .run_production_queue import save_json
 
 
-def verify_stage(root, stage, plan):
+def verify_stage(root, stage, plan, *, selection=None):
     root = Path(root)
     reporter = prepare_report
-    if plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND}:
+    if plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND, SUPPORT_KIND, SUPPORT_CONFIRMATION_KIND}:
         from .report_extended_suite import prepare_report as reporter
     summary = reporter(root)
+    if plan["kind"] == SUPPORT_CONFIRMATION_KIND:
+        envelope = json.loads((root / "frozen_envelope.json").read_text())
+        source = envelope.get("provenance", {}).get("source", {})
+        if (not isinstance(selection, dict)
+                or envelope["protocol"]["conditions"] != [selection["baseline_condition"], selection["selected_condition"]]
+                or source.get("source_sha256") != selection["fresh_source_sha256"]
+                or source.get("review_sha256") != selection["fresh_review_sha256"]):
+            raise ValueError("collected confirmation differs from frozen selection and fresh-source proof")
     manifest = json.loads((root / "run_manifest.json").read_text())
     expected = {"code_revision": plan["code_revision"], "experiment": stage["experiment"],
                 "request_count": stage["request_count"], "request_corpus_sha256": stage["requests_sha256"],
@@ -81,10 +89,10 @@ def compare_models(summaries, plan):
         result[experiment] = {"baseline_model": first["model"], "current_model": second["model"],
             "questions": first["questions"], "request_corpus_sha256": first["request_corpus_sha256"],
             "by_variant": compare_variants(first["by_variant"], second["by_variant"],
-                                            experiment in {"semantic_safety", "safety_robustness", "review_routing", "routing_confirmation", "evidence_control", "evidence_efficiency", "evidence_robustness"}),
+                                            experiment in {"semantic_safety", "safety_robustness", "review_routing", "routing_confirmation", "evidence_control", "evidence_efficiency", "evidence_robustness", "support_recovery"}),
             "limitations": ["Model family and size both change.",
                 "Repeated generations do not increase the number of independent questions."]}
-        if plan["kind"] in {DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND}:
+        if plan["kind"] in {DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND, SUPPORT_KIND, SUPPORT_CONFIRMATION_KIND}:
             left, right = first["by_evaluation_split"], second["by_evaluation_split"]
             if set(left) != set(right) or any(
                     any(left[key][field] != right[key][field] for field in ("questions", "families"))
@@ -93,12 +101,19 @@ def compare_models(summaries, plan):
             result[experiment]["by_evaluation_split"] = {key: {
                 "questions": value["questions"], "families": value["families"],
                 "by_variant": compare_variants(value["by_variant"], right[key]["by_variant"],
-                                                experiment in {"safety_robustness", "review_routing", "routing_confirmation", "evidence_control", "evidence_efficiency", "evidence_robustness"})}
+                                                experiment in {"safety_robustness", "review_routing", "routing_confirmation", "evidence_control", "evidence_efficiency", "evidence_robustness", "support_recovery"})}
                 for key, value in left.items()}
             result[experiment]["aggregate_scope"] = (
                 "Reused source diagnostics only; original development/confirmation labels do not denote new holdout validation."
-                if plan["kind"] == ROBUSTNESS_KIND else
+                if plan["kind"] in {ROBUSTNESS_KIND, SUPPORT_KIND} else
+                "Fresh AI-authored confirmation; production evaluation and experimental shadow simulation remain separate."
+                if plan["kind"] == SUPPORT_CONFIRMATION_KIND else
                 "workload aggregate only; evaluate exposed and fresh splits separately")
+        if experiment == "support_recovery":
+            if first.get("authorization_by_condition") != second.get("authorization_by_condition"):
+                raise ValueError("model approval contracts differ")
+            result[experiment].update(authorization_by_condition=first["authorization_by_condition"],
+                                      execution_authority="none", evaluation_only=True)
     return validate_public_json(result)
 
 
@@ -112,7 +127,7 @@ def collect(config):
     private_parent = repo / "eval/out"
     if "private_storage_root" in config:
         storage = Path(config["private_storage_root"])
-        if plan["kind"] not in {COMBINED_KIND, EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND} or not storage.is_absolute() or not storage.is_dir():
+        if plan["kind"] not in {COMBINED_KIND, EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND, SUPPORT_KIND, SUPPORT_CONFIRMATION_KIND} or not storage.is_absolute() or not storage.is_dir():
             raise ValueError("explicit absolute private storage root is supported only for combined, extended or diagnostic queues")
         private_parent = storage.resolve(strict=True)
     status_path = Path(config["local_status"]).resolve()
@@ -203,6 +218,12 @@ def collect(config):
             if hashlib.sha256(target.read_bytes()).hexdigest() != spec["sha256"]:
                 raise ValueError("copied proof differs from frozen hash")
             proofs[name] = validate_public_json(json.loads(target.read_text()))
+        if plan["kind"] == SUPPORT_CONFIRMATION_KIND:
+            target = private / "selection_proof.json"
+            copy(plan["selection"]["path"], target)
+            from .run_followup_queue import verify_support_selection
+            local_plan = {**plan, "selection": {**plan["selection"], "path": str(target)}}
+            proofs["selection"] = validate_public_json(verify_support_selection(local_plan))
         if (proofs["unit"].get("exit_code") != 0 or proofs["unit"].get("code_revision") != plan["code_revision"]
                 or (plan["kind"] == KIND and proofs["blind_document"].get("exit_code") != 0)
                 or proofs["preparation"].get("code_revision") != plan["code_revision"]):
@@ -226,7 +247,10 @@ def collect(config):
             target.mkdir(mode=0o700)
             for name in (*ARTIFACTS, "run_manifest.json", "environment.json", "summary.json"):
                 copy(remote_out + "/" + name, target / name)
-            summary, identity, environment = verify_stage(target, stage, plan)
+            if plan["kind"] == SUPPORT_CONFIRMATION_KIND:
+                summary, identity, environment = verify_stage(target, stage, plan, selection=proofs["selection"])
+            else:
+                summary, identity, environment = verify_stage(target, stage, plan)
             if any(result.get(key) != summary["counts"][key] for key in (
                     "received_count", "missing_count", "error_count", "malformed_count")):
                 raise ValueError("terminal counts differ from sealed raw regrading")
@@ -244,13 +268,15 @@ def collect(config):
             raise ValueError("no verified generation runs available")
         comparison = compare_models(summaries, plan)
         combined = plan["kind"] == COMBINED_KIND
-        extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND}
+        extended = plan["kind"] in {EXTENDED_KIND, DIAGNOSTIC_KIND, REVIEW_KIND, CONFIRMATION_KIND, EVIDENCE_KIND, EFFICIENCY_KIND, ROBUSTNESS_KIND, SUPPORT_KIND, SUPPORT_CONFIRMATION_KIND}
         diagnostic = plan["kind"] == DIAGNOSTIC_KIND
         review = plan["kind"] == REVIEW_KIND
         confirmation = plan["kind"] == CONFIRMATION_KIND
         evidence = plan["kind"] == EVIDENCE_KIND
         efficiency = plan["kind"] == EFFICIENCY_KIND
         robustness = plan["kind"] == ROBUSTNESS_KIND
+        support = plan["kind"] in {SUPPORT_KIND, SUPPORT_CONFIRMATION_KIND}
+        support_confirmation = plan["kind"] == SUPPORT_CONFIRMATION_KIND
         fresh = combined and plan.get("sample_design", {}).get("kind") == "fresh_document_holdout"
         limitations = ([
             "Previously inspected frozen retrieval questions are reused for this adaptive combined followup; no independent holdout claim.",
@@ -324,6 +350,16 @@ def collect(config):
                 "Every arm retains actual resolver candidates and the unchanged production occurrence guard.",
                 "Family and document paired analyses remain descriptive; repeated conditions do not increase the independent sample size.",
                 "No private workplace documents or independent human annotations have been supplied; shared-host costs do not establish deployment guarantees."]
+        if support:
+            limitations = [
+                ("Fresh AI-authored, independently AI-reviewed source families were frozen before generation; the selected method was chosen solely on earlier discovery outputs."
+                 if support_confirmation else
+                 "All 64 source documents are reused AI-authored diagnostic cases; eight conditions do not constitute eight independent samples."),
+                "Production conditions retain the unchanged occurrence guard; shadow conditions are EXPERIMENTAL_SIMULATED_APPROVAL and grant no execution authority.",
+                "Candidate and source inventories are built without gold; source attribution rules and missing-attribute policies remain experimental rather than semantic guarantees.",
+                "Model proposals, production guard acceptance and simulated shadow acceptance are reported separately for every condition.",
+                "No actual workplace documents or independent human gold have been provided; these results cannot certify deployment error bounds.",
+                "Shared families and paired conditions require clustered interpretation, and shared-host latency is descriptive."]
         overview = {"kind": plan["kind"], "run_id": plan["run_id"], "status": terminal["status"],
             "exit_code": terminal["exit_code"], "verified_reports": sorted(summaries), "missing_stages": missing,
             "raw_artifacts_published": False,
@@ -367,6 +403,9 @@ def collect(config):
             heading = "# KTRF reused-source evidence robustness and bundle cost diagnostics"
         if efficiency:
             heading = "# KTRF fresh evidence efficiency and selective routing"
+        if support:
+            heading = ("# KTRF fresh support-recovery confirmation (evaluation only)" if support_confirmation else
+                       "# KTRF reused-source support-recovery discovery (evaluation only)")
         preparation = ("Frozen unit tests and actual-tokenizer preparation completed before GPU generation." if combined or extended else
                        "CPU preparation and AI blind-document evaluation completed before GPU generation.")
         lines = [heading, "", f"Status: **{terminal['status']}**, exit code `{terminal['exit_code']}`.", "",
@@ -383,6 +422,8 @@ def collect(config):
                 paths = [public / stage["id"] / name for name in (*artifacts[stage["id"]], "RESULTS.md")]
                 publish(paths, "test: report followup " + stage["id"])
         publish([public / name for name in (*public_objects, "RESULTS.md")],
+                "test: summarize fresh support recovery confirmation" if support_confirmation else
+                "test: summarize support recovery discovery" if support else
                 "test: summarize reused-source evidence robustness" if robustness else
                 "test: summarize fresh evidence efficiency" if efficiency else
                 "test: summarize matched evidence control" if evidence else

@@ -218,6 +218,52 @@ def prepare_report(run_dir):
             "Retrieved ambiguous candidates are visible for judgment but gain no execution authority. "
             "All 64 cases are previously exposed development data; results are adaptive diagnostics."
         )
+    if manifest["experiment"] == "support_recovery":
+        population = manifest["request_provenance"]["source"]["evaluation_population"]
+        summary.update(
+            evaluation_population=population,
+            aggregate_scope=(
+                "Reused-source support-recovery diagnostic; earlier split labels do not identify a new holdout."
+                if len(manifest["declared_protocol"]["conditions"]) == 8 else
+                "Fresh AI-authored confirmation of a method selected on separate reused-source diagnostics. "
+                "This is not human-verified workplace gold or an operational risk estimate."),
+            proposal_interpretation=(
+                "Production conditions retain the unchanged occurrence authorization guard. Shadow conditions "
+                "report EXPERIMENTAL_SIMULATED_APPROVAL only and grant no execution authority. "
+                "Raw model proposals, production guard results and shadow decisions remain separate."),
+            unknown_attribute_interpretation=(
+                "Unknown-attribute counts describe absent selected supporting claims. Null proposals "
+                "leave every attribute UNKNOWN; these counts do not establish that the source lacks "
+                "the attribute, or that an unstated attribute is false."),
+            execution_authority="none", evaluation_only=True)
+        summary["authorization_by_condition"] = {
+            condition: ("EXPERIMENTAL_SIMULATED_APPROVAL" if values["authorization_mode"] == "shadow"
+                        else "PRODUCTION_GUARD_EVALUATION_ONLY")
+            for condition, values in summary["by_variant"].items()}
+        summary["support_inventory"] = {}
+        summary["validation_failure_clusters"] = {}
+        for condition in manifest["declared_protocol"]["conditions"]:
+            condition_rows = [row for row in rows if row["condition"] == condition]
+            inventories = [row.get("support_inventory", {}) for row in condition_rows]
+            summary["support_inventory"][condition] = {
+                "source_cases": len(condition_rows),
+                "segments": sum(len(item.get("segments", {})) for item in inventories),
+                "attribute_spans": sum(len(item.get("attributes", {})) for item in inventories),
+                "source_cases_with_zero_segments": sum(not item.get("segments") for item in inventories),
+                "source_cases_with_zero_attributes": sum(not item.get("attributes") for item in inventories),
+                "ownership_rules": dict(Counter(str(item.get("ownership_rule", "unspecified"))
+                                                for item in inventories)),
+            }
+            condition_cases = [case for case in graded["cases"] if case["condition"] == condition]
+            summary["validation_failure_clusters"][condition] = {
+                "production_guard": dict(Counter(
+                    str(violation.get("kind", "unspecified"))
+                    for case in condition_cases for violation in (case.get("production_guard_violations") or [])
+                    if isinstance(violation, dict))),
+                "support_gate": summary["by_variant"][condition].get("evidence_rejection_reasons", {}),
+                "unknown_attributes": summary["by_variant"][condition].get("support_unknown_attributes", {}),
+                "present_attributes": summary["by_variant"][condition].get("support_present_attributes", {}),
+            }
     if manifest["experiment"] == "evidence_efficiency":
         summary["proposal_interpretation"] = (
             "Model proposals precede the same production occurrence guard in every arm. "
@@ -291,6 +337,13 @@ def render_markdown(summary):
         f"Cases: {summary['questions']}; parent documents: {summary['parent_documents']}. Counts: `{summary['counts']}`.", "",
         "One observation per case and condition. Shared documents, families and conditions do not increase the independent sample size.", ""]
     safety = summary["task"] == "structured_routing"
+    if summary.get("experiment") == "support_recovery":
+        lines.extend([
+            "**Evaluation only. Shadow results are EXPERIMENTAL_SIMULATED_APPROVAL, "
+            "with no execution authority; they are not production approvals.**", "",
+            "| Condition | Decision contract |", "|---|---|",
+            *[f"| {condition} | {mode} |" for condition, mode
+              in summary["authorization_by_condition"].items()], ""])
     if safety:
         lines.extend(["| Condition | Accepted correct ID | Accepted wrong ID | Rejected wrong ID | Correct abstention | Over-abstention | Malformed | API errors | Missing | Prompt tokens |",
                       "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"])
@@ -312,12 +365,26 @@ def render_markdown(summary):
         lines.extend(["", "Selective routing paths, including measured tokens and request latency:", "", "```json",
             json.dumps({"difficulty_gate": summary["difficulty_gate"],
                         "by_evidence_path": summary["by_evidence_path"]}, indent=2), "```", ""])
-    if summary.get("evaluation_population") == "REUSED_SEALED_SOURCE_DIAGNOSTIC":
+    if summary.get("experiment") == "evidence_robustness":
         lines.extend(["", "Evidence representation and perturbation diagnostics:", "", "```json",
             json.dumps({"evaluation_population": summary["evaluation_population"],
                         "by_wire_format": summary["by_wire_format"],
                         "by_perturbation": summary["by_perturbation"],
                         "bundle_inventory": summary["bundle_inventory"]}, indent=2), "```", ""])
+    if summary.get("experiment") == "support_recovery":
+        lines.extend(["", "Separate guard and simulated-shadow decisions:", "",
+            "| Condition | Production guard correct | Production guard wrong | Simulated shadow correct | Simulated shadow wrong |",
+            "|---|---:|---:|---:|---:|"])
+        for condition, values in summary["by_variant"].items():
+            lines.append(f"| {condition} | {values['production_guard_accepted_correct_id']} | "
+                         f"{values['production_guard_accepted_wrong_id']} | "
+                         f"{values['shadow_accepted_correct_id']} | {values['shadow_accepted_wrong_id']} |")
+        lines.extend(["", "Support inventory and validation diagnostics:", "", "```json",
+            json.dumps({"evaluation_population": summary["evaluation_population"],
+                        "support_inventory": summary["support_inventory"],
+                        "validation_failure_clusters": summary["validation_failure_clusters"]},
+                       indent=2), "```", ""])
+        lines.extend([summary["unknown_attribute_interpretation"], ""])
     if summary.get("metric_interpretation"):
         lines.extend(["", summary["metric_interpretation"], ""])
     if summary.get("cost_interpretation"):
