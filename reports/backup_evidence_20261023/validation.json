@@ -1,0 +1,29 @@
+{
+  "kind": "ktrf_backup_publication_validation_v1",
+  "status": "COMPLETE",
+  "exit_code": 0,
+  "scope": "Historical sealed grades and source hashes matched to published reports; current-code regrading is not claimed.",
+  "source_report_references_verified": 49,
+  "unique_stages_verified": 48,
+  "observation_rows_verified": 29664,
+  "compressed_observation_bytes": 2754341,
+  "manifest_sha256": "cd0b6dba6ff3c3076f3fd7c98557836128fdfae07fcfd9270b85b6bc9ce15ebd",
+  "unit_test_command": ".venv/bin/python -m pytest tests/test_export_backup_evidence.py -q",
+  "unit_tests_passed": 4,
+  "unit_test_exit_code": 0,
+  "checks": [
+    "source_manifest_seals",
+    "four_source_artifact_hashes_per_reference",
+    "frozen_envelope_request_equality",
+    "unique_request_response_grade_keys",
+    "published_identity_and_counts",
+    "published_historical_metrics",
+    "deduplicated_generation_aliases",
+    "public_row_field_validation",
+    "gzip_and_jsonl_hashes",
+    "metadata_hashes",
+    "row_and_condition_counts"
+  ],
+  "export_log": "/home/seorii/logs/krtf-publish-backup-evidence-20261023-final.log",
+  "export_exit_status_file": "/home/seorii/logs/krtf-publish-backup-evidence-20261023-final.exit"
+}

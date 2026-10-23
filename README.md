@@ -365,7 +365,10 @@ measured together. As of **2026-10-21**, the following queues are complete:
 | Matched candidates and server evidence IDs | 512 | [evidence control](reports/evidence_queue_20261021/RESULTS.md) |
 
 Calls include paired conditions and repeats; they are not independent new
-questions. General Korean QA still shows no consistent pack advantage, and
+questions. [Text-free request-level evidence](reports/backup_evidence_20261023/README.md)
+preserves outcomes, cluster hashes, tokens and latency from sealed runs, together
+with model revisions and the runtime inventory captured before server cleanup.
+General Korean QA still shows no consistent pack advantage, and
 small total-input budgets can lose source evidence to the pack. The latest
 [CPU reanalysis](reports/review_cpu_20261020/ANALYSIS.md) verifies the historical
 sealed runs and integrates occurrence ranking with actual resolver candidates.
