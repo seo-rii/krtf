@@ -31,6 +31,13 @@ resolver linked `강원도` to the South Korean administrative region. Review
 such links before using them to update records.
 [Real-sentence examples and evaluation](reports/production_queue_20261013T160054Z/ANALYSIS.md#confirmed-semantic-execution-failures)
 
+### Single-file lookup
+
+The standalone [min/krtf.py](min/krtf.py) matches registered spellings and
+common Korean particles using Python 3.11+. JSON glossaries work with the
+standard library. The [standalone guide](min/README.md) includes a sample
+glossary and examples for the command line and Python.
+
 ## Why KTRF
 
 General-purpose NER and embedding retrieval both struggle with Korean

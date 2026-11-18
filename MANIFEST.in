@@ -21,6 +21,7 @@
 # scripts/build_wheel.py fails the build if either artifact grows past a
 # few MB, and tests/test_packaging.py guards the wheel's contents.
 include LICENSE README.md MODEL_RECOMMEND.md
+include min/krtf.py min/README.md
 recursive-include ktrf py.typed
 recursive-include scripts *.py *.sh *.ps1
 recursive-include tests *.py
