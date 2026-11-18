@@ -23,6 +23,14 @@ for m in resp["mentions"]:
     print(m["surface"], m["link_decision"])
 ```
 
+With the demo glossary, this prints `한전KDN RESOLVED`, `AP AMBIGUOUS`, and
+`QMS RESOLVED`. This CPU-only path is suitable for highlighting registered
+terms and suggesting links for a reviewer. A `RESOLVED` result can still
+identify the wrong entity. In two real sentences about North Korea, the
+resolver linked `강원도` to the South Korean administrative region. Review
+such links before using them to update records.
+[Real-sentence examples and evaluation](reports/production_queue_20261013T160054Z/ANALYSIS.md#confirmed-semantic-execution-failures)
+
 ## Why KTRF
 
 General-purpose NER and embedding retrieval both struggle with Korean
@@ -352,7 +360,8 @@ match from 22 to 25 and Qwen from 25 to 29, while using about 22% more prompt
 tokens. Schema-constrained generation removes the 12 repeated Qwen pack format
 errors and preserves answerable exact match. These are experimental comparisons;
 BM25, pack and JSON schema were later
-measured together. As of **2026-10-21**, the following queues are complete:
+measured together. The repository records these completed comparisons through
+**2026-10-23**.
 
 | Completed comparison | Model calls | Evidence |
 |---|---:|---|
@@ -363,6 +372,11 @@ measured together. As of **2026-10-21**, the following queues are complete:
 | Source/glossary/KTRF, QA policy, budget, NoMIRACL and occurrence-bound routing | 5,888 | [review queue](reports/review_queue_20261020/RESULTS.md) |
 | Fresh routing families, full/compact output and literal evidence | 2,304 | [confirmation queue](reports/confirmation_queue_20261020/RESULTS.md) |
 | Matched candidates and server evidence IDs | 512 | [evidence control](reports/evidence_queue_20261021/RESULTS.md) |
+| Evidence formats and selective routing | 640 | [efficiency comparison](reports/efficiency_queue_20261021/RESULTS.md) |
+| Evidence robustness on reused documents | 768 | [robustness comparison](reports/robustness_queue_20261022/RESULTS.md) |
+| Support recovery on reused documents | 1,024 | [discovery](reports/support_queue_20261022/RESULTS.md) |
+| Support recovery on fresh documents | 384 | [confirmation](reports/support_final_queue_20261022/RESULTS.md) |
+| Evidence closure and abstention formats | 960 | [final comparison, including 480 reused Qwen responses](reports/closure_recovery_20261023/RESULTS.md) |
 
 Calls include paired conditions and repeats; they are not independent new
 questions. [Text-free request-level evidence](reports/backup_evidence_20261023/README.md)
@@ -400,10 +414,11 @@ structured KTRF approved 22/6 and 23/2. Model-written evidence positions approve
 no IDs. Evidence IDs increased request p95 to 22.99/35.75 seconds versus
 4.77/7.09 seconds for the plain control. These are adaptive synthetic diagnostics,
 not independent deployment-risk validation.
-The next [efficiency comparison](docs/EVIDENCE_EFFICIENCY.md) prepares 640 calls
-on 64 newly authored AI documents: long references, short references, lossless
-fact tables and source-only selective checking. Development and confirmation
-families are sealed before inference; results are pending.
+In the final comparison on 96 AI-authored documents, the experimental
+`closure_bundle` format linked 46 of 48 positive cases for Qwen and 0 of 48
+for Gemma. Both models abstained on all 48 negative cases. These decisions
+were scored offline and carried no execution authority.
+[Final analysis](reports/closure_recovery_20261023/ANALYSIS.md)
 The public [compact execution API](docs/COMPACT_EXECUTION.md) adds request-local
 references, expiration and atomic one-attempt consumption; it executes no actions.
 A local, non-executing [shadow ingress](eval/shadow_routing.py) prepares
