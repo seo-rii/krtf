@@ -66,6 +66,7 @@ def test_simple_terms_boundaries_and_longest_match(run_cli):
     mentions = json.loads(run_cli(doc, text).stdout)["mentions"]
     assert [(m["surface"], m["resolved_entity"]["entity_id"]) for m in mentions] == [
         ("ABC", "project:billing"),
+        ("abc", "project:billing"),
         ("빌링 콘솔", "project:console"),
         ("빌링", "project:billing"),
     ]
@@ -83,7 +84,9 @@ def test_scoped_alias_and_derived_surface(run_cli):
            "alias_bindings": [{"entity_id": "org", "surface": "한전",
                                "scope": {"allow": {"departments": ["network"]}}}]}
     result = run_cli(doc, "한전노조는 한전에서 협의했다.")
-    mention, = json.loads(result.stdout)["mentions"]
+    derived, mention = json.loads(result.stdout)["mentions"]
+    assert derived["link_decision"] == "AMBIGUOUS"
+    assert derived["full_surface"]["identity"] == "DISTINCT_FROM_CORE"
     assert mention["span"]["codepoint"] == {"start": 6, "end": 8}
     assert mention["link_decision"] == "AMBIGUOUS"
     assert mention["prediction_set"]["members"] == [{"kind": "ENTITY", "entity_id": "org"}]
