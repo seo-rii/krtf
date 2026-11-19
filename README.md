@@ -33,11 +33,12 @@ such links before using them to update records.
 
 ### Single-file lookup
 
-The standalone [min/krtf.py](min/krtf.py) matches registered spellings and
-common Korean particles using Python 3.11+. It can query a JSON or YAML
-glossary directly, or compile it to a portable `.krtf` snapshot. For offline
-lookup, copy the script and snapshot to the target machine. Loading the
-snapshot uses only the standard library, even when the source was YAML.
+The standalone [min/krtf.py](min/krtf.py) reads JSON, CSV, TSV and optional
+YAML glossaries. It handles normalized spellings, Korean particle chains,
+derived terms and document-local aliases, and returns candidates for typos
+and inferred abbreviations. Compile layered glossaries to a portable snapshot
+for offline lookup with Python 3.11+ and its standard library. The CLI also
+explains individual matches, compares dictionaries and processes JSONL documents.
 [CLI and Python examples](min/README.md)
 
 ## Why KTRF
