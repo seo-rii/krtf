@@ -13,6 +13,7 @@ spellings as candidates. Run a subcommand with --help for its arguments.
 """
 
 import argparse
+import csv
 import hashlib
 import json
 import os
@@ -39,13 +40,15 @@ _PARTICLE_RULE = {word: rule for rule, words in _PARTICLES.items() for word in w
 
 
 def load_glossary(path):
-    """Read a UTF-8 JSON or YAML glossary."""
+    """Read a UTF-8 JSON, CSV, TSV or YAML glossary."""
     path = Path(path)
-    with path.open(encoding="utf-8-sig") as stream:
+    with path.open(encoding="utf-8-sig", newline="") as stream:
         if path.suffix.lower() == ".json":
             return json.load(stream)
+        if path.suffix.lower() in {".csv", ".tsv"}:
+            return _read_table(stream, "\t" if path.suffix.lower() == ".tsv" else ",")
         if path.suffix.lower() not in {".yaml", ".yml"}:
-            raise ValueError("expected a .json, .yaml, or .yml glossary")
+            raise ValueError("expected a JSON, CSV, TSV or YAML glossary")
         try:
             import yaml
         except ImportError as exc:
@@ -54,6 +57,33 @@ def load_glossary(path):
             return yaml.safe_load(stream)
         except yaml.YAMLError as exc:
             raise ValueError(f"invalid YAML: {exc}") from exc
+
+
+def _read_table(stream, delimiter):
+    reader = csv.DictReader(stream, delimiter=delimiter, strict=True)
+    fields = reader.fieldnames or []
+    if (not {"id", "canonical"}.issubset(fields) or len(fields) != len(set(fields))
+            or set(fields) - {"id", "canonical", "alias", "definition"}):
+        raise ValueError("table needs id,canonical and optional alias,definition columns")
+    entities = {}
+    bindings = {}
+    for row in reader:
+        if None in row or None in row.values():
+            raise ValueError(f"wrong number of columns at table line {reader.line_num}")
+        eid = _name(row["id"], "id")
+        canonical = _name(row["canonical"], "canonical")
+        entity = entities.setdefault(eid, {"entity_id": eid, "canonical": canonical})
+        definition = row.get("definition", "").strip()
+        if canonical != entity["canonical"] or (
+                definition and entity.get("description", definition) != definition):
+            raise ValueError(f"conflicting rows for {eid} at table line {reader.line_num}")
+        if definition:
+            entity["description"] = definition
+        for surface in (canonical, row.get("alias", "").strip()):
+            if surface:
+                bindings[surface, eid] = {"surface": surface, "entity_id": eid}
+    return {"schema_version": 3, "entities": list(entities.values()),
+            "alias_bindings": list(bindings.values())}
 
 
 def _records(doc, field):
@@ -142,6 +172,261 @@ def _eligible_ids(snapshot, surfaces, department, project, as_of):
                 eligible = any(status is True for status in statuses)
             result[eid] = result.get(eid, False) or (entity_status and eligible)
     return result
+
+
+def lint_glossary(doc):
+    """Collect glossary editing errors and potential ambiguities in one pass."""
+    diagnostics = []
+    visited = set()
+
+    def report(code, path, message, severity="error"):
+        diagnostics.append({"severity": severity, "code": code, "message": f"{path}: {message}"})
+
+    def fields(row, allowed, path):
+        for key in row:
+            if key not in allowed:
+                report("UNKNOWN_FIELD", path, f"unknown field {key!r}")
+
+    def controls(value, path):
+        if isinstance(value, (dict, list)):
+            if id(value) in visited:
+                return
+            visited.add(id(value))
+        if isinstance(value, str) and re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", value):
+            report("CONTROL_CHARACTER", path, "contains a control character")
+        elif isinstance(value, dict):
+            for key, item in value.items():
+                controls(key, path)
+                controls(item, f"{path}.{key}")
+        elif isinstance(value, list):
+            for i, item in enumerate(value):
+                controls(item, f"{path}[{i}]")
+
+    def name(value, path):
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+        report("INVALID_STRING", path, "expected a nonempty string")
+        return None
+
+    def records(field, allowed, required=False):
+        if not required and field not in doc:
+            return
+        rows = doc.get(field)
+        if not isinstance(rows, list):
+            report("INVALID_RECORDS", field, "expected a list")
+            return
+        for i, row in enumerate(rows):
+            path = f"{field}[{i}]"
+            if isinstance(row, dict):
+                fields(row, allowed, path)
+                yield row, path
+            else:
+                report("INVALID_RECORD", path, "expected an object")
+
+    def register(seen, row, key, path):
+        value = name(row.get(key), f"{path}.{key}")
+        if value in seen:
+            report("DUPLICATE_ID", path, f"duplicate {key} {value!r}")
+        if value is not None:
+            seen.add(value)
+        return value
+
+    def restrictions(row, path):
+        window = []
+        for key in ("valid_from", "valid_to"):
+            value = row.get(key)
+            if value is not None:
+                try:
+                    window.append(_iso_date(value))
+                except ValueError:
+                    report("INVALID_DATE", f"{path}.{key}", "expected an ISO date")
+        if len(window) == 2 and window[0] > window[1]:
+            report("INVALID_VALIDITY_WINDOW", path, "valid_from is later than valid_to")
+        if "scope" in row:
+            try:
+                rule = _condition({"scope": row["scope"]})
+            except ValueError as exc:
+                report("INVALID_SCOPE", f"{path}.scope", str(exc))
+            else:
+                for dim, denied in rule.get("deny", {}).items():
+                    overlap = set(denied).intersection(rule.get("allow", {}).get(dim, []))
+                    if overlap:
+                        report("SCOPE_ALLOW_DENY_OVERLAP", f"{path}.scope",
+                               f"{dim} both allowed and denied: {sorted(overlap)}")
+
+    if not isinstance(doc, dict):
+        report("INVALID_GLOSSARY", "glossary", "expected an object")
+        return diagnostics
+    controls(doc, "glossary")
+    version = str(doc.get("schema_version", "1" if "terms" in doc else "3"))
+    common = {"schema_version", "glossary_id", "version"}
+    entities, families, alias_ids, relation_ids = set(), set(), set(), set()
+    owners = {}
+    if version == "1":
+        fields(doc, common | {"terms"}, "glossary")
+        term_fields = {"key", "canonical", "surfaces", "short_definition", "type", "domains",
+                       "injection", "override", "classification", "examples", "scope",
+                       "valid_from", "valid_to"}
+        for term, path in records("terms", term_fields, required=True):
+            key = register(entities, term, "key", path)
+            if key and not re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,79}", key):
+                report("INVALID_TERM_KEY", path, f"invalid key {key!r}")
+            canonical = name(term.get("canonical"), f"{path}.canonical")
+            if canonical and key:
+                owners.setdefault(canonical, set()).add(key)
+            surfaces = term.get("surfaces", [])
+            if isinstance(surfaces, list):
+                for i, item in enumerate(surfaces):
+                    surface = name(item, f"{path}.surfaces[{i}]")
+                    if surface and key:
+                        owners.setdefault(surface, set()).add(key)
+            else:
+                report("INVALID_SURFACES", path, "surfaces must be a list")
+            if "injection" in term:
+                if isinstance(term["injection"], dict):
+                    fields(term["injection"], {"policy", "priority"}, f"{path}.injection")
+                else:
+                    report("INVALID_INJECTION", path, "injection must be an object")
+            restrictions(term, path)
+    elif version == "3":
+        fields(doc, common | {"entities", "alias_families", "alias_bindings", "entity_relations",
+                              "normalization_profiles", "policies"}, "glossary")
+        entity_fields = {"entity_id", "canonical", "language", "type_ids", "domain_ids",
+                         "description", "examples", "metadata", "provenance", "grounding",
+                         "scope", "valid_from", "valid_to"}
+        for entity, path in records("entities", entity_fields, required=True):
+            register(entities, entity, "entity_id", path)
+            name(entity.get("canonical"), f"{path}.canonical")
+            restrictions(entity, path)
+        for family, path in records("alias_families", {"family_id", "representative",
+                                                       "normalization_profile"}):
+            register(families, family, "family_id", path)
+        binding_fields = {"alias_id", "family_id", "entity_id", "surface", "kind",
+                          "boundary_policy", "normalization_policy", "fuzzy_policy",
+                          "scope", "valid_from", "valid_to", "provenance"}
+        for binding, path in records("alias_bindings", binding_fields, required=True):
+            if "alias_id" in binding:
+                register(alias_ids, binding, "alias_id", path)
+            if "family_id" in binding:
+                fid = name(binding["family_id"], f"{path}.family_id")
+                if fid and fid not in families:
+                    report("DANGLING_FAMILY_REF", path, f"unknown alias family {fid!r}")
+            eid = name(binding.get("entity_id"), f"{path}.entity_id")
+            if eid and eid not in entities:
+                report("DANGLING_ENTITY_REF", path, f"unknown entity {eid!r}")
+            surface = name(binding.get("surface"), f"{path}.surface")
+            if surface and eid:
+                owners.setdefault(surface, set()).add(eid)
+            restrictions(binding, path)
+        relation_fields = {"relation_id", "source_entity_id", "target_entity_id",
+                           "relation_type", "surface_suffix"}
+        for relation, path in records("entity_relations", relation_fields):
+            if "relation_id" in relation:
+                register(relation_ids, relation, "relation_id", path)
+            for key in ("source_entity_id", "target_entity_id"):
+                eid = name(relation.get(key), f"{path}.{key}")
+                if eid and eid not in entities:
+                    report("DANGLING_RELATION_REF", path, f"{key} refers to unknown entity {eid!r}")
+    else:
+        report("UNSUPPORTED_VERSION", "schema_version", f"unsupported version {version!r}")
+
+    folded = {}
+    for surface, ids in sorted(owners.items()):
+        if len(ids) > 1:
+            report("SHARED_ALIAS", repr(surface), f"shared by {', '.join(sorted(ids))}", "warning")
+        folded.setdefault(_fold_text(surface), []).append(surface)
+    for key, spellings in folded.items():
+        if len(spellings) > 1:
+            report("NORMALIZED_ALIAS_COLLISION", repr(key), f"spellings {spellings!r}", "warning")
+    if not any(d["severity"] == "error" for d in diagnostics):
+        try:
+            compile_snapshot(doc)
+        except ValueError as exc:
+            report("COMPILE_ERROR", "glossary", str(exc))
+    return diagnostics
+
+
+def _candidate_details(snapshot, entity_id, eligible):
+    return {"entity_id": entity_id, "canonical": snapshot.names[entity_id],
+            "definition": snapshot.meta.get("definitions", {}).get(entity_id, ""),
+            "eligible": eligible}
+
+
+def lookup_surface(snapshot, surface):
+    """List whole-surface dictionary matches. Eligibility means an unconditional binding exists."""
+    surface = _name(surface, "surface")
+    spellings = snapshot.matcher.spellings.get(_fold_text(surface), ())
+    candidates = {}
+    for spelling in spellings:
+        for eid, eligible in snapshot.aliases[spelling].items():
+            candidates[eid] = candidates.get(eid, False) or eligible
+    return {"surface": surface, "matched_surfaces": sorted(spellings),
+            "candidates": [_candidate_details(snapshot, eid, candidates[eid])
+                           for eid in sorted(candidates)]}
+
+
+def explain_resolution(snapshot, text, **kwargs):
+    """Return the resolver's spans, channels and reasons alongside glossary definitions."""
+    result = resolve(snapshot, text, **kwargs)
+    for mention in result["mentions"]:
+        spellings = mention.get("matched_surfaces", [mention["surface"]])
+        eligibility = mention.get("candidate_eligibility")
+        if eligibility is None:
+            eligibility = _eligible_ids(snapshot, spellings, kwargs.get("department"),
+                                        kwargs.get("project"), kwargs.get("as_of"))
+        if mention.get("resolved_entity"):
+            eid = mention["resolved_entity"]["entity_id"]
+            ids = [eid]
+            eligibility[eid] = True
+        else:
+            ids = [m["entity_id"] for m in mention.get("prediction_set", {}).get("members", [])
+                   if m.get("kind") == "ENTITY"]
+        mention["candidates"] = [_candidate_details(snapshot, eid, eligibility.get(eid, False))
+                                 for eid in ids]
+    return result
+
+
+def snapshot_info(snapshot):
+    """Count registered entities, spellings and distinct spelling/entity bindings."""
+    return {"entities": len(snapshot.names), "surfaces": len(snapshot.aliases),
+            "bindings": sum(len(ids) for ids in snapshot.aliases.values()),
+            "shared_surfaces": sum(len(ids) > 1 for ids in snapshot.aliases.values()),
+            "restricted_bindings": sum(not allowed for ids in snapshot.aliases.values()
+                                       for allowed in ids.values()),
+            "conflicts": snapshot.meta.get("conflicts", [])}
+
+
+def diff_snapshots(before, after):
+    """Compare registered entities, surface candidates, restrictions and policy metadata."""
+    def compare(old, new):
+        return {"added": sorted(new.keys() - old.keys()), "removed": sorted(old.keys() - new.keys()),
+                "changed": sorted(k for k in old.keys() & new.keys() if old[k] != new[k])}
+
+    def entities(snapshot):
+        definitions = snapshot.meta.get("definitions", {})
+        layers = snapshot.meta.get("layers", {})
+        rules = snapshot.meta.get("entity_rules", {})
+        return {eid: (canonical, definitions.get(eid), layers.get(eid), rules.get(eid))
+                for eid, canonical in snapshot.names.items()}
+
+    def surfaces(snapshot):
+        return {s: (ids, snapshot.meta.get("conditions", {}).get(s),
+                    snapshot.meta.get("no_fuzzy", {}).get(s),
+                    snapshot.meta.get("no_keyboard", {}).get(s))
+                for s, ids in snapshot.aliases.items()}
+
+    changed_ids = {}
+    for spelling in sorted(before.aliases.keys() & after.aliases.keys()):
+        prior = before.aliases[spelling]
+        current = after.aliases[spelling]
+        if prior.keys() != current.keys():
+            changed_ids[spelling] = {"removed": sorted(prior.keys() - current.keys()),
+                                     "added": sorted(current.keys() - prior.keys())}
+    return {"entities": compare(entities(before), entities(after)),
+            "surfaces": compare(surfaces(before), surfaces(after)),
+            "binding_changes": changed_ids,
+            "metadata_changed": sorted(k for k in before.meta.keys() | after.meta.keys()
+                                       if before.meta.get(k) != after.meta.get(k))}
 
 
 @dataclass
@@ -1031,37 +1316,118 @@ def resolve(snapshot, text, *, department=None, project=None, as_of=None, recove
     return {"mode": "symbolic", "mentions": mentions}
 
 
+def _open_dictionary(path):
+    """Accept a source glossary or a snapshot regardless of its filename."""
+    with path.open("rb") as stream:
+        compiled = stream.read(9) == b"KRTF-MIN/"
+    return load_snapshot(path) if compiled else compile_snapshot(load_glossary(path))
+
+
+def _emit(value):
+    sys.stdout.buffer.write((json.dumps(value, ensure_ascii=False) + "\n").encode("utf-8"))
+
+
+def _batch(snapshot, stream, options):
+    errors = 0
+    for line_number, line in enumerate(stream, 1):
+        if not line.strip():
+            continue
+        identifier = None
+        try:
+            row = json.loads(line.decode("utf-8-sig"))
+            if not isinstance(row, dict) or not isinstance(row.get("text"), str):
+                raise ValueError("expected an object with id and text")
+            identifier = row.get("id")
+            if type(identifier) not in (str, int):
+                raise ValueError("expected a string or integer document id")
+            result = resolve(snapshot, row["text"], **options)
+            _emit({"id": identifier, **result})
+        except ValueError as exc:
+            errors += 1
+            _emit({"line": line_number, "error": str(exc)})
+    return int(bool(errors))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
-    build = commands.add_parser("compile", help="compile a JSON or YAML glossary to a file")
+    build = commands.add_parser("compile", help="compile a glossary or layered glossaries to a snapshot")
     build.add_argument("glossary", type=Path)
     build.add_argument("output", type=Path)
+    build.add_argument("--layer", metavar="SCOPE=FILE", action="append", default=[],
+                       help="add a higher-priority glossary; the positional glossary becomes base")
     raw = commands.add_parser("resolve", help="look up text using a source glossary (default)")
-    raw.add_argument("glossary", type=Path)
     load = commands.add_parser("load", help="look up text using a compiled min snapshot")
-    load.add_argument("snapshot", type=Path)
-    for lookup in (raw, load):
-        lookup.add_argument("text", nargs="?", help="input text (default: UTF-8 stdin)")
+    explain = commands.add_parser("explain", help="explain occurrences and candidate IDs")
+    batch = commands.add_parser("batch", help="stream JSONL documents with id and text")
+    lookup = commands.add_parser("lookup", help="look up one registered spelling")
+    info = commands.add_parser("info", help="count entries and report layer conflicts")
+    lint = commands.add_parser("lint", help="check a source glossary for errors and warnings")
+    lint.add_argument("glossary", type=Path)
+    diff = commands.add_parser("diff", help="compare two glossaries or snapshots")
+    diff.add_argument("before", type=Path)
+    diff.add_argument("after", type=Path)
+    for sub in (raw, load, explain, batch, lookup, info):
+        sub.add_argument("dictionary", type=Path)
+    lookup.add_argument("surface")
+    for sub in (raw, load, explain):
+        sub.add_argument("text", nargs="?", help="input text (default: UTF-8 stdin)")
+    for sub in (raw, load, explain, batch):
+        sub.add_argument("--department")
+        sub.add_argument("--project")
+        sub.add_argument("--as-of", type=_iso_date, metavar="YYYY-MM-DD")
+        sub.add_argument("--no-recovery", action="store_true", help="skip inferred spellings")
+    batch.add_argument("input", nargs="?", type=Path, help="JSONL file (default: stdin)")
     argv = sys.argv[1:]
     if argv and argv[0] not in {*commands.choices, "-h", "--help"}:
-        argv.insert(0, "resolve")  # Original positional CLI: GLOSSARY [TEXT].
+        argv.insert(0, "resolve")
     args = parser.parse_args(argv)
     try:
         if args.command == "compile":
-            if args.glossary.resolve() == args.output.resolve():
-                raise ValueError("snapshot output must differ from the source glossary")
-            save_snapshot(compile_snapshot(load_glossary(args.glossary)), args.output)
+            paths = [("base", args.glossary)]
+            for item in args.layer:
+                label, sep, filename = item.partition("=")
+                if not sep or not filename or label not in _LAYERS[1:]:
+                    raise ValueError("--layer expects global|project|session|document=FILE")
+                paths.append((label, Path(filename)))
+            if any(path.resolve() == args.output.resolve() for _, path in paths):
+                raise ValueError("snapshot output must differ from every source glossary")
+            if args.layer:
+                snapshot = compile_layers((layer, load_glossary(path)) for layer, path in paths)
+            else:
+                snapshot = compile_snapshot(load_glossary(args.glossary))
+            save_snapshot(snapshot, args.output)
+            return
+        if args.command == "lint":
+            diagnostics = lint_glossary(load_glossary(args.glossary))
+            _emit(diagnostics)
+            if any(d["severity"] == "error" for d in diagnostics):
+                raise SystemExit(1)
+            return
+        if args.command == "diff":
+            _emit(diff_snapshots(_open_dictionary(args.before), _open_dictionary(args.after)))
             return
         if args.command == "load":
-            snapshot = load_snapshot(args.snapshot)
+            snapshot = load_snapshot(args.dictionary)
         else:
-            snapshot = compile_snapshot(load_glossary(args.glossary))
-        text = args.text if args.text is not None else sys.stdin.buffer.read().decode("utf-8")
-        result = resolve(snapshot, text)
-        sys.stdout.buffer.write((json.dumps(result, ensure_ascii=False) + "\n").encode("utf-8"))
-    except (ValueError, OSError) as exc:
+            snapshot = _open_dictionary(args.dictionary)
+        if args.command == "lookup":
+            _emit(lookup_surface(snapshot, args.surface))
+        elif args.command == "info":
+            _emit(snapshot_info(snapshot))
+        else:
+            options = {"department": args.department, "project": args.project,
+                       "as_of": args.as_of, "recover": not args.no_recovery}
+            if args.command == "batch":
+                if args.input is None:
+                    raise SystemExit(_batch(snapshot, sys.stdin.buffer, options))
+                with args.input.open("rb") as stream:
+                    raise SystemExit(_batch(snapshot, stream, options))
+            text = args.text if args.text is not None else sys.stdin.buffer.read().decode("utf-8")
+            operation = explain_resolution if args.command == "explain" else resolve
+            _emit(operation(snapshot, text, **options))
+    except (ValueError, OSError, csv.Error) as exc:
         parser.exit(2, f"{parser.prog}: {exc}\n")
 
 
