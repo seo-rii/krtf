@@ -1,4 +1,5 @@
 import json
+import runpy
 import shutil
 import subprocess
 import sys
@@ -12,17 +13,26 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.fixture
-def run_cli(tmp_path):
+def cli(tmp_path):
     script = shutil.copy(ROOT / "min" / "krtf.py", tmp_path)
-    glossary = tmp_path / "glossary.json"
 
-    def run(doc, *args, stdin=None, check=True):
-        glossary.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
+    def run(*args, stdin=None, check=True):
         return subprocess.run(
-            [sys.executable, "-I", "-S", script, glossary, *args],
+            [sys.executable, "-I", "-S", script, *args],
             cwd=tmp_path, input=stdin, capture_output=True, encoding="utf-8",
             check=check, timeout=10,
         )
+
+    return run
+
+
+@pytest.fixture
+def run_cli(tmp_path, cli):
+    glossary = tmp_path / "glossary.json"
+
+    def run(doc, *args, **kwargs):
+        glossary.write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
+        return cli(glossary, *args, **kwargs)
 
     return run
 
@@ -77,3 +87,62 @@ def test_scoped_alias_and_derived_surface(run_cli):
     assert mention["span"]["codepoint"] == {"start": 6, "end": 8}
     assert mention["link_decision"] == "AMBIGUOUS"
     assert mention["prediction_set"]["members"] == [{"kind": "ENTITY", "entity_id": "org"}]
+
+
+def test_compiled_cli_works_after_removing_source(tmp_path, cli):
+    demo = yaml.safe_load((ROOT / "examples/demo_glossary.yaml").read_text(encoding="utf-8"))
+    source = tmp_path / "demo.json"
+    source.write_text(json.dumps(demo, ensure_ascii=False), encoding="utf-8")
+    artifact = tmp_path / "demo.snapshot"
+    text = "🎉 한전KDN은 AP 장애 내용을 QMS에 등록했다."
+    expected = json.loads(cli(source, text).stdout)
+    cli("compile", source, artifact)
+    source.unlink()
+    assert json.loads(cli("load", artifact, stdin=text).stdout) == expected
+    assert json.loads(cli("load", artifact, text).stdout) == expected
+
+
+def test_snapshot_api_preserves_alias_restrictions(tmp_path):
+    api = runpy.run_path(str(ROOT / "min" / "krtf.py"))
+    doc = {"schema_version": 3, "entities": [{"entity_id": "local", "canonical": "강원도"}],
+           "alias_bindings": [{"entity_id": "local", "surface": "강원도",
+                               "scope": {"allow": {"departments": ["local"]}}}]}
+    original = api["compile_snapshot"](doc)
+    artifact = tmp_path / "only.snapshot"
+    api["save_snapshot"](original, artifact)
+    loaded = api["load_snapshot"](artifact)
+    text = "강원도에서 발표했다."
+    result = api["resolve"](loaded, text)
+    assert result == api["resolve"](original, text)
+    mention, = result["mentions"]
+    assert mention["link_decision"] == "AMBIGUOUS"
+    assert mention["prediction_set"]["members"] == [{"kind": "ENTITY", "entity_id": "local"}]
+
+
+def test_load_rejects_invalid_artifacts(tmp_path, cli):
+    source = tmp_path / "terms.json"
+    source.write_text('{"terms":[{"key":"org","canonical":"ABC"}]}', encoding="utf-8")
+    artifact = tmp_path / "terms.snapshot"
+    cli("compile", source, artifact)
+    data = artifact.read_bytes()
+    damaged = bytearray(data)
+    damaged[len(data) // 2] ^= 1
+    for invalid in (damaged, data[:len(data) // 2], b'{"format":"unknown"}'):
+        artifact.write_bytes(invalid)
+        result = cli("load", artifact, "ABC", check=False)
+        assert result.returncode != 0
+        assert result.stderr.strip()
+        assert not result.stdout.strip()
+
+
+def test_failed_compile_preserves_previous_snapshot(tmp_path, cli):
+    source = tmp_path / "terms.json"
+    source.write_text('{"terms":[{"key":"org","canonical":"ABC"}]}', encoding="utf-8")
+    artifact = tmp_path / "terms.snapshot"
+    cli("compile", source, artifact)
+    previous = artifact.read_bytes()
+    source.write_text("{", encoding="utf-8")
+    assert cli("compile", source, artifact, check=False).returncode != 0
+    assert artifact.read_bytes() == previous
+    mention, = json.loads(cli("load", artifact, "ABC").stdout)["mentions"]
+    assert mention["resolved_entity"]["entity_id"] == "project:org"

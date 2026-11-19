@@ -3,6 +3,8 @@
 
     python krtf.py terms.json "한전KDN은 AP를 점검했다."
     python krtf.py terms.json < document.txt
+    python krtf.py compile terms.json terms.krtf
+    python krtf.py load terms.krtf "한전에서 발표했다."
 
 JSON needs only the standard library. YAML needs PyYAML. From Python, reuse
 compile_snapshot(load_glossary(path)) across calls to resolve(snapshot, text).
@@ -11,9 +13,12 @@ position. A recognized particle belongs to full_span but not to the core span.
 """
 
 import argparse
+import hashlib
 import json
+import os
 import re
 import sys
+import tempfile
 import unicodedata
 from pathlib import Path
 from typing import NamedTuple
@@ -72,6 +77,74 @@ class Snapshot(NamedTuple):
     # Surface -> entity ID -> at least one unconditional binding.
     aliases: dict[str, dict[str, bool]]
     by_initial: dict[str, list[str]]
+
+
+# A version identifies both the file layout and its literal matching rules.
+_SNAPSHOT_HEADER = b"KRTF-MIN/1\n"
+
+
+def save_snapshot(snapshot: Snapshot, path) -> Path:
+    """Atomically save the compiled lookup index in a standalone min snapshot."""
+    path = Path(path)
+    # Store each surface once, in lookup order within its first-character bucket.
+    buckets = {
+        initial: [[surface, snapshot.aliases[surface]] for surface in surfaces]
+        for initial, surfaces in snapshot.by_initial.items()
+    }
+    payload = json.dumps({"names": snapshot.names, "buckets": buckets},
+                         ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    digest = hashlib.sha256(payload).hexdigest().encode("ascii")
+    temporary = tempfile.NamedTemporaryFile(dir=path.parent, delete=False)
+    try:
+        with temporary as stream:
+            stream.write(_SNAPSHOT_HEADER + digest + b"\n")
+            stream.write(payload)
+        os.replace(temporary.name, path)
+    finally:
+        Path(temporary.name).unlink(missing_ok=True)
+    return path
+
+
+def load_snapshot(path) -> Snapshot:
+    """Restore compiled candidates and lookup order without the source glossary."""
+    with Path(path).open("rb") as stream:
+        if stream.readline(len(_SNAPSHOT_HEADER) + 1) != _SNAPSHOT_HEADER:
+            raise ValueError("unsupported min snapshot format or version")
+        digest = stream.readline(66)
+        payload = stream.read()
+    if digest != hashlib.sha256(payload).hexdigest().encode("ascii") + b"\n":
+        raise ValueError("min snapshot checksum mismatch")
+    data = json.loads(payload.decode("utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("invalid min snapshot index")
+    names = data.get("names")
+    buckets = data.get("buckets")
+    if not isinstance(names, dict) or not isinstance(buckets, dict):
+        raise ValueError("invalid min snapshot index")
+    for entity_id, canonical in names.items():
+        _name(entity_id, "entity_id")
+        _name(canonical, "canonical")
+    aliases = {}
+    by_initial = {}
+    for initial, rows in buckets.items():
+        if len(initial) != 1 or not isinstance(rows, list) or not rows:
+            raise ValueError("invalid min snapshot lookup bucket")
+        surfaces = []
+        for row in rows:
+            if not isinstance(row, list) or len(row) != 2:
+                raise ValueError("invalid min snapshot alias record")
+            surface, candidates = row
+            if (not isinstance(surface, str) or not surface.startswith(initial)
+                    or surface in aliases or (surfaces and len(surface) > len(surfaces[-1]))):
+                raise ValueError("invalid min snapshot lookup order or surface")
+            if (not isinstance(candidates, dict) or not candidates
+                    or any(eid not in names or type(eligible) is not bool
+                           for eid, eligible in candidates.items())):
+                raise ValueError("invalid min snapshot candidates")
+            surfaces.append(surface)
+            aliases[surface] = candidates
+        by_initial[initial] = surfaces
+    return Snapshot(names, aliases, by_initial)
 
 
 def compile_snapshot(doc):
@@ -215,11 +288,30 @@ def resolve(snapshot, text):
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("glossary", help="v1 terms or v3 glossary in JSON or YAML")
-    parser.add_argument("text", nargs="?", help="input text (default: UTF-8 stdin)")
-    args = parser.parse_args()
+    commands = parser.add_subparsers(dest="command", required=True)
+    build = commands.add_parser("compile", help="compile a JSON or YAML glossary to a file")
+    build.add_argument("glossary", type=Path)
+    build.add_argument("output", type=Path)
+    raw = commands.add_parser("resolve", help="look up text using a source glossary (default)")
+    raw.add_argument("glossary", type=Path)
+    load = commands.add_parser("load", help="look up text using a compiled min snapshot")
+    load.add_argument("snapshot", type=Path)
+    for lookup in (raw, load):
+        lookup.add_argument("text", nargs="?", help="input text (default: UTF-8 stdin)")
+    argv = sys.argv[1:]
+    if argv and argv[0] not in {*commands.choices, "-h", "--help"}:
+        argv.insert(0, "resolve")  # Original positional CLI: GLOSSARY [TEXT].
+    args = parser.parse_args(argv)
     try:
-        snapshot = compile_snapshot(load_glossary(args.glossary))
+        if args.command == "compile":
+            if args.glossary.resolve() == args.output.resolve():
+                raise ValueError("snapshot output must differ from the source glossary")
+            save_snapshot(compile_snapshot(load_glossary(args.glossary)), args.output)
+            return
+        if args.command == "load":
+            snapshot = load_snapshot(args.snapshot)
+        else:
+            snapshot = compile_snapshot(load_glossary(args.glossary))
         text = args.text if args.text is not None else sys.stdin.buffer.read().decode("utf-8")
         result = resolve(snapshot, text)
         sys.stdout.buffer.write((json.dumps(result, ensure_ascii=False) + "\n").encode("utf-8"))
