@@ -156,6 +156,11 @@ class Snapshot:
     def matcher(self):
         return _Matcher(self)
 
+    @cached_property
+    def recovery_index(self):
+        return _RecoveryIndex(self)
+
+
 # The format version identifies the serialized indexes and metadata.
 _SNAPSHOT_HEADER = b"KRTF-MIN/2\n"
 
@@ -432,6 +437,266 @@ def compile_layers(documents):
 
 
 # Dubeolsik keys indexed by the Unicode initial, vowel and final jamo numbers.
+_CHO_KEYS = "r R s e E f a q Q t T d w W c z x v g".split()
+_JUNG_KEYS = "k o i O j p u P h hk ho hl y n nj np nl b m ml l".split()
+_JONG_KEYS = [""] + "r R rt s sw sg e f fr fa fq ft fx fv fg a q qt t T d w c z x v g".split()
+_COMPAT_KEYS = dict(zip("ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ", _CHO_KEYS))
+_COMPAT_KEYS.update(zip("ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ", _JUNG_KEYS))
+
+
+def _keyboard_keys(word):
+    keys = []
+    for ch in word:
+        if "가" <= ch <= "힣":
+            onset_vowel, final = divmod(ord(ch) - ord("가"), 28)
+            onset, vowel = divmod(onset_vowel, 21)
+            keys.extend((_CHO_KEYS[onset], _JUNG_KEYS[vowel], _JONG_KEYS[final]))
+        elif ch in _COMPAT_KEYS:
+            keys.append(_COMPAT_KEYS[ch])
+        else:
+            return ""
+    return "".join(keys)
+
+
+def _one_edit(a, b):
+    """One jamo insertion, deletion or substitution."""
+    if len(a) > len(b):
+        a, b = b, a
+    if len(b) - len(a) > 1 or a == b:
+        return False
+    for i, ch in enumerate(a):
+        if ch != b[i]:
+            return a[i + (len(a) == len(b)):] == b[i + 1:]
+    return True
+
+
+class _RecoveryIndex:
+    def __init__(self, snapshot):
+        self.keyboard = {}
+        self.latin = {}
+        self.initials = {}
+        self.subsequence = {}
+        self.edit = {}
+        self.jamo = {}
+        self.symbols = set()
+        for surface in snapshot.aliases:
+            words = surface.split()
+            compact = "".join(words)
+            if len(words) >= 3 and all(w.isascii() and w.isalpha() for w in words):
+                self.initials.setdefault("".join(w[0].upper() for w in words), []).append(surface)
+            if re.fullmatch(r"[가-힣]{4,60}", compact):
+                entry = (compact, surface)
+                for syllable in set(compact[1:-1]):
+                    self.subsequence.setdefault((compact[0], compact[-1], syllable), []).append(entry)
+            if re.fullmatch(r"[A-Za-z]{2,32}", surface):
+                self.latin.setdefault(surface.lower(), []).append(surface)
+            if not re.fullmatch(r"[가-힣]{2,32}", surface):
+                continue
+            self.keyboard.setdefault(_keyboard_keys(surface), []).append(surface)
+            if len(surface) >= 3:
+                jamo = unicodedata.normalize("NFD", surface)
+                self.jamo[jamo] = surface
+                self.symbols.update(jamo)
+                half = len(jamo) // 2
+                for side, part in ((0, jamo[:half]), (1, jamo[half:])):
+                    self.edit.setdefault((len(jamo), side, part), []).append((jamo, surface))
+
+    def typos(self, query):
+        # One edit leaves either the prefix half or the suffix half intact.
+        buckets = []
+        for length in range(len(query) - 1, len(query) + 2):
+            half = length // 2
+            for side, part in ((0, query[:half]), (1, query[-(length - half):])):
+                buckets.append(self.edit.get((length, side, part), ()))
+        if sum(map(len, buckets)) <= 256:
+            return {surface for bucket in buckets for target, surface in bucket
+                    if _one_edit(query, target)}
+        # Many institutions can share an entire prefix. In dense buckets look
+        # up edits of the query directly, bounding work by length and alphabet.
+        matches = set()
+        for i in range(len(query) + 1):
+            before, after = query[:i], query[i:]
+            if after and before + after[1:] in self.jamo:
+                matches.add(self.jamo[before + after[1:]])
+            for ch in self.symbols:
+                insert = self.jamo.get(before + ch + after)
+                if insert:
+                    matches.add(insert)
+                if after and ch != after[0]:
+                    replace = self.jamo.get(before + ch + after[1:])
+                    if replace:
+                        matches.add(replace)
+        return matches
+
+    def matches(self, word):
+        hits = {}
+        if re.fullmatch(r"[A-Za-z]{3,96}", word):
+            if word in self.keyboard:
+                hits["keyboard"] = self.keyboard[word]
+            if word in self.initials:
+                hits["abbrev"] = self.initials[word]
+        if re.fullmatch(r"[가-힣ㄱ-ㅎㅏ-ㅣ]{1,32}", word):
+            keys = _keyboard_keys(word).lower()
+            # A lone spoken syllable such as 네 is weak evidence for an acronym.
+            layout_input = any(ch in _COMPAT_KEYS for ch in word) or len(word) >= 2
+            if layout_input and keys in self.latin:
+                hits["keyboard"] = self.latin[keys]
+        if re.fullmatch(r"[가-힣]{3,32}", word):
+            # Retain both endpoints, at least half as many syllables as the name,
+            # and more than a one-syllable deletion. Ordinary short words collide.
+            buckets = (self.subsequence.get((word[0], word[-1], ch), ()) for ch in word[1:-1])
+            for target, surface in min(buckets, key=len):
+                if len(word) + 2 <= len(target) <= len(word) * 2:
+                    remaining = iter(target)
+                    if all(ch in remaining for ch in word):
+                        hits.setdefault("abbrev", set()).add(surface)
+            typos = self.typos(unicodedata.normalize("NFD", word))
+            if typos:
+                hits["jamo"] = typos
+        return hits
+
+
+_SHORT_WORD = r"[A-Za-z가-힣][A-Za-z가-힣0-9]{1,19}"
+_QUOTED_SHORT = rf"""\s*["'“‘]?({_SHORT_WORD})["'”’]?"""
+_LOCAL_PAREN = re.compile(rf"\s*\(\s*(?:이하\s*)?{_QUOTED_SHORT}(?:이?라\s+한다)?\s*\)")
+_LOCAL_IHA = re.compile(rf"\s*,?\s*이하\s+{_QUOTED_SHORT}(?!\w)")
+_LOCAL_REVERSE = re.compile(rf"(?<!\w)({_SHORT_WORD})\s*\(\s*$")
+_RECOVERY_WORD = re.compile(r"[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9Ａ-Ｚａ-ｚ０-９]+")
+
+
+def _local_bindings(text, mentions):
+    aliases, anchors, declarations = {}, {}, set()
+    for m in mentions:
+        start, end = (m["span"]["codepoint"][k] for k in ("start", "end"))
+        long_form = m["surface"]
+        forward = _LOCAL_PAREN.match(text, end) or _LOCAL_IHA.match(text, end)
+        reverse = None
+        if re.match(r"\s*\)", text[end:end + 8]):
+            reverse = _LOCAL_REVERSE.search(text, max(0, start - 24), start)
+        for declaration in (forward, reverse):
+            if declaration is None:
+                continue
+            short = _fold_text(declaration.group(1))
+            if len(short) >= len(_fold_text(long_form)):
+                continue
+            declarations.add(declaration.span(1))
+            anchors.setdefault(short, set()).update(m["matched_surfaces"])
+            local = aliases.setdefault(short, {})
+            if m["link_decision"] == "RESOLVED":
+                local[m["resolved_entity"]["entity_id"]] = True
+            else:
+                for candidate in m["prediction_set"]["members"]:
+                    local.setdefault(candidate["entity_id"], False)
+    return aliases, anchors, declarations
+
+
+def _local_candidates(snapshot, local_ids, key, context):
+    ids = dict(local_ids)
+    spellings = snapshot.matcher.spellings.get(key, ())
+    allowed = _eligible_ids(snapshot, spellings, *context)
+    for spelling in spellings:
+        for eid in snapshot.aliases[spelling]:
+            if eid in allowed:
+                ids[eid] = allowed[eid]
+            else:
+                ids.pop(eid, None)
+    return ids, spellings
+
+
+def _record_extra(m, snapshot, ids, spellings, channels):
+    m["candidate_eligibility"] = dict(sorted(ids.items()))
+    m["matched_surfaces"] = sorted(set(m.get("matched_surfaces", ())) | set(spellings))
+    m["generation_channels"] = sorted(set(m.get("generation_channels", ())) | set(channels))
+    if len(ids) == 1 and all(ids.values()):
+        eid = next(iter(ids))
+        m["link_decision"] = "RESOLVED"
+        m["link_reason"] = "document_local_definition"
+        m["resolved_entity"] = {"entity_id": eid, "canonical": snapshot.names[eid]}
+        m.pop("prediction_set", None)
+    else:
+        m["link_decision"] = "AMBIGUOUS"
+        if "doc_local" not in channels:
+            m["link_reason"] = "recovery_candidate_only"
+        elif len(ids) > 1:
+            m["link_reason"] = "shared_alias"
+        else:
+            m["link_reason"] = "eligibility_unconfirmed"
+        m.pop("resolved_entity", None)
+        if "full_surface" in m:
+            m["full_surface"].pop("composes_to", None)
+        m["prediction_set"] = {"members": [{"kind": "ENTITY", "entity_id": eid}
+                                           for eid in sorted(ids)]}
+
+
+def _recovered_candidates(snapshot, core, context):
+    ids, surfaces, channels = {}, set(), set()
+    for channel, matches in snapshot.recovery_index.matches(core).items():
+        flag = {"jamo": "no_fuzzy", "keyboard": "no_keyboard"}.get(channel)
+        disabled = snapshot.meta.get(flag, {})
+        for surface in matches:
+            eligible = _eligible_ids(snapshot, [surface], *context)
+            allowed = eligible.keys() - set(disabled.get(surface, ()))
+            if allowed:
+                surfaces.add(surface)
+                channels.add(channel)
+                ids.update(dict.fromkeys(allowed, False))
+    return ids, surfaces, channels
+
+
+def _extra_mentions(snapshot, text, mentions, span, department, project, as_of, recover):
+    local, anchors, declarations = _local_bindings(text, mentions)
+    if not (local or recover):
+        return []
+    context = department, project, as_of
+    for m in mentions:
+        key = _fold_text(m["surface"])
+        if key in local:
+            ids, spellings = _local_candidates(snapshot, local[key], key, context)
+            if ids:
+                _record_extra(m, snapshot, ids, anchors[key].union(spellings), {"doc_local"})
+
+    occupied = sorted((m["span"]["codepoint"]["start"], m["full_span"]["codepoint"]["end"])
+                      for m in mentions)
+    out, interval = [], 0
+    for token in _RECOVERY_WORD.finditer(text):
+        start, stop = token.span()
+        if ((start and _word_char(text[start - 1]))
+                or (stop < len(text) and _word_char(text[stop]))):
+            continue
+        while interval < len(occupied) and occupied[interval][1] <= start:
+            interval += 1
+        if interval < len(occupied) and occupied[interval][0] < stop:
+            continue
+        word = token.group()
+        if len(word) > 96 + 3 * _MAX_PARTICLE_LEN:
+            continue
+        cuts = [len(word)]
+        cuts.extend(i for i in range(max(1, len(word) - 3 * _MAX_PARTICLE_LEN), len(word))
+                    if _full_end(text, start + i) == stop)
+        for cut in cuts:
+            core = word[:cut]
+            end = start + cut
+            key = _fold_text(core)
+            if key in local:
+                if (start, end) in declarations:
+                    break
+                ids, known = _local_candidates(snapshot, local[key], key, context)
+                surfaces = anchors[key].union(known)
+                channels = {"doc_local"}
+            elif recover:
+                ids, surfaces, channels = _recovered_candidates(snapshot, core, context)
+            else:
+                continue
+            if not ids:
+                continue
+            m = {"surface": core, "span": span(start, end), "full_span": span(start, stop),
+                 "mention_decision": "TERM" if key in local else "UNCERTAIN"}
+            _record_extra(m, snapshot, ids, surfaces, channels)
+            out.append(m)
+            break
+    return out
+
+
 def _word_char(ch):
     return ch.isalnum() or ch == "_" or unicodedata.category(ch).startswith("M")
 
@@ -675,7 +940,7 @@ def _analyze_tail(tail, last, matcher, ids):
     return suffix, particles, len(readings) > 1
 
 
-def resolve(snapshot, text, *, department=None, project=None, as_of=None):
+def resolve(snapshot, text, *, department=None, project=None, as_of=None, recover=True):
     """Find terms with original source spans and distinguish core and derived referents."""
     normalized, raw = _normalized_input(text)
     byte, utf16 = [0], [0]
@@ -761,6 +1026,7 @@ def resolve(snapshot, text, *, department=None, project=None, as_of=None):
             mentions.append(mention)
             consumed = stop
             break
+    mentions.extend(_extra_mentions(snapshot, text, mentions, span, department, project, as_of, recover))
     mentions.sort(key=lambda mention: mention["span"]["codepoint"]["start"])
     return {"mode": "symbolic", "mentions": mentions}
 
